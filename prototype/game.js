@@ -624,43 +624,97 @@ function renderGaugeWithDelta(container, opts) {
   const nextBase = lvBaseExp(lv + 1);
   const range = Math.max(1, nextBase - curBase);
 
-  // afterExp は必ず curBase 以上 nextBase 未満（Lv100 オーバーフロー時は 100% 固定）
+  // 新Lv 区間内の afterPct（余剰分）。Lv100 など上限時は 100%
   const afterPct = Math.max(0, Math.min(100, ((afterExp - curBase) / range) * 100));
-
-  // beforeExp が現在Lv の区間に入っていないとき（= Lvアップ時）は base=0 としてハイライト全体を伸ばす
-  let basePct = 0;
-  let deltaStart = 0;
-  if (!lvUp) {
-    basePct = Math.max(0, Math.min(100, ((beforeExp - curBase) / range) * 100));
-    deltaStart = basePct;
-  }
-  const deltaPct = Math.max(0, afterPct - deltaStart);
-
-  const displayValue = `${afterExp - curBase}/${range}`;
-  const lvUpTag = lvUp ? " ⬆ Lv UP!" : "";
 
   container.classList.add("gauge", "gauge-with-delta");
   if (lvUp) container.classList.add("lv-up");
+
+  const gainedExp = afterExp - beforeExp;
+  const lvUpTag = lvUp ? " ⬆ Lv UP!" : "";
+
+  if (!lvUp) {
+    // === (a) 通常プレイ：現Lv 区間内で base から delta を伸ばす ===
+    const basePct = Math.max(0, Math.min(100, ((beforeExp - curBase) / range) * 100));
+    const deltaPct = Math.max(0, afterPct - basePct);
+    const displayValue = `${afterExp - curBase}/${range}`;
+
+    container.innerHTML = `
+      <div class="gauge-track">
+        <div class="gauge-bar-base" style="width:${basePct}%"></div>
+        <div class="gauge-bar-delta" style="left:${basePct}%; width:0%"></div>
+      </div>
+      <div class="gauge-label">
+        <span>${label} Lv${lv}${lvUpTag}</span>
+        <b>${displayValue}<span class="delta">+${gainedExp}</span></b>
+      </div>
+    `;
+    const deltaEl = container.querySelector(".gauge-bar-delta");
+    if (deltaEl) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => { deltaEl.style.width = deltaPct + "%"; });
+      });
+    }
+    return;
+  }
+
+  // === (b) Lvアップ時：フェーズA 満タン → フェーズB リセット → フェーズC 新Lv 余剰 ===
+  // @spec SPEC-021 §5.4a.2 (b)
+  const prevLv = lv - 1;
+  const prevBase = lvBaseExp(prevLv);
+  const prevRange = Math.max(1, curBase - prevBase);
+  const prevBasePct = Math.max(0, Math.min(100, ((beforeExp - prevBase) / prevRange) * 100));
+  const overflowPct = afterPct;  // 新Lv 区間内の余剰
+
+  const displayValueAfter = `${afterExp - curBase}/${range}`;
+
+  // 最初は「前Lv の状態」を表示
   container.innerHTML = `
     <div class="gauge-track">
-      <div class="gauge-bar-base" style="width:${basePct}%"></div>
-      <div class="gauge-bar-delta" style="left:${deltaStart}%; width:0%"></div>
+      <div class="gauge-bar-base" style="width:${prevBasePct}%"></div>
+      <div class="gauge-bar-delta" style="left:${prevBasePct}%; width:0%"></div>
     </div>
     <div class="gauge-label">
-      <span>${label} Lv${lv}${lvUpTag}</span>
-      <b>${displayValue}<span class="delta">+${afterExp - beforeExp}</span></b>
+      <span>${label} Lv${prevLv}</span>
+      <b><span class="delta">+${gainedExp}</span></b>
     </div>
   `;
 
-  // 次フレームで width を反映させて transition を発火
   const deltaEl = container.querySelector(".gauge-bar-delta");
-  if (deltaEl) {
+  const baseEl  = container.querySelector(".gauge-bar-base");
+  const labelSpan = container.querySelector(".gauge-label span");
+  const labelBold = container.querySelector(".gauge-label b");
+
+  // フェーズA：次フレームで delta を右端まで伸ばす（満タンアニメ 600ms）
+  requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        deltaEl.style.width = deltaPct + "%";
-      });
+      if (deltaEl) deltaEl.style.width = (100 - prevBasePct) + "%";
     });
-  }
+  });
+
+  // フェーズB：700ms後に 0% リセット + 新Lv ラベルへ
+  setTimeout(() => {
+    if (!container.isConnected) return;
+    if (baseEl)  baseEl.style.width = "0%";
+    if (deltaEl) {
+      // transition を一瞬切ってから値を 0 にリセット（手前に戻らないようにするため）
+      deltaEl.style.transition = "none";
+      deltaEl.style.left = "0%";
+      deltaEl.style.width = "0%";
+      // 次フレームで transition を戻す
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          deltaEl.style.transition = "";
+          // フェーズC：新Lv 余剰分を伸ばす
+          deltaEl.style.width = overflowPct + "%";
+        });
+      });
+    }
+    if (labelSpan) labelSpan.textContent = `${label} Lv${lv}${lvUpTag}`;
+    if (labelBold) {
+      labelBold.innerHTML = `${displayValueAfter}<span class="delta">+${gainedExp}</span>`;
+    }
+  }, 700);
 }
 
 /**
