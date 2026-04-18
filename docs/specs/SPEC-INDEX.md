@@ -19,6 +19,9 @@
 | [SPEC-019](./SPEC-019-stamina-cap.md) | 体力上限（年齢依存）・体力ゼロ挙動・コアタイム吸収 | Active（保育園のみ実装） | `prototype/game.js` (STAMINA_CAP_TABLE, staminaCapForAge, handleStaminaDepleted) | 2026-04-18 |
 | [SPEC-020](./SPEC-020-fixed-sleep-cycle.md) | 固定起床・就寝サイクル（低年齢・就寝UI分岐） | Active（保育園のみ実装） | `prototype/game.js` (getFixedSchedule, beginDay, goSleep) | 2026-04-18 |
 | [SPEC-021](./SPEC-021-parameter-gauge-ui.md) | パラメーター表示UI（時計円盤＋帯の色分け） | Active | `prototype/game.js` (renderGauge, renderClockDial, computeDialBands) / `prototype/styles.css` (.gauge, .clock-dial) | 2026-04-18 |
+| [SPEC-022](./SPEC-022-play-category.md) | 遊びカテゴリ | Active（保育園のみ実装） | `prototype/game.js` (CATEGORIES, PLAYS[*].categories) | 2026-04-18 |
+| [SPEC-023](./SPEC-023-play-tree.md) | 遊びツリー（新画面 S7） | Active（保育園のみ実装） | `prototype/game.js` (renderPlayTreeScreen) / `prototype/index.html` (#screen-tree) | 2026-04-18 |
+| [SPEC-024](./SPEC-024-skill.md) | スキル（カテゴリ 1:1 のLv 1〜100） | Active（保育園のみ実装） | `prototype/game.js` (player.skills, gainSkillExp, skillLvFromExp, skillBoostMultiplier) | 2026-04-18 |
 
 ## ライフステージ別コアタイム
 
