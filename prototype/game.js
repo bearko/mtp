@@ -5,12 +5,14 @@
  * 全仕様索引：docs/specs/SPEC-INDEX.md
  *
  * 画面構成（docs/screen-design.md）：
- *   S1 起床  →  S2 遊びを選ぶ  →  S3 遊びの描写(結果統合)  →  [S4 イベント]
- *                                        ↓
- *                                    余剰時間>0 → S2 へ戻る
- *                                    余剰時間=0 → S5 就寝
- *                                    ↓
- *                                  翌日 S1 起床
+ *   S1 起床
+ *     ↓ 今日を始める
+ *   [コアタイム判定 SPEC-010]
+ *     ├─ ある（1-3歳=保育園 等） → S6 コアタイム画面 → S2
+ *     └─ ない（老後）             → S2
+ *   S2 遊びを選ぶ → S3 遊びの描写(結果統合) → [S4 イベント]
+ *     ↓ 余剰時間残り 0 / 今日おわる
+ *   S5 就寝 → 翌日 S1 起床
  *
  * 各関数の頭にある @spec コメントは、コードが読めない人でも挙動を仕様書から把握できるようにするためのルール。
  */
@@ -154,6 +156,26 @@ const PLAYS = [
     ],
   },
   {
+    // @spec docs/specs/SPEC-011-nursery.md §5.6
+    // 保育園の Discovery `learn_slide` を発見したときに player.unlockedPlays に追加される。
+    // 初期状態ではプレイ候補に出ない（unlockRequired: true）。
+    id: "big_slide",
+    name: "大きな滑り台",
+    icon: "🎢",
+    timeCost: 1,
+    moneyCost: 0,
+    staminaCost: 12,
+    ageMin: 2,
+    ageMax: 12,
+    gain: { physical: 15, social: 4 },
+    unlockRequired: true,
+    descriptions: [
+      "公園の大きな滑り台。先生が教えてくれた順番を守って滑る。",
+      "スピードが出て風が気持ちいい！",
+      "一人で最後まで滑り切れた。",
+    ],
+  },
+  {
     id: "bughunt",
     name: "虫取り",
     icon: "🦗",
@@ -203,11 +225,46 @@ const EVENTS = [
 ];
 
 /**
+ * @spec docs/specs/SPEC-010-core-time.md §3 ライフステージとコアタイムのマトリクス
+ * @spec docs/specs/SPEC-011-nursery.md 保育園の詳細挙動
+ *
+ * 各ライフステージは年齢範囲とコアタイム枠を持つ。
+ * プロト段階では保育園（1-3歳）のみ実装されており、他は枠のみ定義。
+ * 詳細は SPEC-012〜SPEC-018 を参照。
+ */
+const LIFE_STAGES = [
+  { id: "nursery",      label: "保育園",   icon: "🏫", ageMin: 1,  ageMax: 3,   coreTime: { startHour: 9,  endHour: 16,   label: "保育園" }, implemented: true  },
+  { id: "kindergarten", label: "幼稚園",   icon: "🏫", ageMin: 4,  ageMax: 6,   coreTime: { startHour: 9,  endHour: 14,   label: "幼稚園" }, implemented: false },
+  { id: "elementary",   label: "小学校",   icon: "🏫", ageMin: 7,  ageMax: 12,  coreTime: { startHour: 8,  endHour: 15.5, label: "小学校" }, implemented: false },
+  { id: "juniorhigh",   label: "中学校",   icon: "🎒", ageMin: 13, ageMax: 15,  coreTime: { startHour: 8,  endHour: 17,   label: "中学校" }, implemented: false },
+  { id: "highschool",   label: "高校",     icon: "🎓", ageMin: 16, ageMax: 18,  coreTime: { startHour: 9,  endHour: 16,   label: "高校" },   implemented: false },
+  { id: "university",   label: "大学",     icon: "🎓", ageMin: 19, ageMax: 22,  coreTime: { startHour: 9,  endHour: 18,   label: "大学" },   implemented: false, customizable: true },
+  { id: "worker",       label: "社会人",   icon: "💼", ageMin: 23, ageMax: 65,  coreTime: { startHour: 9,  endHour: 18,   label: "仕事" },   implemented: false },
+  { id: "retirement",   label: "老後",     icon: "🪑", ageMin: 66, ageMax: 100, coreTime: null, implemented: false },
+];
+
+/**
+ * @spec docs/specs/SPEC-011-nursery.md §5.5 発見プール
+ * 保育園コアタイムで抽選される「発見」の候補。
+ * `unlockPlayId` があるものは、その遊びを player.unlockedPlays に追加する。
+ */
+const NURSERY_DISCOVERIES = [
+  { id: "meet_new_friend",  text: "新しいお友達と仲良くなった！",                    weight: 10, gain: { friends: 1, social: 5 } },
+  { id: "learn_slide",      text: "大きな滑り台の上手な滑り方を教えてもらった！",    weight: 8,  gain: { physical: 3 }, unlockPlayId: "big_slide" },
+  { id: "learn_sandcastle", text: "砂場で先生にお城の作り方を教わった！",            weight: 8,  gain: { creative: 5, physical: 3 } },
+  { id: "nap_refresh",      text: "お昼寝でぐっすり眠った。夢の中で冒険した。",      weight: 6,  gain: { stamina: 10, explore: 3 } },
+  { id: "song_time",        text: "「はらぺこあおむし」の歌を覚えた！",              weight: 6,  gain: { explore: 3, creative: 3 } },
+  { id: "cry_then_smile",   text: "友達とおもちゃを取り合って泣いた…最後は仲直り。", weight: 4,  gain: { social: 4, passion: 2 } },
+  { id: "park_adventure",   text: "公園で小さな虫を見つけて観察した！",              weight: 5,  gain: { explore: 4, physical: 2 } },
+];
+
+/**
  * @spec docs/specs/SPEC-001-life-stage.md
  * 初期プレイヤー状態。
+ * プロト段階では保育園コアタイム（SPEC-011）を体験させるため 2歳スタート。
  */
 const DEFAULT_PLAYER = {
-  age: 5,
+  age: 2,
   day: 1,
   season: "summer",
   clockHour: 6,
@@ -222,6 +279,8 @@ const DEFAULT_PLAYER = {
   dailyPlays: 0,
   lastPlayCategory: null,
   consecutiveCategoryCount: 0,
+  unlockedPlays: [],       // @spec SPEC-010, SPEC-011 発見で解禁された遊びID
+  discoveredIds: [],       // @spec SPEC-011 §5.5 重複発見の抑止
 };
 
 const LABELS = {
@@ -303,6 +362,7 @@ function majorGainCategory(gain) {
 
 /**
  * @spec docs/specs/SPEC-001-life-stage.md §6
+ * @spec docs/specs/SPEC-010-core-time.md §6
  * 共通HUDの描画。全画面共通。
  */
 function renderHUD() {
@@ -314,6 +374,28 @@ function renderHUD() {
   byId("hud-hours").textContent = Math.max(0, player.spareHours).toFixed(1).replace(".0", "");
   byId("hud-friends").textContent = player.friends;
   byId("hud-passion").textContent = player.passion;
+
+  const stage = resolveLifeStage(player.age);
+  const stageEl = byId("hud-stage");
+  if (stage) stageEl.textContent = `${stage.icon} ${stage.label}`;
+  else stageEl.textContent = "";
+}
+
+/**
+ * @spec docs/specs/SPEC-010-core-time.md §5.1
+ * 年齢から現在のライフステージを返す。該当しない場合は null。
+ */
+function resolveLifeStage(age) {
+  return LIFE_STAGES.find((s) => age >= s.ageMin && age <= s.ageMax) || null;
+}
+
+/**
+ * @spec docs/specs/SPEC-010-core-time.md §5.1
+ * 現在のライフステージの coreTime を返す（null の場合はコアタイム無し）。
+ */
+function resolveCoreTime(age) {
+  const stage = resolveLifeStage(age);
+  return stage ? stage.coreTime : null;
 }
 
 // =========================================================================
@@ -352,9 +434,15 @@ function renderWakeup() {
  * @screen S2 遊びを選ぶ
  * @spec docs/specs/SPEC-002-play-selection.md §5.1
  * @spec docs/specs/SPEC-007-friends.md §5.1
+ * @spec docs/specs/SPEC-010-core-time.md §5.5 解禁遊びの扱い
  * 遊びの実行可否を判定する。満たされない条件を reasons に並べて返す。
+ * `unlockRequired` が true の遊びは、player.unlockedPlays に含まれるときだけ候補に出す
+ *  （候補外なので reasons でなく isHidden を立てる）。
  */
 function isPlayAvailable(play) {
+  if (play.unlockRequired && !(player.unlockedPlays || []).includes(play.id)) {
+    return { ok: false, reasons: ["まだ知らない遊び"], isHidden: true };
+  }
   const reasons = [];
   if (play.seasons && !play.seasons.includes(player.season)) {
     reasons.push(`${SEASON_LABEL[player.season]}は季節外`);
@@ -382,6 +470,7 @@ function renderChooseScreen() {
 
   const sorted = PLAYS
     .map((p) => ({ play: p, avail: isPlayAvailable(p) }))
+    .filter(({ avail }) => !avail.isHidden)
     .sort((a, b) => (b.avail.ok ? 1 : 0) - (a.avail.ok ? 1 : 0));
 
   sorted.forEach(({ play, avail }) => {
@@ -700,6 +789,220 @@ function renderResultPanel(before) {
 }
 
 // =========================================================================
+// S6. コアタイム（学びごと・仕事）
+// =========================================================================
+
+/**
+ * @screen S1 → S6 or S2 への分岐
+ * @spec docs/specs/SPEC-010-core-time.md §5.2
+ * 起床後「今日を始める」を押したときに呼ばれる。
+ * 現在のライフステージにコアタイムがあり、かつ実装済みならコアタイム画面を挿入する。
+ * 未実装の場合はコアタイムを擬似消化（時刻を endHour まで進めるだけ）して S2 へ。
+ * コアタイムが無い（老後）場合はそのまま S2 へ。
+ */
+function beginDay() {
+  const stage = resolveLifeStage(player.age);
+  const coreTime = stage ? stage.coreTime : null;
+
+  if (!coreTime) {
+    goChooseFromToday();
+    return;
+  }
+
+  if (stage.implemented) {
+    renderCoreTime(stage);
+    showScreen("screen-coretime");
+    return;
+  }
+
+  // 実装されていないライフステージは時計だけ進めて S2 へ
+  // (SPEC-012〜SPEC-018 実装時に専用の renderCoreTime に差し替える)
+  player.clockHour = Math.max(player.clockHour, coreTime.endHour);
+  player.clockMinute = Math.round((coreTime.endHour % 1) * 60);
+  recomputeSpareHoursAfterCoreTime(coreTime);
+  toast(`${stage.label} の時間を過ごした（未実装）`);
+  goChooseFromToday();
+}
+
+/**
+ * @spec docs/specs/SPEC-010-core-time.md §5.3
+ * コアタイム消化後の余剰時間を再計算する。
+ * プロト段階では「就寝時刻21:00 − 現在時刻 − 食事2h」の単純モデル。
+ */
+function recomputeSpareHoursAfterCoreTime(coreTime) {
+  const sleepTargetHour = 21;
+  const mealReserveHours = 2;
+  const now = player.clockHour + player.clockMinute / 60;
+  const remain = Math.max(0, sleepTargetHour - now - mealReserveHours);
+  player.spareHours = +remain.toFixed(1);
+}
+
+/**
+ * @screen S6 コアタイム画面 → S2
+ * @spec docs/specs/SPEC-010-core-time.md §5.2
+ */
+function goChooseFromToday() {
+  renderChooseScreen();
+  showScreen("screen-choose");
+}
+
+/**
+ * @screen S6 コアタイム
+ * @spec docs/specs/SPEC-011-nursery.md
+ * 保育園の1日を描画し、獲得値・発見を確定させる。
+ * 他のライフステージは将来ここを分岐ポイントにする予定。
+ */
+function renderCoreTime(stage) {
+  if (stage.id !== "nursery") {
+    // プロト段階では保育園しか実装していないので、他ステージは beginDay() 側で擬似消化される。
+    // ここに来るのはバグ。
+    console.warn("renderCoreTime: unimplemented stage", stage.id);
+    return;
+  }
+  renderNurseryCoreTime(stage);
+}
+
+/**
+ * @screen S6 コアタイム（保育園版）
+ * @spec docs/specs/SPEC-011-nursery.md §5
+ *
+ * 保育園コアタイムの処理：
+ * 1. 09:00 に時刻を揃える（起床が早い場合）
+ * 2. タイムラインを画面に描画（§5.2）
+ * 3. 生活活動時間の内容を日替わりで決定（§5.4）
+ * 4. 発見を 70% で抽選（§5.5）
+ * 5. 獲得値を確定（§5.3）＋ 発見の効果 ＋ 新しい遊び解禁（§5.6）
+ * 6. 時刻を 16:00 に進め、余剰時間を再計算
+ */
+function renderNurseryCoreTime(stage) {
+  const ct = stage.coreTime;
+
+  // 1) 時刻を 09:00 に揃える（ただし既に遅刻している場合はそのまま）
+  if (player.clockHour < ct.startHour) {
+    player.clockHour = ct.startHour;
+    player.clockMinute = 0;
+  }
+
+  // 2) HUDと画面の基本情報
+  byId("ct-icon").textContent = stage.icon;
+  byId("ct-title").textContent = "保育園に行ってきた";
+  byId("ct-subtitle").textContent = `${fmtTime(ct.startHour)} 〜 ${fmtTime(ct.endHour)}`;
+
+  // 3) 生活活動時間の日替わり決定（SPEC-011 §5.4）
+  const isPark = player.day % 2 === 1; // 奇数日=公園 / 偶数日=室内
+  const activityLabel = isPark ? "🌳 公園遊び（滑り台・砂場）" : "🏠 室内遊び（粘土・工作）";
+
+  // タイムライン描画
+  byId("ct-timeline").innerHTML = [
+    ["09:00", "🎒 登園、先生と挨拶"],
+    ["10:00", "📖 朝の会、絵本を読む"],
+    ["11:00", "🎵 クラス活動（うた、てあそび）"],
+    ["12:00", "🍱 給食、昼食休憩"],
+    ["13:00", activityLabel],
+    ["15:00", "🍪 おやつ、自由遊び"],
+    ["16:00", "👋 降園"],
+  ].map(([t, txt]) => `<li><span>${t}</span><b>${txt}</b></li>`).join("");
+
+  // 4) 発見抽選（70%、重複を除外）
+  const pool = NURSERY_DISCOVERIES.filter((d) => !player.discoveredIds.includes(d.id));
+  const discoveryHit = pool.length > 0 && Math.random() < 0.70;
+  const discovery = discoveryHit ? pickWeighted(pool) : null;
+
+  // 5) 獲得値の確定（§5.3 ＋ §5.4 ＋ 発見効果）
+  const gain = { physical: 5, social: 3 };
+  if (isPark) gain.physical += 5;
+  else        gain.creative = (gain.creative || 0) + 3;
+
+  // 差分のスナップショット
+  const before = {
+    exp: { ...player.exp },
+    stamina: player.stamina,
+    friends: player.friends,
+    passion: player.passion,
+  };
+
+  // 基本ステータス反映
+  player.stamina = Math.max(0, player.stamina - 15);
+  player.passion += 1;
+  for (const [k, v] of Object.entries(gain)) {
+    player.exp[k] = (player.exp[k] || 0) + v;
+  }
+
+  // 発見効果の反映
+  let unlockedPlayName = null;
+  if (discovery) {
+    player.discoveredIds.push(discovery.id);
+
+    if (discovery.unlockPlayId && !player.unlockedPlays.includes(discovery.unlockPlayId)) {
+      player.unlockedPlays.push(discovery.unlockPlayId);
+      const def = PLAYS.find((p) => p.id === discovery.unlockPlayId);
+      if (def) unlockedPlayName = `${def.icon} ${def.name}`;
+    }
+    const eff = discovery.gain || {};
+    if (eff.friends)  player.friends = Math.max(0, player.friends + eff.friends);
+    if (eff.stamina)  player.stamina = Math.max(0, Math.min(100, player.stamina + eff.stamina));
+    if (eff.passion)  player.passion = Math.max(0, player.passion + eff.passion);
+    for (const cat of Object.keys(LABELS)) {
+      if (eff[cat]) player.exp[cat] = (player.exp[cat] || 0) + eff[cat];
+    }
+  }
+
+  // 発見カード描画
+  const dCard = byId("ct-discovery-card");
+  const dText = byId("ct-discovery-text");
+  const dEff  = byId("ct-discovery-effects");
+  if (discovery) {
+    dCard.hidden = false;
+    dText.textContent = discovery.text;
+    const rows = [];
+    const eff = discovery.gain || {};
+    for (const k of Object.keys(eff)) {
+      const v = eff[k];
+      rows.push(`<li><span>${effectLabel(k)}</span><b class="${v > 0 ? "up" : "down"}">${v > 0 ? "+" : ""}${v}</b></li>`);
+    }
+    if (unlockedPlayName) rows.push(`<li><span>🆕 新しく覚えた</span><b class="up">${unlockedPlayName}</b></li>`);
+    dEff.innerHTML = rows.join("");
+  } else {
+    dCard.hidden = true;
+  }
+
+  // 6) 時刻を 16:00 に進める
+  player.clockHour = ct.endHour;
+  player.clockMinute = Math.round((ct.endHour % 1) * 60);
+  recomputeSpareHoursAfterCoreTime(ct);
+
+  // 獲得カード
+  const gainRows = [];
+  for (const k of Object.keys(LABELS)) {
+    const b = before.exp[k] || 0;
+    const a = player.exp[k] || 0;
+    if (a !== b) gainRows.push(`<li><span>${LABELS[k]}</span><b class="up">+${a - b}exp</b></li>`);
+  }
+  if (before.stamina !== player.stamina) {
+    gainRows.push(`<li><span>体力</span><b class="${player.stamina >= before.stamina ? "up" : "down"}">${Math.floor(before.stamina)} → ${Math.floor(player.stamina)}</b></li>`);
+  }
+  if (before.friends !== player.friends) {
+    gainRows.push(`<li><span>友人数</span><b class="up">${before.friends} → ${player.friends}</b></li>`);
+  }
+  if (before.passion !== player.passion) {
+    gainRows.push(`<li><span>🔥 ジョウネツ</span><b class="up">${before.passion} → ${player.passion}</b></li>`);
+  }
+  gainRows.push(`<li><span>時刻</span><b>${fmtTime(ct.startHour)} → ${fmtTime(ct.endHour)}</b></li>`);
+  byId("ct-gain").innerHTML = gainRows.join("");
+
+  renderHUD();
+}
+
+/**
+ * @screen S6 コアタイム → S2
+ * @spec docs/specs/SPEC-011-nursery.md §5.7
+ * 「家に帰る」押下で遊び選択画面に遷移する。
+ */
+function closeCoreTime() {
+  goChooseFromToday();
+}
+
+// =========================================================================
 // 「1h休む」（遊び選択画面で使う）
 // =========================================================================
 
@@ -811,8 +1114,10 @@ document.addEventListener("click", (e) => {
   const a = t.dataset.action;
   switch (a) {
     case "start-day":
-      renderChooseScreen();
-      showScreen("screen-choose");
+      beginDay();
+      break;
+    case "close-coretime":
+      closeCoreTime();
       break;
     case "skip-playing":
       skipDescription();

@@ -316,6 +316,25 @@ body {
 }
 
 /*
+  @spec SPEC-010, SPEC-011 コアタイム画面のタイムライン表示
+*/
+#ct-timeline li {
+  justify-content: flex-start;
+  gap: 14px;
+}
+#ct-timeline li > span {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5em;
+  flex-shrink: 0;
+}
+#ct-timeline li > b {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+}
+
+/*
   @spec SPEC-009 §5.2
   Actions：flex-shrink: 0 で常に画面下部に表示。
   paddingに safe-area-inset-bottom を加算して iOS ホームバーを避ける。

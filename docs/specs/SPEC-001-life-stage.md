@@ -4,8 +4,8 @@
 |---|---|
 | 仕様ID | SPEC-001 |
 | 機能名 | ライフステージ / プレイヤー状態 |
-| 対応ファイル | `prototype/game.js` の `DEFAULT_PLAYER`, `player`, `fmtTime`, `SEASON_LABEL` |
-| 関連仕様 | SPEC-005, SPEC-006, SPEC-007, SPEC-008 |
+| 対応ファイル | `prototype/game.js` の `DEFAULT_PLAYER`, `player`, `LIFE_STAGES`, `resolveLifeStage`, `fmtTime`, `SEASON_LABEL` |
+| 関連仕様 | SPEC-005, SPEC-006, SPEC-007, SPEC-008, **SPEC-010** |
 | ステータス | Active |
 | 最終更新 | 2026-04-18 |
 
@@ -30,19 +30,26 @@
 ## 5. 挙動（Behavior）
 ### 5.1 プレイヤー状態の構造
 ```
-age            年齢 1〜100
-day            ゲーム内通算日
-season         "spring" / "summer" / "autumn" / "winter"
-clockHour      時（0-24）
-clockMinute    分（0-59）
-spareHours     余剰時間（h）
-stamina        体力 0-100
-bioRhythm      生活リズム 0-100
-money          所持金（円）
-friends        友人数（人）
-passion        ジョウネツ（累積スコア）
-exp            原体験5カテゴリの経験値
+age              年齢 1〜100
+day              ゲーム内通算日
+season           "spring" / "summer" / "autumn" / "winter"
+clockHour        時（0-24）
+clockMinute      分（0-59）
+spareHours       余剰時間（h）
+stamina          体力 0-100
+bioRhythm        生活リズム 0-100
+money            所持金（円）
+friends          友人数（人）
+passion          ジョウネツ（累積スコア）
+exp              原体験5カテゴリの経験値
+unlockedPlays    解禁済みの遊びID配列（SPEC-010, SPEC-011 で使用）
+discoveredIds    発見済みの Discovery ID 配列（重複発見の抑止）
+flags            任意のゲームフラグ（例 canRead） ※将来用
 ```
+
+### 5.1.1 ライフステージの解決
+- 年齢から `LIFE_STAGES` テーブルを引き、現在のライフステージと coreTime を取得する。
+- 詳細は **SPEC-010 §3 マトリクス** を参照。
 
 ### 5.2 年齢進行
 - プロト段階では **120日で +1歳**（年齢100で到達時にエンディング予定、未実装）。
@@ -53,6 +60,7 @@ exp            原体験5カテゴリの経験値
 ### 5.4 時刻の表現
 - 起床時刻は SPEC-006（生活リズム）によって決まる。
 - 遊びの所要時間だけ時刻が進行する（SPEC-003）。
+- **コアタイム消化時** は時刻が一気に `coreTime.endHour` まで進行する（SPEC-010）。
 
 ## 6. UIへの反映
 - 共通HUD（全画面共通の上部固定バー）に表示：年齢 / 日付・季節 / 時刻 / 体力 / リズム / 所持金 / 余剰時間 / 友人 / ジョウネツ。
