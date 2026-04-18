@@ -232,9 +232,10 @@ const EVENTS = [
  * プロト段階では保育園（1-3歳）のみ実装されており、他は枠のみ定義。
  * 詳細は SPEC-012〜SPEC-018 を参照。
  */
+// @spec docs/specs/SPEC-019-stamina-cap.md §5.1 年齢4歳は保育園扱い（体力上限50）
 const LIFE_STAGES = [
-  { id: "nursery",      label: "保育園",   icon: "🏫", ageMin: 1,  ageMax: 3,   coreTime: { startHour: 9,  endHour: 16,   label: "保育園" }, implemented: true  },
-  { id: "kindergarten", label: "幼稚園",   icon: "🏫", ageMin: 4,  ageMax: 6,   coreTime: { startHour: 9,  endHour: 14,   label: "幼稚園" }, implemented: false },
+  { id: "nursery",      label: "保育園",   icon: "🏫", ageMin: 1,  ageMax: 4,   coreTime: { startHour: 9,  endHour: 16,   label: "保育園" }, implemented: true  },
+  { id: "kindergarten", label: "幼稚園",   icon: "🏫", ageMin: 5,  ageMax: 6,   coreTime: { startHour: 9,  endHour: 14,   label: "幼稚園" }, implemented: false },
   { id: "elementary",   label: "小学校",   icon: "🏫", ageMin: 7,  ageMax: 12,  coreTime: { startHour: 8,  endHour: 15.5, label: "小学校" }, implemented: false },
   { id: "juniorhigh",   label: "中学校",   icon: "🎒", ageMin: 13, ageMax: 15,  coreTime: { startHour: 8,  endHour: 17,   label: "中学校" }, implemented: false },
   { id: "highschool",   label: "高校",     icon: "🎓", ageMin: 16, ageMax: 18,  coreTime: { startHour: 9,  endHour: 16,   label: "高校" },   implemented: false },
@@ -242,6 +243,53 @@ const LIFE_STAGES = [
   { id: "worker",       label: "社会人",   icon: "💼", ageMin: 23, ageMax: 65,  coreTime: { startHour: 9,  endHour: 18,   label: "仕事" },   implemented: false },
   { id: "retirement",   label: "老後",     icon: "🪑", ageMin: 66, ageMax: 100, coreTime: null, implemented: false },
 ];
+
+/**
+ * @spec docs/specs/SPEC-019-stamina-cap.md §5.1
+ * 年齢別の体力ベース上限テーブル。51歳以上は計算式で求める（§5.1.1）。
+ */
+const STAMINA_BASE_CAP_TABLE = {
+  1: 10,  2: 15,  3: 30,  4: 50,
+  5: 55,  6: 60,
+  7: 75,  8: 80,  9: 85, 10: 90, 11: 95, 12: 100,
+  13: 200, 14: 250, 15: 300,
+  16: 300, 17: 300, 18: 300,
+  19: 280, 20: 280, 21: 280, 22: 260,
+};
+/**
+ * @spec docs/specs/SPEC-019-stamina-cap.md §5.1
+ * 年齢から体力ベース上限を返す。テーブルに無い年齢は範囲ごとに計算。
+ */
+function staminaBaseCapForAge(age) {
+  if (age <= 22) return STAMINA_BASE_CAP_TABLE[age] || 10;
+  if (age <= 25) return 240;
+  if (age <= 30) return 230;
+  if (age <= 35) return 220;
+  if (age <= 40) return 200;
+  if (age <= 45) return 180;
+  if (age <= 50) return 160;
+  // 51歳以降は1歳ごとに -2
+  return Math.max(10, 160 - (age - 50) * 2);
+}
+
+/**
+ * @spec docs/specs/SPEC-020-fixed-sleep-cycle.md §5.1
+ * 年齢別の固定スケジュール。1〜9歳は control:false（プレイヤー側で就寝モード選択不可）。
+ * 10歳以降は control:true で SPEC-006 / SPEC-008 の生活リズム式に従う。
+ */
+const FIXED_SCHEDULE_TABLE = [
+  { ageMin: 1,  ageMax: 4,   wakeHour: 7,   sleepHour: 19, control: false },
+  { ageMin: 5,  ageMax: 6,   wakeHour: 7,   sleepHour: 20, control: false },
+  { ageMin: 7,  ageMax: 9,   wakeHour: 6.5, sleepHour: 21, control: false },
+  { ageMin: 10, ageMax: 12,  wakeHour: 6.5, sleepHour: 22, control: false }, // Draft: 一部可
+];
+/**
+ * @spec docs/specs/SPEC-020-fixed-sleep-cycle.md §5.1
+ * 固定スケジュールを返す（10歳以上は null）。
+ */
+function getFixedSchedule(age) {
+  return FIXED_SCHEDULE_TABLE.find((r) => age >= r.ageMin && age <= r.ageMax) || null;
+}
 
 /**
  * @spec docs/specs/SPEC-011-nursery.md §5.5 発見プール
@@ -260,17 +308,25 @@ const NURSERY_DISCOVERIES = [
 
 /**
  * @spec docs/specs/SPEC-001-life-stage.md
+ * @spec docs/specs/SPEC-019-stamina-cap.md 体力上限初期値
+ * @spec docs/specs/SPEC-020-fixed-sleep-cycle.md 起床07:00、余剰時間 4h
+ *
  * 初期プレイヤー状態。
  * プロト段階では保育園コアタイム（SPEC-011）を体験させるため 2歳スタート。
+ * 2歳の体力上限 = 15（SPEC-019）、起床=07:00（SPEC-020）、朝の余剰=2h。
  */
 const DEFAULT_PLAYER = {
   age: 2,
   day: 1,
   season: "summer",
-  clockHour: 6,
-  clockMinute: 30,
-  spareHours: 6,
-  stamina: 80,
+  clockHour: 7,
+  clockMinute: 0,
+  spareHours: 2,       // 朝の遊び時間 07:00-09:00（SPEC-020 §5.2）
+  spareHoursMax: 4,    // 1日の余剰時間ベース（朝2h + 夜2h）SPEC-021 分母用
+  stamina: 15,
+  staminaCap: 15,
+  staminaBaseCap: 15,
+  staminaBonusCap: 0,
   bioRhythm: 90,
   money: 0,
   friends: 2,
@@ -279,8 +335,14 @@ const DEFAULT_PLAYER = {
   dailyPlays: 0,
   lastPlayCategory: null,
   consecutiveCategoryCount: 0,
-  unlockedPlays: [],       // @spec SPEC-010, SPEC-011 発見で解禁された遊びID
-  discoveredIds: [],       // @spec SPEC-011 §5.5 重複発見の抑止
+  unlockedPlays: [],
+  discoveredIds: [],
+  depletedDays: [],
+  depletedDaysThisYear: 0,
+  retirementDecayLocked: false,
+  forceSleepNextZeroSpare: false,   // @spec SPEC-019 §5.4.2 強制終了後の翌朝フラグ
+  /** コアタイムをまだ今日未消化か（起床直後 true、消化後 false）*/
+  coreTimeDoneToday: false,
 };
 
 const LABELS = {
@@ -363,22 +425,80 @@ function majorGainCategory(gain) {
 /**
  * @spec docs/specs/SPEC-001-life-stage.md §6
  * @spec docs/specs/SPEC-010-core-time.md §6
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.7 HUDミニゲージ
  * 共通HUDの描画。全画面共通。
  */
 function renderHUD() {
   byId("hud-age").textContent = `${player.age}歳`;
   byId("hud-date").textContent = `${player.day}日目(${SEASON_LABEL[player.season]}) ${fmtTime(player.clockHour, player.clockMinute)}`;
   byId("hud-stamina").textContent = Math.max(0, Math.floor(player.stamina));
-  byId("hud-rhythm").textContent = Math.max(0, Math.floor(player.bioRhythm));
+  byId("hud-stamina-cap").textContent = Math.floor(player.staminaCap || 0);
   byId("hud-money").textContent = player.money;
   byId("hud-hours").textContent = Math.max(0, player.spareHours).toFixed(1).replace(".0", "");
   byId("hud-friends").textContent = player.friends;
   byId("hud-passion").textContent = player.passion;
 
+  // HUDミニゲージ
+  applyGaugePercent(byId("hud-stamina-bar"), player.stamina, player.staminaCap);
+  applyGaugePercent(byId("hud-hours-bar"),   player.spareHours, player.spareHoursMax || 1);
+
   const stage = resolveLifeStage(player.age);
   const stageEl = byId("hud-stage");
   if (stage) stageEl.textContent = `${stage.icon} ${stage.label}`;
   else stageEl.textContent = "";
+}
+
+/**
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.3
+ * ゲージ要素に width を %で反映し、閾値に応じて色を切り替える。
+ */
+function applyGaugePercent(el, current, max) {
+  if (!el) return;
+  const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0;
+  el.style.width = pct + "%";
+  el.classList.remove("warn", "bad");
+  if (pct < 30)      el.classList.add("bad");
+  else if (pct < 60) el.classList.add("warn");
+}
+
+/**
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.1 §5.6
+ * フルサイズゲージを container に1本描画する。
+ * kind: "stamina" | "time" | "exp" でクラス切替と色の閾値が変わる。
+ */
+function renderGauge(container, { current, max, label, kind, delta }) {
+  if (!container) return;
+  const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0;
+  const barClass =
+    kind === "exp" ? "exp" :
+    pct < 30 ? "bad" :
+    pct < 60 ? "warn" : "";
+  const deltaHtml = (delta !== undefined && delta !== 0)
+    ? `<span class="delta ${delta > 0 ? "" : "down"}">${delta > 0 ? "+" : ""}${delta}</span>`
+    : "";
+  const displayValue = kind === "time"
+    ? `${Number(current).toFixed(1).replace(".0", "")}h / ${Number(max).toFixed(1).replace(".0", "")}h`
+    : `${Math.floor(current)} / ${Math.floor(max)}`;
+  container.innerHTML = `
+    <div class="gauge-track"><div class="gauge-bar ${barClass}" style="width:${pct}%"></div></div>
+    <div class="gauge-label"><span>${label}</span><b>${displayValue}${deltaHtml}</b></div>
+  `;
+}
+
+/**
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2 起床画面のゲージ
+ */
+function renderWakeupGauges() {
+  const root = byId("wu-gauges");
+  if (!root) return;
+  root.innerHTML = `
+    <div class="gauge" id="wu-g-stamina"></div>
+    <div class="gauge" id="wu-g-time"></div>
+    <div class="gauge" id="wu-g-rhythm"></div>
+  `;
+  renderGauge(byId("wu-g-stamina"), { current: player.stamina, max: player.staminaCap, label: "❤️ 体力", kind: "stamina" });
+  renderGauge(byId("wu-g-time"),    { current: player.spareHours, max: player.spareHoursMax, label: "⏳ 余剰時間", kind: "time" });
+  renderGauge(byId("wu-g-rhythm"),  { current: player.bioRhythm, max: 100, label: "🌙 生活リズム", kind: "stamina" });
 }
 
 /**
@@ -406,23 +526,30 @@ function resolveCoreTime(age) {
  * @screen S1 起床
  * @spec docs/specs/SPEC-001-life-stage.md
  * @spec docs/specs/SPEC-006-bio-rhythm.md
+ * @spec docs/specs/SPEC-020-fixed-sleep-cycle.md 低年齢の起床時刻表示
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md ゲージ表示
  * 前日の状態と生活リズムに基づいて、起床画面のメッセージとコンディションを表示する。
  */
 function renderWakeup() {
   byId("wakeup-subtitle").textContent =
     `あなたは ${player.age}歳 / ${SEASON_LABEL[player.season]}の朝 ${fmtTime(player.clockHour, player.clockMinute)}`;
-  byId("wu-stamina").textContent = `${Math.floor(player.stamina)} / 100`;
-  byId("wu-rhythm").textContent = `${Math.floor(player.bioRhythm)} / 100`;
-  byId("wu-friends").textContent = `${player.friends} 人`;
-  byId("wu-hours").textContent = `${player.spareHours} h`;
 
+  const sched = getFixedSchedule(player.age);
   let msg = "よく眠れた。今日も元気だ！";
-  if (player.bioRhythm < 40) msg = "寝坊した…体が重い。生活リズムが乱れているようだ。";
-  else if (player.bioRhythm >= 80) msg = "生活リズムが整っている。頭も体もスッキリだ！";
-  if (player.stamina < 30) msg = "体がだるい。体調不良かもしれない。";
+  if (sched) {
+    msg = `今日は ${fmtTime(sched.wakeHour)} 起床〜${fmtTime(sched.sleepHour)} 就寝の1日。`;
+  } else if (player.bioRhythm < 40) {
+    msg = "寝坊した…体が重い。生活リズムが乱れているようだ。";
+  } else if (player.bioRhythm >= 80) {
+    msg = "生活リズムが整っている。頭も体もスッキリだ！";
+  }
+  if (player.stamina < player.staminaCap * 0.3) {
+    msg += "\n体がだるい。体調不良かもしれない。";
+  }
   byId("wakeup-msg").textContent = msg;
   byId("wakeup-art").textContent = player.bioRhythm >= 60 ? "🌅" : "😵‍💫";
 
+  renderWakeupGauges();
   renderHUD();
 }
 
@@ -458,80 +585,124 @@ function isPlayAvailable(play) {
   return { ok: reasons.length === 0, reasons };
 }
 
+// @spec SPEC-002 §5.3 インタラクションフロー
+let selectedPlayId = null;
+
 /**
- * @screen S2 遊びを選ぶ
- * @spec docs/specs/SPEC-002-play-selection.md §5.2
- * 実行可能な遊びを上に、ロック中を下に表示する。
+ * @screen S2 遊びを選ぶ（ドック型アイコンUI）
+ * @spec docs/specs/SPEC-002-play-selection.md §5.2, §5.4, §5.5
+ * ドックにアイコンを並べ、選択中の遊びをプレビューに表示する。
+ * 実行可能な遊びを左、ロック中を右に配置。`unlockRequired` で未解禁は非表示。
  */
 function renderChooseScreen() {
   byId("choose-hours").textContent = player.spareHours.toFixed(1).replace(".0", "");
-  const list = byId("play-list");
-  list.innerHTML = "";
+  selectedPlayId = null;
 
-  const sorted = PLAYS
+  const dock = byId("play-dock");
+  dock.innerHTML = "";
+
+  // SPEC-002 §5.5 並び順：実行可 → ロック中。隠し（unlockRequired未解禁）は除外。
+  const candidates = PLAYS
     .map((p) => ({ play: p, avail: isPlayAvailable(p) }))
     .filter(({ avail }) => !avail.isHidden)
     .sort((a, b) => (b.avail.ok ? 1 : 0) - (a.avail.ok ? 1 : 0));
 
-  sorted.forEach(({ play, avail }) => {
-    const card = document.createElement("div");
-    card.className = "play-card" + (avail.ok ? "" : " locked");
+  if (candidates.length === 0) {
+    dock.innerHTML = `<p style="color:var(--muted);padding:14px;">今できる遊びがありません</p>`;
+  }
 
-    const head = document.createElement("div");
-    head.className = "play-card-head";
-    head.innerHTML = `
-      <div class="play-icon">${play.icon}</div>
-      <div class="play-name">${play.name}</div>
-    `;
-
-    const meta = document.createElement("div");
-    meta.className = "play-meta";
-    meta.innerHTML = `
-      <span>⏳ ${play.timeCost}h</span>
-      <span>💰 ¥${play.moneyCost}</span>
-      <span>❤️ -${play.staminaCost || 0}</span>
-    `;
-
-    const gain = document.createElement("div");
-    gain.className = "play-gain";
-    gain.textContent = Object.entries(play.gain)
-      .map(([k, v]) => `${LABELS[k]} +${v}`)
-      .join(" / ");
-
-    card.appendChild(head);
-    card.appendChild(meta);
-    card.appendChild(gain);
-
-    if (play.minFriends) {
-      const req = document.createElement("div");
-      req.className = "play-meta";
-      req.textContent = `👥 要友人 ${play.minFriends}人以上${
-        play.friendBonusPerPerson ? `（1人ごと経験値+${play.friendBonusPerPerson}）` : ""
-      }`;
-      card.appendChild(req);
-    }
-
-    if (!avail.ok) {
-      const reason = document.createElement("div");
-      reason.className = "play-requirement";
-      reason.textContent = `⚠ ${avail.reasons.join(" / ")}`;
-      card.appendChild(reason);
-    }
-
-    const actions = document.createElement("div");
-    actions.className = "play-actions";
+  candidates.forEach(({ play, avail }) => {
     const btn = document.createElement("button");
-    btn.className = avail.ok ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm";
-    btn.textContent = avail.ok ? "遊ぶ" : "ロック";
-    btn.disabled = !avail.ok;
-    btn.addEventListener("click", () => { if (avail.ok) startPlay(play); });
-    actions.appendChild(btn);
-    card.appendChild(actions);
-
-    list.appendChild(card);
+    btn.className = "dock-icon" + (avail.ok ? "" : " locked");
+    btn.textContent = play.icon;
+    btn.setAttribute("aria-label", `${play.name}, ${play.timeCost}時間, ${
+      Object.entries(play.gain).map(([k, v]) => `${LABELS[k]}+${v}`).join(", ")
+    }`);
+    btn.dataset.playId = play.id;
+    btn.addEventListener("click", () => selectPlay(play.id));
+    dock.appendChild(btn);
   });
 
+  // プレビューは初期はプレースホルダー
+  byId("preview").hidden = true;
+  byId("preview-placeholder").hidden = false;
+  byId("btn-confirm-play").disabled = true;
+  byId("btn-confirm-play").textContent = "遊ぶ";
+
   renderHUD();
+}
+
+/**
+ * @screen S2
+ * @spec docs/specs/SPEC-002-play-selection.md §5.3 インタラクションフロー
+ * アイコンタップ時の挙動：
+ *  - 未選択 or 別の遊びを選択中 → プレビュー更新
+ *  - 既に同じ遊びを選択中（selectedPlayId === id）→ 確定し startPlay
+ */
+function selectPlay(id) {
+  const play = PLAYS.find((p) => p.id === id);
+  if (!play) return;
+  const avail = isPlayAvailable(play);
+
+  if (selectedPlayId === id) {
+    if (avail.ok) { confirmPlay(); }
+    else { toast("この遊びは今できない"); }
+    return;
+  }
+  selectedPlayId = id;
+
+  // ドックの選択状態更新
+  for (const el of document.querySelectorAll(".dock-icon")) {
+    el.classList.toggle("selected", el.dataset.playId === id);
+  }
+
+  // プレビュー差し替え
+  byId("preview-placeholder").hidden = true;
+  byId("preview").hidden = false;
+  byId("preview-icon").textContent = play.icon;
+  byId("preview-name").textContent = play.name;
+  byId("preview-desc").textContent = play.descriptions[0];
+  byId("preview-time").textContent = `${play.timeCost}h`;
+  byId("preview-money").textContent = `¥${play.moneyCost}`;
+  byId("preview-stamina").textContent = `-${play.staminaCost || 0}`;
+
+  byId("preview-gain").innerHTML = Object.entries(play.gain)
+    .map(([k, v]) => `<li><span>${LABELS[k]}</span><b class="up">+${v}</b></li>`)
+    .join("");
+
+  if (play.minFriends) {
+    byId("preview-friend-card").hidden = false;
+    byId("preview-friend").textContent = `要友人 ${play.minFriends}人以上${
+      play.friendBonusPerPerson ? `（1人ごと経験値+${play.friendBonusPerPerson}）` : ""
+    }`;
+  } else {
+    byId("preview-friend-card").hidden = true;
+  }
+
+  // ロック理由表示と「遊ぶ」ボタンの enable/disable
+  const confirmBtn = byId("btn-confirm-play");
+  if (avail.ok) {
+    byId("preview-lock").hidden = true;
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = `🎮 遊ぶ（-${play.timeCost}h）`;
+  } else {
+    byId("preview-lock").hidden = false;
+    byId("preview-lock-text").textContent = `⚠ ${avail.reasons.join(" / ")}`;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "ロック中";
+  }
+}
+
+/**
+ * @spec docs/specs/SPEC-002-play-selection.md §5.3 「遊ぶ」確定
+ */
+function confirmPlay() {
+  if (!selectedPlayId) return;
+  const play = PLAYS.find((p) => p.id === selectedPlayId);
+  if (!play) return;
+  const avail = isPlayAvailable(play);
+  if (!avail.ok) { toast("この遊びは今できない"); return; }
+  startPlay(play);
 }
 
 // =========================================================================
@@ -558,9 +729,8 @@ function startPlay(play) {
   byId("playing-progress-wrap").hidden = false;
   byId("result-panel").hidden = true;
 
-  byId("btn-skip-play").hidden = false;
-  byId("btn-next-play").hidden = true;
-  byId("btn-go-sleep-from-play").hidden = true;
+  byId("actions-skip").hidden = false;
+  byId("actions-result").hidden = true;
 
   showScreen("screen-playing");
 
@@ -677,6 +847,7 @@ function finalizePlay() {
   }
 
   // ---- ④ 基本ステータス反映 ----
+  // @spec SPEC-019 上限は staminaCap、体力は 0 でクランプ。
   player.stamina = Math.max(0, player.stamina - (play.staminaCost || 0));
   player.money = Math.max(0, player.money - (play.moneyCost || 0));
   player.passion += passionGain;
@@ -695,7 +866,7 @@ function finalizePlay() {
     const e = pendingEvent.effect;
     if (e.friends) player.friends = Math.max(0, player.friends + e.friends);
     if (e.money)   player.money   = Math.max(0, player.money + e.money);
-    if (e.stamina) player.stamina = Math.max(0, Math.min(100, player.stamina + e.stamina));
+    if (e.stamina) player.stamina = Math.max(0, Math.min(player.staminaCap, player.stamina + e.stamina));
     if (e.passion) player.passion = Math.max(0, player.passion + e.passion);
     if (e.bioRhythm) player.bioRhythm = Math.max(0, Math.min(100, player.bioRhythm + e.bioRhythm));
     for (const cat of Object.keys(LABELS)) {
@@ -717,21 +888,120 @@ function finalizePlay() {
   renderResultPanel(before);
   renderHUD();
 
-  // ---- ⑨ アクションボタンの切替 ----
-  byId("btn-skip-play").hidden = true;
-  byId("btn-next-play").hidden = false;
-  byId("btn-go-sleep-from-play").hidden = false;
-
-  // 余剰時間がないなら次は就寝のみ
-  if (player.spareHours <= 0) {
-    byId("btn-next-play").disabled = true;
-    toast("余剰時間がなくなった。夜になる…");
-  } else {
-    byId("btn-next-play").disabled = false;
+  // ---- ⑨ 体力ゼロ判定（SPEC-019 §5.4）----
+  if (player.stamina <= 0) {
+    handleStaminaDepleted();
+    // handleStaminaDepleted 内で画面遷移・ボタン制御が行われるため、以降の処理は行わない
+    return;
   }
+
+  // ---- ⑩ アクションボタンの切替（結果フェーズのフッター構成 SPEC-003 §5.8）----
+  showResultActions();
 
   // S4から戻ってきた場合は、S3画面を再表示
   showScreen("screen-playing");
+}
+
+/**
+ * @screen S3 結果フェーズのフッター切替
+ * @spec docs/specs/SPEC-003-play-execution.md §5.7 §5.8
+ * 「もう一度遊ぶ」「次の遊びを選ぶ or コアタイム or 就寝」「今日おわる」の状態を更新する。
+ * 「次の遊びを選ぶ」ボタンは文脈で変化：
+ *   - 余剰あり & 朝の遊び中（コアタイム前）→ "次の遊びを選ぶ"
+ *   - 余剰0 & 朝の遊び中 → "保育園へ行く"（S6へ）
+ *   - 余剰0 & 保育園済み → "おやすみ"（S5へ）
+ */
+function showResultActions() {
+  byId("actions-skip").hidden = true;
+  byId("actions-result").hidden = false;
+
+  // 「もう一度遊ぶ」の有効判定（SPEC-003 §5.7）
+  const replayBtn = byId("btn-replay-play");
+  if (pendingPlay) {
+    const avail = isPlayAvailable(pendingPlay);
+    replayBtn.textContent = `🔁 もう一度遊ぶ（-${pendingPlay.timeCost}h）`;
+    replayBtn.disabled = !avail.ok;
+  }
+
+  // 「次の遊び」ボタンは常に有効、ラベルを文脈に応じて変える（goChooseFromToday が判定）
+  const nextBtn = byId("btn-next-play");
+  const stage = resolveLifeStage(player.age);
+  const coreTime = stage ? stage.coreTime : null;
+  nextBtn.disabled = false;
+  if (player.spareHours <= 0 && coreTime && stage.implemented && !player.coreTimeDoneToday) {
+    nextBtn.textContent = `🏫 ${coreTime.label}へ`;
+    toast(`朝の遊び時間おわり。${coreTime.label}に行こう`);
+  } else if (player.spareHours <= 0) {
+    nextBtn.textContent = "🌙 おやすみ";
+    toast("余剰時間がなくなった。夜になる…");
+  } else if (coreTime && stage.implemented && !player.coreTimeDoneToday) {
+    nextBtn.textContent = "次の遊びを選ぶ";
+  } else {
+    nextBtn.textContent = "次の遊びを選ぶ";
+  }
+}
+
+/**
+ * @screen S3 結果フェーズ → リプレイ
+ * @spec docs/specs/SPEC-003-play-execution.md §5.7
+ * S2 を経由せず、同じ遊びをもう一度実行する。没頭ボーナスの連続数は維持。
+ */
+function replayPlay() {
+  if (!pendingPlay) return;
+  const avail = isPlayAvailable(pendingPlay);
+  if (!avail.ok) { toast("もう一度遊ぶ条件を満たしていません"); return; }
+  // consecutiveCategoryCount / lastPlayCategory は startPlay 内でリセットされないので維持。
+  startPlay(pendingPlay);
+}
+
+/**
+ * @spec docs/specs/SPEC-019-stamina-cap.md §5.4
+ * 体力ゼロ時のライフステージ別挙動：
+ *  - 1〜12歳：強制睡眠 2h（体力 staminaCap × 0.30 回復）
+ *  - 13〜65歳：強制終了（即就寝＋翌朝余剰0）
+ *  - 66歳以上：強制終了＋体力ゼロ記録
+ */
+function handleStaminaDepleted() {
+  const age = player.age;
+
+  // 体力ゼロ記録日を残す
+  if (!player.depletedDays.includes(player.day)) {
+    player.depletedDays.push(player.day);
+    player.depletedDaysThisYear += 1;
+  }
+
+  if (age <= 12) {
+    // 強制睡眠 2h
+    const recover = Math.floor(player.staminaCap * 0.30);
+    player.stamina = recover;
+    player.clockHour += 2;
+    if (player.clockHour >= 24) player.clockHour = 23;
+    player.spareHours = Math.max(0, +(player.spareHours - 2).toFixed(1));
+    toast(`体力ゼロ…2時間お昼寝した（体力+${recover}）`, 2400);
+    renderHUD();
+
+    // 結果フェーズの表示更新（時刻と体力の再描画）
+    byId("result-clock").textContent = `${byId("result-clock").textContent.split("→")[0]}→ ${fmtTime(player.clockHour, player.clockMinute)} (+仮眠2h)`;
+    byId("result-spare").textContent = `余剰時間 ${player.spareHours}h`;
+
+    // 余剰時間 0 なら自動就寝
+    if (player.spareHours <= 0) {
+      setTimeout(() => goSleep(), 1000);
+    } else {
+      showResultActions();
+      showScreen("screen-playing");
+    }
+    return;
+  }
+
+  // 13-65歳 強制終了 or 66歳以上 強制終了
+  if (age >= 13 && age <= 65) {
+    player.forceSleepNextZeroSpare = true; // 翌朝余剰0
+    toast("倒れるように眠りに落ちた…", 2400);
+  } else if (age >= 66) {
+    toast("疲れ果てて眠りに落ちた…", 2400);
+  }
+  setTimeout(() => goSleep(), 900);
 }
 
 /**
@@ -743,24 +1013,47 @@ function finalizePlay() {
 function renderResultPanel(before) {
   byId("result-panel").hidden = false;
 
-  // 原体験（Lv表記付き）
-  const gainEl = byId("result-gain");
-  const rows = Object.keys(LABELS).map((k) => {
+  // ---- 原体験（Lvゲージ SPEC-021）----
+  const expRoot = byId("result-exp-gauges");
+  const expHtml = [];
+  Object.keys(LABELS).forEach((k) => {
     const b = before.exp[k] || 0;
     const a = player.exp[k] || 0;
-    if (a === b) return "";
+    if (a === b) return;
     const bLv = levelFromExp(b);
     const aLv = levelFromExp(a);
-    const lvUp = aLv > bLv ? " <span style='color:var(--good)'>⬆ Lv UP</span>" : "";
-    return `<li><span>${LABELS[k]}</span><b class="up">Lv${bLv}→Lv${aLv} (+${a - b}exp)${lvUp}</b></li>`;
-  }).filter(Boolean).join("");
-  gainEl.innerHTML = rows || `<li><span>（変化なし）</span><b>-</b></li>`;
+    const nextLvNeeded = (aLv + 1) * (aLv + 1) * 10;
+    const curLvBase = aLv * aLv * 10;
+    const progressCurrent = a - curLvBase;
+    const progressMax = nextLvNeeded - curLvBase;
+    const lvUp = aLv > bLv;
+    expHtml.push(`<div class="gauge" data-exp="${k}" id="result-exp-${k}"></div>`);
+    // あとから renderGauge で埋める
+    setTimeout(() => {
+      renderGauge(byId(`result-exp-${k}`), {
+        current: progressCurrent,
+        max: progressMax,
+        label: `${LABELS[k]} Lv${aLv}${lvUp ? " ⬆ Lv UP!" : ""}`,
+        kind: "exp",
+        delta: a - b,
+      });
+    }, 0);
+  });
+  expRoot.innerHTML = expHtml.join("") || `<p style="color:var(--muted);font-size:13px;">（経験値の変化なし）</p>`;
 
-  // ステータス差分
+  // ---- ステータスゲージ（体力）----
+  const statusGaugeRoot = byId("result-status-gauges");
+  statusGaugeRoot.innerHTML = `<div class="gauge" id="result-stamina-g"></div>`;
+  renderGauge(byId("result-stamina-g"), {
+    current: player.stamina,
+    max: player.staminaCap,
+    label: "❤️ 体力",
+    kind: "stamina",
+    delta: Math.floor(player.stamina) - Math.floor(before.stamina),
+  });
+
+  // ---- ステータス差分（数値表示）----
   const statusRows = [];
-  if (before.stamina !== player.stamina) {
-    statusRows.push(`<li><span>体力</span><b class="${player.stamina >= before.stamina ? "up" : "down"}">${Math.floor(before.stamina)} → ${Math.floor(player.stamina)}</b></li>`);
-  }
   if (before.money !== player.money) {
     statusRows.push(`<li><span>所持金</span><b class="${player.money >= before.money ? "up" : "down"}">¥${before.money} → ¥${player.money}</b></li>`);
   }
@@ -770,21 +1063,19 @@ function renderResultPanel(before) {
   if (before.passion !== player.passion) {
     statusRows.push(`<li><span>🔥 ジョウネツ</span><b class="up">${before.passion} → ${player.passion}</b></li>`);
   }
-  byId("result-status").innerHTML = statusRows.length
-    ? statusRows.join("")
-    : `<li><span>（差分なし）</span><b>-</b></li>`;
+  byId("result-status").innerHTML = statusRows.join("");
 
-  // 時間経過
+  // ---- 時間経過 ----
   byId("result-clock").textContent = `${before.clock} → ${fmtTime(player.clockHour, player.clockMinute)}`;
   byId("result-spare").textContent = `${before.spareHours}h → ${player.spareHours}h`;
 
-  // 没頭ボーナスの表示
+  // ---- 没頭ボーナス表示 ----
   const passionMsg = pendingGain && pendingGain.passion
     ? `🔥 ジョウネツ +${pendingGain.passion}${player.consecutiveCategoryCount > 0 ? `（同カテゴリ ${player.consecutiveCategoryCount + 1}連続の没頭ボーナス）` : ""}`
     : "";
   byId("result-passion").textContent = passionMsg;
 
-  // 描写フェーズの UI を縮小（プログレスは残す）
+  // 描写フェーズの UI を縮小
   byId("playing-progress-wrap").hidden = true;
 }
 
@@ -793,30 +1084,54 @@ function renderResultPanel(before) {
 // =========================================================================
 
 /**
- * @screen S1 → S6 or S2 への分岐
+ * @screen S1 → S2（朝の遊び） or S6 コアタイム への分岐
  * @spec docs/specs/SPEC-010-core-time.md §5.2
+ * @spec docs/specs/SPEC-020-fixed-sleep-cycle.md §5.2 朝の遊び時間
+ *
  * 起床後「今日を始める」を押したときに呼ばれる。
- * 現在のライフステージにコアタイムがあり、かつ実装済みならコアタイム画面を挿入する。
- * 未実装の場合はコアタイムを擬似消化（時刻を endHour まで進めるだけ）して S2 へ。
- * コアタイムが無い（老後）場合はそのまま S2 へ。
+ *  1. コアタイム未実装のステージは beginDayUnimpl() で擬似消化
+ *  2. 実装済みステージ（保育園）：
+ *     - まだコアタイム未消化 & 現在時刻がコアタイム開始前 → S2 朝の遊び
+ *       余剰時間を「コアタイム開始 − 現在時刻」でセット
+ *     - それ以外 → S6 コアタイム画面へ直行
  */
 function beginDay() {
   const stage = resolveLifeStage(player.age);
   const coreTime = stage ? stage.coreTime : null;
 
   if (!coreTime) {
+    // 老後：コアタイム無し。全時間を自由に使える。
+    player.spareHoursMax = 14;
+    player.spareHours = 14;
     goChooseFromToday();
     return;
   }
 
-  if (stage.implemented) {
-    renderCoreTime(stage);
-    showScreen("screen-coretime");
+  if (!stage.implemented) {
+    beginDayUnimpl(stage, coreTime);
     return;
   }
 
-  // 実装されていないライフステージは時計だけ進めて S2 へ
-  // (SPEC-012〜SPEC-018 実装時に専用の renderCoreTime に差し替える)
+  // 実装済み（保育園）
+  const now = player.clockHour + player.clockMinute / 60;
+  if (!player.coreTimeDoneToday && now < coreTime.startHour) {
+    // 朝の遊び時間へ
+    const morningHours = +(coreTime.startHour - now).toFixed(1);
+    player.spareHours = morningHours;
+    goChooseFromToday();
+    return;
+  }
+
+  // 既に朝の遊び終了、またはコアタイム時間到来 → コアタイム画面
+  renderCoreTime(stage);
+  showScreen("screen-coretime");
+}
+
+/**
+ * @spec docs/specs/SPEC-010-core-time.md §5.4
+ * 未実装ステージは時計だけ進めて S2 へ。将来 SPEC-012〜SPEC-018 実装時に個別 renderer へ分岐。
+ */
+function beginDayUnimpl(stage, coreTime) {
   player.clockHour = Math.max(player.clockHour, coreTime.endHour);
   player.clockMinute = Math.round((coreTime.endHour % 1) * 60);
   recomputeSpareHoursAfterCoreTime(coreTime);
@@ -826,22 +1141,53 @@ function beginDay() {
 
 /**
  * @spec docs/specs/SPEC-010-core-time.md §5.3
- * コアタイム消化後の余剰時間を再計算する。
- * プロト段階では「就寝時刻21:00 − 現在時刻 − 食事2h」の単純モデル。
+ * @spec docs/specs/SPEC-020-fixed-sleep-cycle.md §5.4
+ * コアタイム消化後の夜の余剰時間を再計算する。
+ * 1〜9歳は SPEC-020 の固定就寝時刻を使用、その他は 22:00 を仮の就寝時刻とする。
+ * 食事・入浴バッファ 1h を差し引く。
  */
 function recomputeSpareHoursAfterCoreTime(coreTime) {
-  const sleepTargetHour = 21;
-  const mealReserveHours = 2;
+  const sched = getFixedSchedule(player.age);
+  const sleepTargetHour = sched ? sched.sleepHour : 22;
+  const mealBufferHours = 1;
   const now = player.clockHour + player.clockMinute / 60;
-  const remain = Math.max(0, sleepTargetHour - now - mealReserveHours);
+  const remain = Math.max(0, sleepTargetHour - now - mealBufferHours);
   player.spareHours = +remain.toFixed(1);
 }
 
 /**
- * @screen S6 コアタイム画面 → S2
+ * @screen 次の遊び画面への遷移
  * @spec docs/specs/SPEC-010-core-time.md §5.2
+ * @spec docs/specs/SPEC-020-fixed-sleep-cycle.md §5.2 朝の遊び → コアタイム遷移
+ *
+ * 次に遊び画面を出すべきか、コアタイム画面に進むべきかを判定する。
+ * 朝の遊び時間が終わり、かつ現在時刻がコアタイム開始時刻に到達していたら S6 へ。
+ * 余剰時間が 0 なら S5 就寝へ。
  */
 function goChooseFromToday() {
+  const stage = resolveLifeStage(player.age);
+  const coreTime = stage ? stage.coreTime : null;
+  const now = player.clockHour + player.clockMinute / 60;
+
+  // 実装済みコアタイム：まだ今日未消化 & 時刻が開始に達したか 朝の余剰 0 に達したら S6
+  if (coreTime && stage.implemented && !player.coreTimeDoneToday) {
+    if (now >= coreTime.startHour || player.spareHours <= 0) {
+      // 時刻を開始時刻まで早送り（朝の遊びが早く終わった場合）
+      if (now < coreTime.startHour) {
+        player.clockHour = coreTime.startHour;
+        player.clockMinute = 0;
+      }
+      renderCoreTime(stage);
+      showScreen("screen-coretime");
+      return;
+    }
+  }
+
+  if (player.spareHours <= 0) {
+    goSleep();
+    return;
+  }
+
   renderChooseScreen();
   showScreen("screen-choose");
 }
@@ -909,6 +1255,7 @@ function renderNurseryCoreTime(stage) {
   const discovery = discoveryHit ? pickWeighted(pool) : null;
 
   // 5) 獲得値の確定（§5.3 ＋ §5.4 ＋ 発見効果）
+  // @spec SPEC-011 §5.3 獲得値（確定分）
   const gain = { physical: 5, social: 3 };
   if (isPark) gain.physical += 5;
   else        gain.creative = (gain.creative || 0) + 3;
@@ -922,10 +1269,18 @@ function renderNurseryCoreTime(stage) {
   };
 
   // 基本ステータス反映
-  player.stamina = Math.max(0, player.stamina - 15);
+  // @spec SPEC-011 §5.3.1 年齢別の体力消費
+  const ageStaminaCost = { 1: 5, 2: 8, 3: 12, 4: 20 }[player.age] || 10;
+  player.stamina = Math.max(0, player.stamina - ageStaminaCost);
   player.passion += 1;
   for (const [k, v] of Object.entries(gain)) {
     player.exp[k] = (player.exp[k] || 0) + v;
+  }
+
+  // @spec SPEC-011 §5.3.2 1〜2歳は昼寝で体力回復
+  if (player.age <= 2) {
+    const napRecover = Math.floor(player.staminaCap * 0.20);
+    player.stamina = Math.min(player.staminaCap, player.stamina + napRecover);
   }
 
   // 発見効果の反映
@@ -940,7 +1295,7 @@ function renderNurseryCoreTime(stage) {
     }
     const eff = discovery.gain || {};
     if (eff.friends)  player.friends = Math.max(0, player.friends + eff.friends);
-    if (eff.stamina)  player.stamina = Math.max(0, Math.min(100, player.stamina + eff.stamina));
+    if (eff.stamina)  player.stamina = Math.max(0, Math.min(player.staminaCap, player.stamina + eff.stamina));
     if (eff.passion)  player.passion = Math.max(0, player.passion + eff.passion);
     for (const cat of Object.keys(LABELS)) {
       if (eff[cat]) player.exp[cat] = (player.exp[cat] || 0) + eff[cat];
@@ -969,6 +1324,8 @@ function renderNurseryCoreTime(stage) {
   // 6) 時刻を 16:00 に進める
   player.clockHour = ct.endHour;
   player.clockMinute = Math.round((ct.endHour % 1) * 60);
+  player.coreTimeDoneToday = true;
+  // @spec SPEC-020 §5.4 夜の遊び時間（食事バッファ 18:00-19:00 を除く 16:00-18:00）
   recomputeSpareHoursAfterCoreTime(ct);
 
   // 獲得カード
@@ -1014,10 +1371,13 @@ function closeCoreTime() {
 function doNothing() {
   if (player.spareHours < 1) { toast("休む時間もない！"); return; }
   player.spareHours = +(player.spareHours - 1).toFixed(1);
-  player.stamina = Math.min(100, player.stamina + 5);
+  // @spec SPEC-019 体力上限でクランプ。回復量は上限の10%
+  const recover = Math.max(3, Math.floor(player.staminaCap * 0.10));
+  player.stamina = Math.min(player.staminaCap, player.stamina + recover);
   player.clockHour += 1;
-  toast("1時間休んだ（体力 +5）");
-  renderChooseScreen();
+  toast(`1時間休んだ（体力 +${recover}）`);
+  // 朝の遊び中に09:00到達したらコアタイムへ遷移させる
+  goChooseFromToday();
 }
 
 // =========================================================================
@@ -1027,16 +1387,36 @@ function doNothing() {
 /**
  * @screen S5 就寝
  * @spec docs/specs/SPEC-008-sleep.md §5.1
- * 1日の成果を表示し、就寝モード選択を促す。
+ * @spec docs/specs/SPEC-020-fixed-sleep-cycle.md §5.5 年齢別のモード選択可否
+ * 1日の成果を表示し、就寝モード選択を促す。1〜9歳はモード選択不可。
  */
 function goSleep() {
   byId("sleep-summary").innerHTML = `
     <li><span>遊んだ回数</span><b>${player.dailyPlays} 回</b></li>
     <li><span>現在のジョウネツ</span><b>${player.passion}</b></li>
-    <li><span>体力</span><b>${Math.floor(player.stamina)} / 100</b></li>
+    <li><span>体力</span><b>${Math.floor(player.stamina)} / ${Math.floor(player.staminaCap)}</b></li>
     <li><span>生活リズム</span><b>${Math.floor(player.bioRhythm)} / 100</b></li>
     <li><span>友人数</span><b>${player.friends} 人</b></li>
   `;
+
+  const sched = getFixedSchedule(player.age);
+  if (sched && sched.control === false) {
+    // 1〜9歳：モード選択不可
+    byId("sleep-title").textContent = `${fmtTime(sched.sleepHour)} になった`;
+    byId("sleep-child").hidden = false;
+    byId("sleep-adult").hidden = true;
+    byId("sleep-actions-child").hidden = false;
+    byId("sleep-actions-adult").hidden = true;
+    byId("sleep-child-text").textContent =
+      `もう${fmtTime(sched.sleepHour)}。ママが布団をかけてくれた…`;
+  } else {
+    byId("sleep-title").textContent = "夜になった";
+    byId("sleep-child").hidden = true;
+    byId("sleep-adult").hidden = false;
+    byId("sleep-actions-child").hidden = true;
+    byId("sleep-actions-adult").hidden = false;
+  }
+
   showScreen("screen-sleep");
 }
 
@@ -1045,15 +1425,21 @@ function goSleep() {
  * @spec docs/specs/SPEC-006-bio-rhythm.md §5.1
  * @spec docs/specs/SPEC-008-sleep.md §5.2
  * 就寝モードに応じて生活リズムと体力を変化させ、翌日に進む。
+ * staminaCap で体力をクランプ（SPEC-019）。
  */
 function sleep(mode) {
   if (mode === "early") {
     player.bioRhythm = Math.min(100, player.bioRhythm + 10);
-    player.stamina = Math.min(100, player.stamina + 25);
+    player.stamina = Math.min(player.staminaCap, player.stamina + 25);
   } else if (mode === "normal") {
-    player.stamina = Math.min(100, player.stamina + 15);
+    player.stamina = Math.min(player.staminaCap, player.stamina + 15);
   } else if (mode === "latenight") {
     player.bioRhythm = Math.max(0, player.bioRhythm - 15);
+  }
+  // 就寝時に生活リズムを矯正（低年齢）
+  const sched = getFixedSchedule(player.age);
+  if (sched && sched.control === false) {
+    player.bioRhythm = Math.max(player.bioRhythm, 90);
   }
   nextDay(mode);
 }
@@ -1070,35 +1456,75 @@ function nextDay(sleepMode) {
     const idx = seasons.indexOf(player.season);
     player.season = seasons[(idx + 1) % 4];
   }
-  if (player.day % 120 === 0) player.age += 1;
+  // 誕生日：120日ごとに +1歳
+  const hasBirthday = (player.day % 120 === 0);
+  if (hasBirthday) player.age += 1;
 
-  // 起床時刻（SPEC-006 §5.2）
-  let wakeH = 6, wakeM = 30;
-  if (player.bioRhythm < 40) { wakeH = 9; wakeM = 0; }
-  else if (player.bioRhythm < 70) { wakeH = 7; wakeM = 30; }
+  // @spec SPEC-019 §5.3 年齢繰り上げ時に体力上限を再計算
+  player.staminaBaseCap = staminaBaseCapForAge(player.age);
+  player.staminaCap = player.staminaBaseCap + (player.staminaBonusCap || 0);
+  // 現在体力が新しい上限を超えたらクランプ
+  player.stamina = Math.min(player.stamina, player.staminaCap);
 
-  // 体調不良（SPEC-006 §5.4）
+  // 新しい1日の初期化
+  player.coreTimeDoneToday = false;
+  player.dailyPlays = 0;
+
+  const sched = getFixedSchedule(player.age);
+  const stage = resolveLifeStage(player.age);
+  const coreTime = stage ? stage.coreTime : null;
+
+  // ---- 起床時刻 ----
+  let wakeH, wakeM = 0;
+  if (sched) {
+    // @spec SPEC-020 §5.3 固定起床
+    const sh = sched.wakeHour;
+    wakeH = Math.floor(sh);
+    wakeM = Math.round((sh - wakeH) * 60);
+  } else {
+    // @spec SPEC-006 §5.2 生活リズムに応じた起床
+    if (player.bioRhythm < 40) { wakeH = 9;  wakeM = 0; }
+    else if (player.bioRhythm < 70) { wakeH = 7; wakeM = 30; }
+    else { wakeH = 6; wakeM = 30; }
+  }
+
+  // ---- 体調不良（大人のみ）----
   let sickness = false;
-  if (sleepMode === "latenight" && player.bioRhythm < 60 && Math.random() < 0.3) {
+  if (!sched && sleepMode === "latenight" && player.bioRhythm < 60 && Math.random() < 0.3) {
     sickness = true;
     player.stamina = Math.max(0, player.stamina - 15);
   }
 
-  // 余剰時間（SPEC-006 §5.3）
-  let base = 6;
-  if (sleepMode === "latenight") base += 1;
-  if (wakeH >= 9) base -= 2;
-  if (sickness) base -= 2;
-  if (player.stamina < 30) base -= 1;
-  player.spareHours = Math.max(0, base);
+  // ---- 朝の余剰時間 ----
+  //  SPEC-020 §5.3 朝の遊び時間 = coreTime.startHour - 起床時刻
+  //  SPEC-019 §5.4.2 強制終了後の翌朝は余剰 0
+  let morning = 0;
+  if (coreTime) {
+    morning = Math.max(0, coreTime.startHour - (wakeH + wakeM / 60));
+  } else {
+    // 老後：1日全部が自由時間
+    morning = 14;
+  }
+  if (player.forceSleepNextZeroSpare) {
+    morning = 0;
+    player.forceSleepNextZeroSpare = false;
+    toast("朝の余剰時間がない…そのまま仕事（コアタイム）へ", 2400);
+  }
+  if (sickness) morning = Math.max(0, morning - 2);
+  player.spareHours = +morning.toFixed(1);
+
+  // 1日の余剰時間ベース（ゲージ分母 SPEC-021）
+  //   朝の余剰 + 夜の余剰（コアタイム終了〜就寝−1h食事）
+  const sleepHour = sched ? sched.sleepHour : 22;
+  const eveningBase = coreTime ? Math.max(0, sleepHour - 1 - coreTime.endHour) : 0;
+  player.spareHoursMax = +(morning + eveningBase).toFixed(1) || 1;
 
   player.clockHour = wakeH;
   player.clockMinute = wakeM;
-  player.dailyPlays = 0;
 
   if (sickness) toast("朝から体調がすぐれない…（余剰時間 -2h）", 2400);
-  else if (sleepMode === "latenight") toast("夜更かしで生活リズムが乱れた…");
-  else if (sleepMode === "early") toast("早寝でリズム回復！");
+  else if (!sched && sleepMode === "latenight") toast("夜更かしで生活リズムが乱れた…");
+  else if (!sched && sleepMode === "early") toast("早寝でリズム回復！");
 
   renderWakeup();
   showScreen("screen-wakeup");
@@ -1126,9 +1552,17 @@ document.addEventListener("click", (e) => {
       finalizePlay();
       break;
     case "choose-next":
-      if (player.spareHours <= 0) { toast("もう遊ぶ時間がない…"); return; }
-      renderChooseScreen();
-      showScreen("screen-choose");
+      goChooseFromToday();
+      break;
+    case "replay-play":
+      replayPlay();
+      break;
+    case "confirm-play":
+      confirmPlay();
+      break;
+    case "child-sleep":
+      // 1〜9歳：モード選択なしの就寝（SPEC-020 §5.5）
+      sleep("normal");
       break;
     case "do-nothing":
       doNothing();
@@ -1148,5 +1582,10 @@ document.addEventListener("click", (e) => {
 // =========================================================================
 // 初期描画
 // =========================================================================
+// @spec SPEC-019 初期時の体力上限を年齢から再計算
+player.staminaBaseCap = staminaBaseCapForAge(player.age);
+player.staminaCap = player.staminaBaseCap + (player.staminaBonusCap || 0);
+player.stamina = Math.min(player.stamina, player.staminaCap);
+
 renderWakeup();
 renderHUD();

@@ -17,20 +17,26 @@
     <!--
       @spec docs/specs/SPEC-001-life-stage.md  共通HUDに表示するプレイヤー状態
       @spec docs/specs/SPEC-009-ui-layout.md   固定HUD（常にスクロール非依存）
+      @spec docs/specs/SPEC-021-parameter-gauge-ui.md  パラメーターをゲージ表示
     -->
     <header id="hud" class="hud">
       <div class="hud-row">
-        <span id="hud-age">5歳</span>
+        <span id="hud-age">2歳</span>
         <span id="hud-stage" title="ライフステージ">🏫 保育園</span>
-        <span id="hud-date">3日目(夏) 06:30</span>
+        <span id="hud-date">1日目(夏) 07:00</span>
       </div>
       <div class="hud-row hud-stats">
-        <span title="体力">❤️ <span id="hud-stamina">80</span></span>
-        <span title="生活リズム">🌙 <span id="hud-rhythm">90</span></span>
-        <span title="所持金">💰 ¥<span id="hud-money">0</span></span>
-        <span title="余剰時間">⏳ <span id="hud-hours">6</span>h</span>
+        <span class="hud-gauge" title="体力">
+          <span class="hud-gauge-label">❤️ <span id="hud-stamina">8</span>/<span id="hud-stamina-cap">15</span></span>
+          <span class="gauge-mini"><span class="gauge-mini-bar" id="hud-stamina-bar"></span></span>
+        </span>
+        <span class="hud-gauge" title="余剰時間">
+          <span class="hud-gauge-label">⏳ <span id="hud-hours">4</span>h</span>
+          <span class="gauge-mini"><span class="gauge-mini-bar" id="hud-hours-bar"></span></span>
+        </span>
         <span title="友人数">👥 <span id="hud-friends">2</span></span>
         <span title="ジョウネツ">🔥 <span id="hud-passion">0</span></span>
+        <span title="所持金">💰 ¥<span id="hud-money">0</span></span>
       </div>
     </header>
 
@@ -43,16 +49,11 @@
       <div class="scene">
         <div class="scene-art" id="wakeup-art">🌅</div>
         <h1 class="scene-title">おはよう！</h1>
-        <p class="scene-sub" id="wakeup-subtitle">あなたは 5歳 / 夏の朝 06:30</p>
+        <p class="scene-sub" id="wakeup-subtitle">あなたは 2歳 / 夏の朝 07:00</p>
 
         <div class="card">
           <div class="card-title">今日のコンディション</div>
-          <ul class="kv-list">
-            <li><span>体力</span><b id="wu-stamina">80 / 100</b></li>
-            <li><span>生活リズム</span><b id="wu-rhythm">90 / 100</b></li>
-            <li><span>友人数</span><b id="wu-friends">2 人</b></li>
-            <li><span>余剰時間</span><b id="wu-hours">6 h</b></li>
-          </ul>
+          <div class="gauge-group" id="wu-gauges"></div>
         </div>
 
         <div class="msg-box" id="wakeup-msg">よく眠れた。今日も元気だ！</div>
@@ -97,19 +98,60 @@
     </section>
 
     <!--
-      @screen S2 遊びを選ぶ
+      @screen S2 遊びを選ぶ（ドック型アイコンUI）
       @spec   docs/specs/SPEC-002-play-selection.md
       @spec   docs/specs/SPEC-007-friends.md
+      下部のドックでアイコンをタップすると、上部プレビューに詳細が出る。
+      「遊ぶ」ボタン or 同じアイコン再タップで確定して S3 に遷移。
     -->
     <section class="screen" id="screen-choose">
       <div class="scene">
         <h2 class="scene-title small">何して遊ぶ？</h2>
-        <p class="scene-sub">残り余剰時間：<b id="choose-hours">6</b>h</p>
-        <div id="play-list" class="play-list"></div>
+        <p class="scene-sub">残り余剰時間：<b id="choose-hours">4</b>h</p>
+
+        <!-- プレビュー：初期はプレースホルダー -->
+        <div id="preview-placeholder" class="preview-placeholder">
+          <div class="placeholder-icon">🎮</div>
+          <p>下のアイコンから<br/>今日やりたい遊びを選んでね</p>
+        </div>
+
+        <div id="preview" class="play-preview" hidden>
+          <div class="preview-art" id="preview-icon">🏖</div>
+          <h3 class="preview-title" id="preview-name">砂場遊び</h3>
+          <p class="preview-desc" id="preview-desc">砂で大きな山を作り始めた…</p>
+
+          <div class="card">
+            <div class="card-title">コスト</div>
+            <ul class="kv-list">
+              <li><span>⏳ 時間</span><b id="preview-time">1h</b></li>
+              <li><span>💰 所持金</span><b id="preview-money">¥0</b></li>
+              <li><span>❤️ 体力</span><b id="preview-stamina">-10</b></li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-title">獲得予測</div>
+            <ul class="kv-list" id="preview-gain"></ul>
+          </div>
+
+          <div class="card" id="preview-friend-card" hidden>
+            <div class="card-title">👥 友人条件</div>
+            <p class="preview-note" id="preview-friend"></p>
+          </div>
+
+          <div class="card warn" id="preview-lock" hidden>
+            <p class="preview-note" id="preview-lock-text"></p>
+          </div>
+        </div>
       </div>
+
+      <!-- ドック（アイコン行） -->
+      <div id="play-dock" class="play-dock"></div>
+
       <footer class="actions">
-        <button class="btn btn-secondary" data-action="do-nothing">1h休む</button>
-        <button class="btn btn-ghost" data-action="go-sleep">今日おわる</button>
+        <button class="btn btn-secondary btn-sm-inline" data-action="do-nothing">1h休む</button>
+        <button class="btn btn-ghost btn-sm-inline" data-action="go-sleep">今日おわる</button>
+        <button class="btn btn-primary" data-action="confirm-play" id="btn-confirm-play" disabled>遊ぶ</button>
       </footer>
     </section>
 
@@ -136,28 +178,35 @@
         <div id="result-panel" class="result-panel" hidden>
           <div class="card">
             <div class="card-title">獲得した原体験</div>
-            <ul class="kv-list" id="result-gain"></ul>
+            <div class="gauge-group" id="result-exp-gauges"></div>
           </div>
           <div class="card" id="result-status-card">
             <div class="card-title">ステータス</div>
+            <div class="gauge-group" id="result-status-gauges"></div>
             <ul class="kv-list" id="result-status"></ul>
           </div>
           <div class="card">
             <div class="card-title">時間の流れ</div>
             <ul class="kv-list">
-              <li><span>🕒 時刻</span><b id="result-clock">06:30 → 07:30</b></li>
-              <li><span>⏳ 余剰時間</span><b id="result-spare">6h → 5h</b></li>
+              <li><span>🕒 時刻</span><b id="result-clock">07:00 → 08:00</b></li>
+              <li><span>⏳ 余剰時間</span><b id="result-spare">4h → 3h</b></li>
             </ul>
           </div>
           <div class="msg-box" id="result-passion">ジョウネツ +3</div>
         </div>
       </div>
 
-      <!-- Actions: フェーズにより切替。スキップ or 次へ/今日おわる -->
-      <footer class="actions">
+      <!-- 描写フェーズのフッター：スキップのみ -->
+      <footer class="actions" id="actions-skip">
         <button class="btn btn-secondary" data-action="skip-playing" id="btn-skip-play">スキップ</button>
-        <button class="btn btn-primary" data-action="choose-next" id="btn-next-play" hidden>次の遊びを選ぶ</button>
-        <button class="btn btn-ghost" data-action="go-sleep" id="btn-go-sleep-from-play" hidden>今日おわる</button>
+      </footer>
+      <!-- 結果フェーズのフッター：リプレイ/次へ/終わる -->
+      <footer class="actions actions-stack" id="actions-result" hidden>
+        <div class="actions-row">
+          <button class="btn btn-primary" data-action="replay-play" id="btn-replay-play">🔁 もう一度遊ぶ (-1h)</button>
+          <button class="btn btn-secondary" data-action="choose-next" id="btn-next-play">次の遊びを選ぶ</button>
+        </div>
+        <button class="btn btn-ghost btn-wide" data-action="go-sleep" id="btn-go-sleep-from-play">今日おわる</button>
       </footer>
     </section>
 
@@ -185,15 +234,21 @@
     <section class="screen" id="screen-sleep">
       <div class="scene">
         <div class="scene-art">🌙</div>
-        <h2 class="scene-title">夜になった</h2>
+        <h2 class="scene-title" id="sleep-title">夜になった</h2>
 
         <div class="card">
           <div class="card-title">今日のまとめ</div>
           <ul class="kv-list" id="sleep-summary"></ul>
         </div>
 
-        <p class="scene-sub">いつ寝る？</p>
-        <div class="sleep-options">
+        <!-- 1〜9歳：モード選択不可（SPEC-020 §5.5） -->
+        <div id="sleep-child" class="sleep-child" hidden>
+          <p class="scene-sub" id="sleep-child-text">もう19時。ママが布団をかけてくれた…</p>
+        </div>
+
+        <!-- 10歳以上：モード選択可（SPEC-008） -->
+        <div id="sleep-adult" class="sleep-options" hidden>
+          <p class="scene-sub">いつ寝る？</p>
           <button class="sleep-card" data-sleep="early">
             <div class="sleep-title">🛌 早寝 (21:00)</div>
             <div class="sleep-effect">リズム +10 / 体力 +25</div>
@@ -208,8 +263,10 @@
           </button>
         </div>
       </div>
-      <!-- 固定フッター領域を確保（選択はカード） -->
-      <footer class="actions actions-hint">
+      <footer class="actions" id="sleep-actions-child" hidden>
+        <button class="btn btn-primary" data-action="child-sleep">おやすみ</button>
+      </footer>
+      <footer class="actions actions-hint" id="sleep-actions-adult" hidden>
         <span class="hint">上の「いつ寝る？」を選ぶと翌朝へ</span>
       </footer>
     </section>
