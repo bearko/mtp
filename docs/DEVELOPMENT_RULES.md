@@ -16,24 +16,32 @@
 
 ## 1. ディレクトリ構成
 
+ドキュメントは **画面設計書（Screens）** と **機能仕様書（Specs）** の 2 カテゴリに明確に分ける。
+
 ```
 docs/
 ├─ DEVELOPMENT_RULES.md       ← 本ルール
-├─ screen-design.md           ← 画面設計書（全画面のワイヤーフレーム・IPO・遷移）
-└─ specs/                     ← 機能別仕様書
-    ├─ SPEC-INDEX.md          ← 仕様書の索引
+├─ screens/                   ← 画面設計書（How it looks）
+│   ├─ INDEX.md                 画面索引
+│   └─ SCREEN-DESIGN.md         全画面のワイヤーフレーム・IPO・遷移
+└─ specs/                     ← 機能仕様書（How it behaves）
+    ├─ SPEC-INDEX.md            仕様書の索引
     ├─ SPEC-001-life-stage.md
     ├─ SPEC-002-play-selection.md
-    ├─ SPEC-003-play-execution.md
-    ├─ SPEC-004-random-event.md
-    ├─ SPEC-005-parameter.md
-    ├─ SPEC-006-bio-rhythm.md
-    ├─ SPEC-007-friends.md
-    └─ SPEC-008-sleep.md
+    └─ ...                      1機能=1ファイル
 ```
 
+### 1.1 画面設計書 vs 機能仕様書
+
+| 観点 | 画面設計書（Screens） | 機能仕様書（Specs） |
+|---|---|---|
+| 答えるもの | **どう見えるか・どう遷移するか** | **何が起こるか・どう計算するか** |
+| 代表要素 | ワイヤーフレーム、画面ID、遷移図、HUD レイアウト | データモデル、計算式、閾値、挙動フロー |
+| 粒度 | 画面単位（S1, S2, …） | 機能単位（SPEC-001, SPEC-002, …） |
+| 相互参照 | 対応する `SPEC-XXX` を各セクション冒頭で明記 | `## 6. UIへの反映` で画面ID `Sn` を参照 |
+
 - **1機能 = 1仕様書**。ファイル名は `SPEC-{連番}-{機能名}.md`。
-- 仕様書の索引は `docs/specs/SPEC-INDEX.md` に一覧化する。
+- 仕様書の索引は `docs/specs/SPEC-INDEX.md`、画面設計書の索引は `docs/screens/INDEX.md` に一覧化する。
 
 ---
 
@@ -102,15 +110,18 @@ function isPlayAvailable(play) { ... }
 - 仕様書に存在しないロジックを実装するときは、**先に仕様書を作成する**。
 
 ### 3.2 画面IDとコードの対応
-- HTMLの画面セクションには、画面IDと仕様書IDをコメントで明記：
+- HTMLの画面セクションには、画面IDと画面設計書／仕様書のリンクをコメントで明記：
 
 ```html
 <!--
-  @screen S1 起床
-  @spec   docs/screen-design.md#s1-起床画面
+  @screen S2 遊びを選ぶ
+  @screens docs/screens/SCREEN-DESIGN.md  画面設計
+  @spec    docs/specs/SPEC-002-play-selection.md
 -->
-<section id="screen-wakeup">...</section>
+<section id="screen-choose">...</section>
 ```
+
+- `@screens` は画面設計書へのリンク、`@spec` は機能仕様書へのリンクを指す。画面に関わる変更ではその両方を参照し、必要なら両方更新する。
 
 ### 3.3 変更禁止事項の注釈
 - 仕様書で明示的に定められた定数・アルゴリズムを変更する場合、**仕様書を先に変更**し、コード内で `@spec-version` を更新すること。
@@ -152,7 +163,7 @@ Spec: docs/specs/SPEC-XXX-xxx.md (updated|added|none)
 
 - [ ] 変更した機能に対応する仕様書があるか？
 - [ ] 仕様書の「最終更新」日を更新したか？
-- [ ] 画面を変更したなら `docs/screen-design.md` も更新したか？
+- [ ] 画面を変更したなら `docs/screens/SCREEN-DESIGN.md` も更新したか？
 - [ ] 新規関数・画面に `@spec` 注釈を入れたか？
 - [ ] 仕様書の文面だけで「何が起きるか」が第三者に伝わるか？
 - [ ] PR本文に変更した SPEC 一覧を記載したか？

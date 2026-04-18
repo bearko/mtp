@@ -31,9 +31,16 @@ python3 -m http.server --directory prototype 8000
 - さらに **コアタイム画面（S6）** を追加。学校・仕事などライフステージ固有の時間を自動消化しつつ、発見で新しい遊びが解禁される。現在は **保育園（1〜3歳）** のみ実装。他ステージは [`docs/specs/`](./docs/specs/) に Draft 仕様書として定義済み。
 
 ### 📚 ドキュメント
-- 画面設計書（ワイヤーフレーム・IPO・遷移図）：[`docs/screen-design.md`](./docs/screen-design.md)
+
+本プロジェクトのドキュメントは **画面設計書** と **機能仕様書** の 2 系統に分けて管理されています。
+
+- **画面設計書**
+  - 索引：[`docs/screens/INDEX.md`](./docs/screens/INDEX.md)
+  - 本編：[`docs/screens/SCREEN-DESIGN.md`](./docs/screens/SCREEN-DESIGN.md)（ワイヤーフレーム・遷移図）
+- **機能仕様書**
+  - 索引：[`docs/specs/SPEC-INDEX.md`](./docs/specs/SPEC-INDEX.md)
+  - 実例：`docs/specs/SPEC-*.md`（1機能=1ファイル）
 - **開発ルール（仕様駆動開発）**：[`docs/DEVELOPMENT_RULES.md`](./docs/DEVELOPMENT_RULES.md)
-- **機能別仕様書 索引**：[`docs/specs/SPEC-INDEX.md`](./docs/specs/SPEC-INDEX.md)
 
 > ⚠ **開発者向け重要事項**
 > 本プロジェクトは **仕様駆動開発** を採用しています。
