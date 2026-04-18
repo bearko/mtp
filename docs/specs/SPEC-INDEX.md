@@ -22,6 +22,7 @@
 | [SPEC-022](./SPEC-022-play-category.md) | 遊びカテゴリ | Active（保育園のみ実装） | `prototype/game.js` (CATEGORIES, PLAYS[*].categories) | 2026-04-18 |
 | [SPEC-023](./SPEC-023-play-tree.md) | 遊びツリー（新画面 S7） | Active（保育園のみ実装） | `prototype/game.js` (renderPlayTreeScreen) / `prototype/index.html` (#screen-tree) | 2026-04-18 |
 | [SPEC-024](./SPEC-024-skill.md) | スキル（カテゴリ 1:1 のLv 1〜100） | Active（保育園のみ実装） | `prototype/game.js` (player.skills, gainSkillExp, skillLvFromExp, skillBoostMultiplier) | 2026-04-18 |
+| [SPEC-025](./SPEC-025-game-tempo.md) | ゲームテンポ設計（週/月スキップ＋ステージ依存時間流速） | Active（Option B 実装 / Option A は別ブランチ） | `prototype/game.js` (PASSION_PROFILES, runSkipBatch, tempoDaysPerTurn) | 2026-04-18 |
 
 ## ライフステージ別コアタイム
 
