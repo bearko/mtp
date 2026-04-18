@@ -18,7 +18,7 @@
 | [SPEC-010](./SPEC-010-core-time.md) | コアタイム（学びごと・仕事）フレームワーク | Active | `prototype/game.js` (LIFE_STAGES, resolveCoreTime) | 2026-04-18 |
 | [SPEC-019](./SPEC-019-stamina-cap.md) | 体力上限（年齢依存）と体力ゼロ挙動 | Active（保育園のみ実装） | `prototype/game.js` (STAMINA_CAP_TABLE, staminaCapForAge, handleStaminaDepleted) | 2026-04-18 |
 | [SPEC-020](./SPEC-020-fixed-sleep-cycle.md) | 固定起床・就寝サイクル（低年齢） | Active（保育園のみ実装） | `prototype/game.js` (getFixedSchedule, beginDay, goSleep) | 2026-04-18 |
-| [SPEC-021](./SPEC-021-parameter-gauge-ui.md) | パラメーターゲージUI | Active | `prototype/game.js` (renderGauge) / `prototype/styles.css` (.gauge) | 2026-04-18 |
+| [SPEC-021](./SPEC-021-parameter-gauge-ui.md) | パラメーター表示UI（ゲージ＋時計円盤） | Active | `prototype/game.js` (renderGauge, renderClockDial) / `prototype/styles.css` (.gauge, .clock-dial) | 2026-04-18 |
 
 ## ライフステージ別コアタイム
 
