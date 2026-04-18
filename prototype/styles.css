@@ -611,6 +611,130 @@ body {
 .tree-future-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
 .tree-future-sub   { color: var(--muted); font-size: 12px; }
 
+/*
+  @spec docs/specs/SPEC-025-game-tempo.md §9.1 情熱プロファイル選択
+*/
+.passion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 6px;
+}
+.passion-card {
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform 100ms ease, border-color 150ms ease, background 150ms ease;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.passion-card:active { transform: scale(0.98); }
+.passion-card.selected {
+  border-color: var(--accent);
+  background: #fff6e0;
+  box-shadow: 0 0 0 3px rgba(232, 109, 60, 0.25), var(--shadow);
+}
+.passion-card-icon { font-size: 36px; flex-shrink: 0; }
+.passion-card-body { flex: 1; }
+.passion-card-title { font-weight: 700; font-size: 15px; }
+.passion-card-desc  { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.6; }
+
+/*
+  @spec docs/specs/SPEC-025-game-tempo.md §9.2 自動進行演出（S2 内）
+*/
+.auto-progress {
+  background: #eaf7e6;
+  border: 1px dashed #7fad8b;
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  margin: 8px 0;
+  text-align: center;
+  animation: fadeIn 220ms ease-out;
+}
+.auto-progress-icon { font-size: 48px; margin-bottom: 6px; }
+.auto-progress-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+.auto-progress-sub   { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+
+/*
+  @spec docs/specs/SPEC-025-game-tempo.md §9.3 自動/手動トグル（ドック最左端）
+*/
+.dock-icon.dock-mode {
+  width: auto;
+  min-width: 68px;
+  padding: 6px 12px;
+  border-radius: 26px;
+  background: #d9d0b7;
+  color: var(--fg);
+  border: 2px solid #b9ad85;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+  line-height: 1;
+  margin-right: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  font-size: 22px;
+}
+.dock-icon.dock-mode.auto {
+  background: #3d6b4a;
+  color: #fff;
+  border-color: #2f5437;
+}
+.dock-icon.dock-mode .dock-mode-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+.dock-icon.dock-mode::after {
+  /* 右側に縦棒で区切り */
+  content: "";
+  position: absolute;
+  right: -8px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--card-border);
+}
+
+/*
+  @spec docs/specs/SPEC-025-game-tempo.md §6 介入イベントモーダル
+*/
+.interrupt-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(44, 42, 38, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  animation: fadeIn 220ms ease-out;
+}
+.interrupt-modal {
+  width: 86%;
+  max-width: 340px;
+  background: var(--card-bg);
+  border-radius: 18px;
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  animation: interruptIn 300ms ease-out;
+}
+@keyframes interruptIn {
+  from { transform: translateY(12px) scale(0.95); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+.interrupt-icon { font-size: 48px; margin-bottom: 8px; }
+.interrupt-title { margin: 0 0 6px; font-size: 18px; }
+.interrupt-body  { margin: 0 0 16px; font-size: 14px; line-height: 1.7; color: var(--fg); }
+.interrupt-modal .btn { width: 100%; }
+
 /* =========================================================================
  * @spec docs/specs/SPEC-021-parameter-gauge-ui.md パラメーターゲージUI
  * ========================================================================= */
