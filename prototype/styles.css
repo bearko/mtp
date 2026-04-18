@@ -1,3 +1,9 @@
+/*
+  カネとジカンとジョウネツと - プロトタイプ スタイル
+  @spec docs/specs/SPEC-009-ui-layout.md
+  画面解像度に依存せず、HUD（上）とActions（下）が常に画面内に表示されるレイアウトを定義する。
+*/
+
 :root {
   --bg: #f5f1e8;
   --fg: #2c2a26;
@@ -16,6 +22,10 @@
   --bad: #d94e4e;
   --radius: 14px;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  /* SPEC-009 §5.2 高さ・エリア */
+  --hud-h: auto;
+  --actions-h: auto;
 }
 
 * { box-sizing: border-box; }
@@ -23,49 +33,56 @@
 html, body {
   margin: 0;
   padding: 0;
+  height: 100%;
   background: #e4ddca;
   font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Segoe UI", sans-serif;
   color: var(--fg);
-  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  overflow: hidden; /* 画面全体のスクロールは禁止。スクロールは .scene だけ */
 }
 
 body {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  padding: 16px;
+  background: #e4ddca;
 }
 
-/* スマホ枠 */
+/*
+  @spec SPEC-009 §5.2
+  フォンフレーム：画面全体を包む flex column コンテナ。
+  height: 100dvh を優先し、非対応ブラウザは 100vh にフォールバック。
+*/
 .phone-frame {
   width: 100%;
   max-width: 420px;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   background: var(--bg);
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
-@media (max-width: 440px) {
-  body { padding: 0; }
-  .phone-frame { border-radius: 0; min-height: 100vh; box-shadow: none; }
+@media (min-width: 441px) {
+  body { padding: 16px; }
+  .phone-frame { border-radius: 24px; height: calc(100vh - 32px); height: calc(100dvh - 32px); }
 }
 
-/* HUD */
+/*
+  @spec SPEC-009 §5.2
+  HUD：flex-shrink: 0 で縮まない。常に最上部に表示。
+*/
 .hud {
   background: var(--hud-bg);
   color: var(--hud-fg);
   padding: 10px 14px;
-  position: sticky;
-  top: 0;
   z-index: 10;
   font-size: 12px;
   line-height: 1.6;
+  flex-shrink: 0;
 }
 
 .hud-row {
@@ -87,16 +104,18 @@ body {
   opacity: 0.92;
 }
 
-.hud-stats span {
-  white-space: nowrap;
-}
+.hud-stats span { white-space: nowrap; }
 
-/* Screen */
+/*
+  @spec SPEC-009 §5.2
+  画面本体：flex:1 で残り領域を専有。中央の .scene のみがスクロール対象。
+  min-height:0 は flex child の内部 overflow を機能させるために必須。
+*/
 .screen {
   display: none;
   flex: 1;
   flex-direction: column;
-  padding: 16px 16px 0;
+  min-height: 0;
   animation: fadeIn 220ms ease-out;
 }
 
@@ -105,48 +124,53 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
+/*
+  @spec SPEC-009 §5.2
+  Scene：唯一のスクロール領域。
+*/
 .scene {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  padding-bottom: 16px;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 16px 20px;
 }
 
 .scene-art {
   text-align: center;
-  font-size: 80px;
+  font-size: 72px;
   line-height: 1;
-  margin: 20px 0 8px;
+  margin: 8px 0 6px;
 }
 
-.scene-art.large { font-size: 100px; }
+.scene-art.large { font-size: 88px; }
 
 .scene-title {
   text-align: center;
-  font-size: 26px;
-  margin: 8px 0 4px;
+  font-size: 24px;
+  margin: 6px 0 4px;
 }
 
-.scene-title.small { font-size: 20px; }
+.scene-title.small { font-size: 18px; }
 
 .scene-sub {
   text-align: center;
   color: var(--muted);
-  margin: 0 0 16px;
+  margin: 0 0 14px;
   font-size: 14px;
 }
 
 .scene-desc {
   text-align: center;
   line-height: 1.7;
-  margin: 12px 16px 20px;
+  margin: 10px 12px 16px;
   font-size: 15px;
 }
 
-/* Card */
 .card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
@@ -180,7 +204,6 @@ body {
 .kv-list li:last-child { border-bottom: none; }
 
 .kv-list li b { font-weight: 700; }
-
 .kv-list li.up b { color: var(--good); }
 .kv-list li.down b { color: var(--bad); }
 
@@ -226,14 +249,14 @@ body {
 }
 
 .play-icon {
-  font-size: 32px;
-  width: 44px;
-  height: 44px;
+  font-size: 28px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #f0e8d1;
-  border-radius: 12px;
+  border-radius: 10px;
   flex-shrink: 0;
 }
 
@@ -264,12 +287,10 @@ body {
 .play-actions { margin-top: 4px; display: flex; justify-content: flex-end; }
 
 /* Progress */
-.progress-wrap {
-  margin: 20px 12px;
-}
+.progress-wrap { margin: 14px 8px; }
 
 .progress {
-  height: 14px;
+  height: 12px;
   background: #eee3c8;
   border-radius: 999px;
   overflow: hidden;
@@ -286,21 +307,43 @@ body {
   font-size: 12px;
   color: var(--muted);
   text-align: center;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
-/* Buttons */
+/* 結果フェーズ（S3統合画面） */
+.result-panel {
+  animation: fadeIn 280ms ease-out;
+}
+
+/*
+  @spec SPEC-009 §5.2
+  Actions：flex-shrink: 0 で常に画面下部に表示。
+  paddingに safe-area-inset-bottom を加算して iOS ホームバーを避ける。
+*/
 .actions {
   display: flex;
   gap: 8px;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
   background: var(--bg);
   border-top: 1px solid var(--card-border);
+  flex-shrink: 0;
+}
+
+.actions-hint {
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hint {
+  display: inline-block;
+  padding: 8px 0;
 }
 
 .btn {
   flex: 1;
   padding: 14px 16px;
+  min-height: 52px;
   border-radius: var(--radius);
   border: none;
   font-size: 15px;
@@ -320,6 +363,7 @@ body {
 .btn-sm {
   padding: 8px 14px;
   font-size: 13px;
+  min-height: 0;
   flex: none;
 }
 
@@ -354,12 +398,13 @@ body {
 .sleep-effect {
   font-size: 12px;
   color: var(--muted);
+  line-height: 1.5;
 }
 
 /* Toast */
 .toast {
   position: fixed;
-  bottom: 80px;
+  bottom: 96px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(44, 42, 38, 0.95);
