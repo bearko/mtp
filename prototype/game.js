@@ -588,6 +588,82 @@ function renderGauge(container, { current, max, label, kind, delta }) {
 }
 
 /**
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.4a 差分ハイライト付きゲージ
+ *
+ * 「元の経験値までの base 部分（オレンジ）」の上に「今回増えた分の delta（緑）」を
+ * アニメーションで伸ばすゲージを描画する。
+ *
+ * opts:
+ *   label           : ゲージ左ラベル
+ *   beforeExp       : 変化前の累計経験値
+ *   afterExp        : 変化後の累計経験値
+ *   lv              : 現在（after 時点）のLv
+ *   lvUp            : Lvアップしたか
+ *   lvFn            : 経験値→Lvに使った関数（ブートストラップ用、省略可能）
+ *   kind            : 'exp' | 'skill'（色調整用）
+ *
+ *  Lvごとの exp 区間は `baseAtLv(lv) = lv * lv * 10`（原体験）または
+ *  `(lv-1) * (lv-1) * 10`（スキル、Lv=1 開始）で計算する。本関数は
+ *  呼び出し側に `lvFn` を渡せるようにして、両方の曲線に対応する。
+ */
+function renderGaugeWithDelta(container, opts) {
+  if (!container) return;
+  const {
+    label,
+    beforeExp,
+    afterExp,
+    lv,
+    lvUp = false,
+    kind = "exp",
+    // Lvから「そのLvに到達するための累計 exp 下限」を返す関数
+    lvBaseExp = (l) => l * l * 10,
+  } = opts;
+
+  // 現在Lv（after 時点）の区間
+  const curBase = lvBaseExp(lv);
+  const nextBase = lvBaseExp(lv + 1);
+  const range = Math.max(1, nextBase - curBase);
+
+  // afterExp は必ず curBase 以上 nextBase 未満（Lv100 オーバーフロー時は 100% 固定）
+  const afterPct = Math.max(0, Math.min(100, ((afterExp - curBase) / range) * 100));
+
+  // beforeExp が現在Lv の区間に入っていないとき（= Lvアップ時）は base=0 としてハイライト全体を伸ばす
+  let basePct = 0;
+  let deltaStart = 0;
+  if (!lvUp) {
+    basePct = Math.max(0, Math.min(100, ((beforeExp - curBase) / range) * 100));
+    deltaStart = basePct;
+  }
+  const deltaPct = Math.max(0, afterPct - deltaStart);
+
+  const displayValue = `${afterExp - curBase}/${range}`;
+  const lvUpTag = lvUp ? " ⬆ Lv UP!" : "";
+
+  container.classList.add("gauge", "gauge-with-delta");
+  if (lvUp) container.classList.add("lv-up");
+  container.innerHTML = `
+    <div class="gauge-track">
+      <div class="gauge-bar-base" style="width:${basePct}%"></div>
+      <div class="gauge-bar-delta" style="left:${deltaStart}%; width:0%"></div>
+    </div>
+    <div class="gauge-label">
+      <span>${label} Lv${lv}${lvUpTag}</span>
+      <b>${displayValue}<span class="delta">+${afterExp - beforeExp}</span></b>
+    </div>
+  `;
+
+  // 次フレームで width を反映させて transition を発火
+  const deltaEl = container.querySelector(".gauge-bar-delta");
+  if (deltaEl) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        deltaEl.style.width = deltaPct + "%";
+      });
+    });
+  }
+}
+
+/**
  * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2 起床画面のゲージ
  */
 function renderWakeupGauges() {
@@ -925,11 +1001,15 @@ function renderChooseScreen() {
     dock.appendChild(btn);
   });
 
-  // @spec SPEC-002 §5.1.1 / SPEC-023 §5.1 ドック最右端に 🌳 遊びツリーアイコン
+  // @spec SPEC-002 §5.1.1 §5.1.2 / SPEC-023 §5.1 ドック最右端に 🌳 遊びツリーアイコン
+  // 遊びアイコンではなく「画面遷移ナビ」として、ピル型＋濃緑＋ラベルで差別化する。
   const treeBtn = document.createElement("button");
   treeBtn.className = "dock-icon dock-tree";
-  treeBtn.textContent = "🌳";
-  treeBtn.setAttribute("aria-label", "遊びツリー画面へ");
+  treeBtn.innerHTML = `
+    <span class="dock-tree-icon">🌳</span>
+    <span class="dock-tree-label">ツリー</span>
+  `;
+  treeBtn.setAttribute("aria-label", "遊びツリー画面へ遷移");
   treeBtn.addEventListener("click", () => {
     renderPlayTreeScreen();
     showScreen("screen-tree");
@@ -1491,33 +1571,33 @@ function handleStaminaDepleted() {
 function renderResultPanel(before) {
   byId("result-panel").hidden = false;
 
-  // ---- 原体験（Lvゲージ SPEC-021）----
+  // ---- 原体験（差分ハイライト付きLvゲージ SPEC-021 §5.4a）----
   const expRoot = byId("result-exp-gauges");
-  const expHtml = [];
+  const expChangedKeys = [];
   Object.keys(LABELS).forEach((k) => {
     const b = before.exp[k] || 0;
     const a = player.exp[k] || 0;
     if (a === b) return;
-    const bLv = levelFromExp(b);
-    const aLv = levelFromExp(a);
-    const nextLvNeeded = (aLv + 1) * (aLv + 1) * 10;
-    const curLvBase = aLv * aLv * 10;
-    const progressCurrent = a - curLvBase;
-    const progressMax = nextLvNeeded - curLvBase;
-    const lvUp = aLv > bLv;
-    expHtml.push(`<div class="gauge" data-exp="${k}" id="result-exp-${k}"></div>`);
-    // あとから renderGauge で埋める
-    setTimeout(() => {
-      renderGauge(byId(`result-exp-${k}`), {
-        current: progressCurrent,
-        max: progressMax,
-        label: `${LABELS[k]} Lv${aLv}${lvUp ? " ⬆ Lv UP!" : ""}`,
-        kind: "exp",
-        delta: a - b,
-      });
-    }, 0);
+    expChangedKeys.push({ k, b, a });
   });
-  expRoot.innerHTML = expHtml.join("") || `<p style="color:var(--muted);font-size:13px;">（経験値の変化なし）</p>`;
+  if (expChangedKeys.length === 0) {
+    expRoot.innerHTML = `<p style="color:var(--muted);font-size:13px;">（経験値の変化なし）</p>`;
+  } else {
+    expRoot.innerHTML = expChangedKeys.map(({ k }) => `<div id="result-exp-${k}"></div>`).join("");
+    for (const { k, b, a } of expChangedKeys) {
+      const bLv = levelFromExp(b);
+      const aLv = levelFromExp(a);
+      renderGaugeWithDelta(byId(`result-exp-${k}`), {
+        label: LABELS[k],
+        beforeExp: b,
+        afterExp: a,
+        lv: aLv,
+        lvUp: aLv > bLv,
+        kind: "exp",
+        lvBaseExp: (l) => l * l * 10, // SPEC-005 曲線
+      });
+    }
+  }
 
   // ---- ステータスゲージ（体力）----
   const statusGaugeRoot = byId("result-status-gauges");
@@ -1543,22 +1623,36 @@ function renderResultPanel(before) {
   }
   byId("result-status").innerHTML = statusRows.join("");
 
-  // ---- 獲得スキル（SPEC-024 §5.3, §5.4）----
+  // ---- 獲得スキル（差分ハイライト付きLvゲージ SPEC-024 §6.1 / SPEC-021 §5.4a）----
   const skillsCard  = byId("result-skills-card");
   const skillsEl    = byId("result-skills");
   const boostNoteEl = byId("result-boost-note");
   const cats = (before.skillBefore && Object.keys(before.skillBefore)) || [];
   if (cats.length > 0) {
     skillsCard.hidden = false;
-    const rows = cats.map((c) => {
+    // コンテナを用意
+    skillsEl.innerHTML = cats.map((c) => `
+      <div class="skill-entry">
+        <div class="skill-label">🏷 ${(CATEGORIES[c] && CATEGORIES[c].label) || c}</div>
+        <div id="result-skill-${c}"></div>
+      </div>
+    `).join("");
+    // @spec SPEC-024 §5.2 スキル曲線: skillLvFromExp(exp) = floor(sqrt(exp/10)) + 1
+    //   これを逆算：Lv L の「下限 exp」= (L-1)^2 * 10
+    const skillLvBaseExp = (lv) => (lv - 1) * (lv - 1) * 10;
+    for (const c of cats) {
       const sb = before.skillBefore[c];
       const sa = player.skills[c];
-      const lvUp = sa.lv > sb.lv ? " <span style='color:var(--good)'>⬆ Lv UP!</span>" : "";
-      const delta = sa.exp - sb.exp;
-      const label = (CATEGORIES[c] && CATEGORIES[c].label) || c;
-      return `<li><span>🏷 ${label}</span><b class="up">Lv${sb.lv}→Lv${sa.lv} (+${delta}exp)${lvUp}</b></li>`;
-    }).join("");
-    skillsEl.innerHTML = rows;
+      renderGaugeWithDelta(byId(`result-skill-${c}`), {
+        label: "",  // 外側の .skill-label を使うので空文字
+        beforeExp: sb.exp,
+        afterExp: sa.exp,
+        lv: sa.lv,
+        lvUp: sa.lv > sb.lv,
+        kind: "exp",
+        lvBaseExp: skillLvBaseExp,
+      });
+    }
     const parts = [];
     if (before.skillBoost && before.skillBoost > 1.001) {
       parts.push(`熟練ブースト × ${before.skillBoost.toFixed(2)}`);

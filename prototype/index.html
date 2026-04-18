@@ -232,9 +232,14 @@
             @spec docs/specs/SPEC-022-play-category.md §6
             獲得スキル・熟練ブースト・低体力倍率を表示
           -->
+          <!--
+            @spec docs/specs/SPEC-024-skill.md §6 §6.1
+            @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.4a
+            スキルにも差分ハイライト付き Lv ゲージを表示
+          -->
           <div class="card" id="result-skills-card" hidden>
             <div class="card-title">🏷 獲得スキル</div>
-            <ul class="kv-list" id="result-skills"></ul>
+            <div class="gauge-group" id="result-skills"></div>
             <p class="preview-note" id="result-boost-note"></p>
           </div>
           <div class="card warn" id="result-low-stamina-warn" hidden>
