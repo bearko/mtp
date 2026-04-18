@@ -115,6 +115,10 @@
             <p class="scene-sub" id="wu-subtitle">あなたは 2歳 / 夏の朝 07:00</p>
             <div class="gauge-group" id="wu-gauges"></div>
             <div class="msg-box" id="wu-msg">よく眠れた。今日も元気だ！</div>
+            <!-- @spec SPEC-025 §6.1, §9.2 まとめて進めるボタン -->
+            <button class="btn btn-primary skip-batch-btn" id="btn-skip-batch" data-action="skip-batch">
+              <span id="skip-batch-label">⏩ 今日はおまかせ</span>
+            </button>
           </div>
           <div id="wu-compact" class="wakeup-compact" hidden>
             <div class="wu-compact-clock">
@@ -130,6 +134,7 @@
               </span>
             </div>
             <div class="wu-compact-msg" id="wu-compact-msg">おかえり！夜の遊びを選ぼう</div>
+            <button class="btn btn-primary btn-sm-inline skip-batch-btn-compact" data-action="skip-batch" id="btn-skip-batch-compact">⏩ おまかせ</button>
           </div>
         </div>
 
@@ -394,6 +399,83 @@
         <span class="hint">上の「いつ寝る？」を選ぶと翌朝へ</span>
       </footer>
     </section>
+
+    <!--
+      @screen  S8 情熱プロファイル選択（初回起動時のみ）
+      @spec    docs/specs/SPEC-025-game-tempo.md §5, §9.1
+    -->
+    <section class="screen" id="screen-passion-profile">
+      <div class="scene">
+        <h2 class="scene-title">何が好きな子？</h2>
+        <p class="scene-sub">（あとでも変わっていく）</p>
+        <div class="passion-list" id="passion-list"></div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-primary" data-action="confirm-passion" id="btn-confirm-passion" disabled>決定</button>
+      </footer>
+    </section>
+
+    <!--
+      @screen  S9 スキップサマリ
+      @spec    docs/specs/SPEC-025-game-tempo.md §8
+      プレイヤーが「まとめて進める」で通過した期間のダイジェスト。
+    -->
+    <section class="screen" id="screen-skip-summary">
+      <div class="scene">
+        <div class="scene-art">📆</div>
+        <h2 class="scene-title">まとめて進んだ</h2>
+        <p class="scene-sub" id="skip-range">1日目〜1日目</p>
+
+        <div class="card">
+          <div class="card-title">遊んだ回数</div>
+          <ul class="kv-list" id="skip-plays"></ul>
+        </div>
+
+        <div class="card" id="skip-skills-card" hidden>
+          <div class="card-title">🏷 伸びたスキル</div>
+          <ul class="kv-list" id="skip-skills"></ul>
+        </div>
+
+        <div class="card warn" id="skip-discoveries-card" hidden>
+          <div class="card-title">🎉 発見</div>
+          <ul class="kv-list" id="skip-discoveries"></ul>
+        </div>
+
+        <div class="card">
+          <div class="card-title">現在の状態</div>
+          <ul class="kv-list" id="skip-status"></ul>
+        </div>
+      </div>
+      <footer class="actions actions-stack">
+        <div class="actions-row">
+          <button class="btn btn-primary" data-action="skip-again" id="btn-skip-again">⏩ もう一度まとめて進める</button>
+        </div>
+        <button class="btn btn-secondary btn-wide" data-action="switch-to-manual">🎮 手動で遊ぶ</button>
+      </footer>
+    </section>
+
+    <!--
+      @spec docs/specs/SPEC-025-game-tempo.md §7 介入イベント共通モーダル
+    -->
+    <div id="interrupt-overlay" class="interrupt-overlay" hidden>
+      <div class="interrupt-modal">
+        <div class="interrupt-icon" id="interrupt-icon">✨</div>
+        <h3 class="interrupt-title" id="interrupt-title">新しい発見！</h3>
+        <p class="interrupt-body" id="interrupt-body"></p>
+        <button class="btn btn-primary" id="btn-interrupt-close">続ける</button>
+      </div>
+    </div>
+
+    <!--
+      @spec docs/specs/SPEC-025-game-tempo.md §6.2 スキップ中の薄暗オーバーレイ
+    -->
+    <div id="skip-overlay" class="skip-overlay" hidden>
+      <div class="skip-overlay-card">
+        <div class="skip-overlay-icon">⏩</div>
+        <div class="skip-overlay-title" id="skip-overlay-title">まとめて進行中…</div>
+        <div class="progress"><div class="progress-bar" id="skip-overlay-bar"></div></div>
+      </div>
+    </div>
 
     <div id="toast" class="toast" hidden></div>
   </div>
