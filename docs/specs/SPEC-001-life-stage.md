@@ -5,7 +5,7 @@
 | 仕様ID | SPEC-001 |
 | 機能名 | ライフステージ / プレイヤー状態 |
 | 対応ファイル | `prototype/game.js` の `DEFAULT_PLAYER`, `player`, `LIFE_STAGES`, `resolveLifeStage`, `fmtTime`, `SEASON_LABEL` |
-| 関連仕様 | SPEC-005, SPEC-006, SPEC-007, SPEC-008, **SPEC-010** |
+| 関連仕様 | SPEC-005, SPEC-006, SPEC-007, SPEC-008, SPEC-010, **SPEC-019**, **SPEC-020** |
 | ステータス | Active |
 | 最終更新 | 2026-04-18 |
 
@@ -30,21 +30,29 @@
 ## 5. 挙動（Behavior）
 ### 5.1 プレイヤー状態の構造
 ```
-age              年齢 1〜100
-day              ゲーム内通算日
-season           "spring" / "summer" / "autumn" / "winter"
-clockHour        時（0-24）
-clockMinute      分（0-59）
-spareHours       余剰時間（h）
-stamina          体力 0-100
-bioRhythm        生活リズム 0-100
-money            所持金（円）
-friends          友人数（人）
-passion          ジョウネツ（累積スコア）
-exp              原体験5カテゴリの経験値
-unlockedPlays    解禁済みの遊びID配列（SPEC-010, SPEC-011 で使用）
-discoveredIds    発見済みの Discovery ID 配列（重複発見の抑止）
-flags            任意のゲームフラグ（例 canRead） ※将来用
+age                    年齢 1〜100
+day                    ゲーム内通算日
+season                 "spring" / "summer" / "autumn" / "winter"
+clockHour              時（0-24）
+clockMinute            分（0-59）
+spareHours             余剰時間（h）
+spareHoursMax          その日の余剰時間ベース（SPEC-021 ゲージの分母）
+stamina                体力（動的）
+staminaCap             体力上限（SPEC-019 で年齢・ボーナスから再計算）
+staminaBaseCap         年齢ベースの体力上限
+staminaBonusCap        体力上限への恒久ボーナス（将来拡張）
+bioRhythm              生活リズム 0-100
+money                  所持金（円）
+friends                友人数（人）
+passion                ジョウネツ（累積スコア）
+exp                    原体験5カテゴリの経験値
+unlockedPlays          解禁済みの遊びID配列（SPEC-010, SPEC-011 で使用）
+discoveredIds          発見済みの Discovery ID 配列（重複発見の抑止）
+depletedDays           体力ゼロを記録した日の配列（SPEC-019）
+depletedDaysThisYear   今年の体力ゼロ記録日数（SPEC-019）
+retirementDecayLocked  老後減衰ロック（SPEC-019 §5.5）
+forceSleepNextZeroSpare 翌朝の余剰時間を0にするフラグ（強制終了→翌朝、SPEC-019）
+flags                  任意のゲームフラグ（例 canRead） ※将来用
 ```
 
 ### 5.1.1 ライフステージの解決
@@ -58,9 +66,20 @@ flags            任意のゲームフラグ（例 canRead） ※将来用
 - 30日ごとに次の季節へローテ（春→夏→秋→冬→春）。
 
 ### 5.4 時刻の表現
-- 起床時刻は SPEC-006（生活リズム）によって決まる。
+- 起床時刻は年齢によって決まる：
+  - **1〜9歳は固定起床**（SPEC-020、保育園 07:00 等）。
+  - 10歳以降は SPEC-006（生活リズム）によって決まる。
 - 遊びの所要時間だけ時刻が進行する（SPEC-003）。
 - **コアタイム消化時** は時刻が一気に `coreTime.endHour` まで進行する（SPEC-010）。
+- 就寝時刻も年齢固定（1〜9歳は SPEC-020 に従う）。
+
+### 5.5 体力上限の管理
+- `staminaCap` は年齢変化時に再計算（SPEC-019）。
+- 現在体力が上限を超えたら即時クランプ。
+
+### 5.6 時刻と時計円盤（SPEC-021）
+- `clockHour + clockMinute/60` の値がそのまま **時計円盤UI**（SPEC-021 §5.2）の入力となる。
+- 円盤は 24時間で1周し、0:00 を真上として時計回りに現在時刻まで塗りつぶされる。
 
 ## 6. UIへの反映
 - 共通HUD（全画面共通の上部固定バー）に表示：年齢 / 日付・季節 / 時刻 / 体力 / リズム / 所持金 / 余剰時間 / 友人 / ジョウネツ。
