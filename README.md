@@ -17,17 +17,29 @@ python3 -m http.server --directory prototype 8000
 # → http://localhost:8000
 ```
 
-実装されている骨子ループ：
+実装されている骨子ループ（**5画面に統合**）：
 
 ```
-起床 → 遊びを選ぶ → 遊びの描写 → ランダムイベント → 遊び終了
- ↑                                                    ↓
- └─────── 時間経過 ←── パラメーター反映 ←────────────┘
-                ↓
-              就寝 → 翌日へ
+起床 → 遊びを選ぶ → 遊びの描写(結果+時間経過+Lvアップ含む)
+         ↑                    │
+         └──────余剰>0────────┤
+                              │
+                              │ 余剰=0 or 今日おわる
+                              ▼
+                             就寝 → 翌日へ
 ```
 
-画面設計書（ワイヤーフレーム・IPO・遷移図）：[`docs/screen-design.md`](./docs/screen-design.md)
+旧フロー（8画面）から「遊び終了 / パラメーター反映 / 時間経過」の3画面を **遊びの描写** に統合し、タップ数を大幅削減しています。
+
+### 📚 ドキュメント
+- 画面設計書（ワイヤーフレーム・IPO・遷移図）：[`docs/screen-design.md`](./docs/screen-design.md)
+- **開発ルール（仕様駆動開発）**：[`docs/DEVELOPMENT_RULES.md`](./docs/DEVELOPMENT_RULES.md)
+- **機能別仕様書 索引**：[`docs/specs/SPEC-INDEX.md`](./docs/specs/SPEC-INDEX.md)
+
+> ⚠ **開発者向け重要事項**
+> 本プロジェクトは **仕様駆動開発** を採用しています。
+> 機能を追加・修正する前に [`docs/DEVELOPMENT_RULES.md`](./docs/DEVELOPMENT_RULES.md) を必ず読んでください。
+> コード変更時は対応する `SPEC-XXX-*.md` の更新が必須です。
 
 ---
 
