@@ -343,6 +343,8 @@ const DEFAULT_PLAYER = {
   forceSleepNextZeroSpare: false,   // @spec SPEC-019 §5.4.2 強制終了後の翌朝フラグ
   /** コアタイムをまだ今日未消化か（起床直後 true、消化後 false）*/
   coreTimeDoneToday: false,
+  /** 強制睡眠がコアタイム終了後まで食い込んだ時間（h）。SPEC-019 §5.4.1a */
+  _napOverflow: 0,
 };
 
 const LABELS = {
@@ -808,9 +810,12 @@ function renderChooseScreen() {
     dock.appendChild(btn);
   });
 
-  // プレビューは初期はプレースホルダー
+  // @spec SPEC-002 §5.3.1 初期状態：起床ヘッダー表示 + プレビュー非表示
+  byId("wakeup-header").hidden = false;
+  byId("choose-prompt").hidden = false;
   byId("preview").hidden = true;
-  byId("preview-placeholder").hidden = false;
+  // 起床ヘッダーがある状態ではプレースホルダーは不要なので一緒に隠す
+  byId("preview-placeholder").hidden = true;
   byId("btn-confirm-play").disabled = true;
   byId("btn-confirm-play").textContent = "遊ぶ";
 
@@ -841,7 +846,10 @@ function selectPlay(id) {
     el.classList.toggle("selected", el.dataset.playId === id);
   }
 
-  // プレビュー差し替え
+  // @spec SPEC-002 §5.3.1 プレビュー表示時は起床ヘッダーを非表示にして置換する
+  // （「遊ぶ」ボタンまでスクロール無しで到達させるため）
+  byId("wakeup-header").hidden = true;
+  byId("choose-prompt").hidden = true;
   byId("preview-placeholder").hidden = true;
   byId("preview").hidden = false;
   byId("preview-icon").textContent = play.icon;
@@ -1188,13 +1196,65 @@ function handleStaminaDepleted() {
   }
 
   if (age <= 12) {
-    // 強制睡眠 2h
+    // ---- 強制睡眠 2h（SPEC-019 §5.4.1）----
     const recover = Math.floor(player.staminaCap * 0.30);
     player.stamina = recover;
-    player.clockHour += 2;
-    if (player.clockHour >= 24) player.clockHour = 23;
-    player.spareHours = Math.max(0, +(player.spareHours - 2).toFixed(1));
-    toast(`体力ゼロ…2時間お昼寝した（体力+${recover}）`, 2400);
+
+    // @spec SPEC-019 §5.4.1a コアタイム吸収ルール
+    // 仮眠の 2h のうち、コアタイム時間に重なる分は夜の余剰から差し引かない。
+    const stage = resolveLifeStage(player.age);
+    const core  = stage ? stage.coreTime : null;
+    const napStart = player.clockHour + player.clockMinute / 60;
+    const napEnd   = napStart + 2;
+
+    // 1) 時刻を 2h 進める（上限 23:00）
+    const advancedHour = Math.min(23.99, napEnd);
+    player.clockHour   = Math.floor(advancedHour);
+    player.clockMinute = Math.round((advancedHour - Math.floor(advancedHour)) * 60);
+    if (player.clockMinute >= 60) { player.clockHour += 1; player.clockMinute = 0; }
+
+    // 2) 朝の余剰 or 夜の余剰への影響を計算
+    let morningDecrease = 0;  // 朝の余剰から差し引く時間
+    let nightOverflow   = 0;  // 夜の余剰から後で差し引く時間
+    if (!core) {
+      // 老後：コアタイム無し、従来通り 2h 丸々引く
+      morningDecrease = 2;
+    } else {
+      const isBeforeCore    = napStart < core.startHour;
+      const isDuringOrAfter = napStart >= core.startHour;
+
+      if (isBeforeCore) {
+        // 朝に仮眠発動。コアタイム開始までの分を朝から、コアタイム越えた分を夜へ
+        morningDecrease = Math.min(2, Math.max(0, core.startHour - napStart));
+        if (napEnd > core.endHour) {
+          nightOverflow = napEnd - core.endHour;
+        }
+        // コアタイム内に収まる部分は「吸収されて」どこからも差し引かない
+      } else if (isDuringOrAfter && napStart < core.endHour) {
+        // コアタイム中に発動（現状のプロトでは保育園中は遊べないので発生しない想定）
+        if (napEnd > core.endHour) {
+          nightOverflow = napEnd - core.endHour;
+        }
+      } else {
+        // コアタイム後（夜の遊び中）に発動
+        morningDecrease = 2;
+      }
+    }
+
+    // 3) 朝の余剰から差し引き（上限は現在値）
+    if (morningDecrease > 0) {
+      player.spareHours = Math.max(0, +(player.spareHours - morningDecrease).toFixed(1));
+    }
+    // 4) 夜の余剰超過分はフラグに保存（コアタイム消化後に recomputeSpareHoursAfterCoreTime で適用）
+    if (nightOverflow > 0) {
+      player._napOverflow = +((player._napOverflow || 0) + nightOverflow).toFixed(1);
+    }
+
+    const toastMsg = (core && napStart < core.startHour)
+      ? `体力ゼロ…2時間お昼寝した（体力+${recover}）保育園時間で吸収`
+      : `体力ゼロ…2時間お昼寝した（体力+${recover}）`;
+    toast(toastMsg, 2400);
+
     renderHUD();
 
     // 結果フェーズの時計円盤を強制睡眠後の時刻に更新
@@ -1205,13 +1265,8 @@ function handleStaminaDepleted() {
     });
     byId("result-spare").textContent = `⏳ 余剰時間 ${player.spareHours}h（+仮眠2h）`;
 
-    // 余剰時間 0 なら自動就寝
-    if (player.spareHours <= 0) {
-      setTimeout(() => goSleep(), 1000);
-    } else {
-      showResultActions();
-      showScreen("screen-playing");
-    }
+    showResultActions();
+    showScreen("screen-playing");
     return;
   }
 
@@ -1369,16 +1424,25 @@ function beginDayUnimpl(stage, coreTime) {
 /**
  * @spec docs/specs/SPEC-010-core-time.md §5.3
  * @spec docs/specs/SPEC-020-fixed-sleep-cycle.md §5.4
+ * @spec docs/specs/SPEC-019-stamina-cap.md §5.4.1a 仮眠のコアタイム越えオーバーフロー消費
  * コアタイム消化後の夜の余剰時間を再計算する。
  * 1〜9歳は SPEC-020 の固定就寝時刻を使用、その他は 22:00 を仮の就寝時刻とする。
  * 食事・入浴バッファ 1h を差し引く。
+ * さらに `_napOverflow` がある場合は、それを夜の余剰から一度だけ差し引いてリセット。
  */
 function recomputeSpareHoursAfterCoreTime(coreTime) {
   const sched = getFixedSchedule(player.age);
   const sleepTargetHour = sched ? sched.sleepHour : 22;
   const mealBufferHours = 1;
   const now = player.clockHour + player.clockMinute / 60;
-  const remain = Math.max(0, sleepTargetHour - now - mealBufferHours);
+  let remain = Math.max(0, sleepTargetHour - now - mealBufferHours);
+
+  // @spec SPEC-019 §5.4.1a コアタイム終了後まで食い込んだ仮眠分を夜の余剰から引く
+  if (player._napOverflow && player._napOverflow > 0) {
+    remain = Math.max(0, remain - player._napOverflow);
+    player._napOverflow = 0;
+  }
+
   player.spareHours = +remain.toFixed(1);
 }
 
@@ -1696,6 +1760,7 @@ function nextDay(sleepMode) {
   // 新しい1日の初期化
   player.coreTimeDoneToday = false;
   player.dailyPlays = 0;
+  player._napOverflow = 0;  // @spec SPEC-019 §5.4.1a 前日の持ち越しはしない
 
   const sched = getFixedSchedule(player.age);
   const stage = resolveLifeStage(player.age);
