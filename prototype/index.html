@@ -28,9 +28,16 @@
           @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2 時計円盤（HUD 用ミニサイズ）
           現在時刻を扇形で塗りつぶす。JS の renderClockDial() が <path> を更新する。
         -->
+        <!--
+          @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2.5 3 レイヤー構造
+          帯レイヤー（Free 全体背景 → Sleep → Core）→ 経過塗り（Elapsed Fill）の順で描画
+        -->
         <span class="clock-dial clock-dial-mini" id="hud-clock" title="現在時刻 / 残り余剰時間">
           <svg viewBox="0 0 100 100" class="dial-svg" aria-label="時計円盤">
             <circle cx="50" cy="50" r="46" class="dial-ring"/>
+            <path class="dial-band dial-band-free" d="" fill-rule="evenodd"/>
+            <g class="dial-bands-sleep"></g>
+            <g class="dial-bands-core"></g>
             <path class="dial-fill" d="" fill-rule="evenodd"/>
             <text x="50" y="56" class="dial-time" text-anchor="middle">07:00</text>
           </svg>
@@ -49,28 +56,8 @@
       </div>
     </header>
 
-    <!--
-      @screen S1 起床
-      @spec   docs/specs/SPEC-001-life-stage.md
-      @spec   docs/specs/SPEC-006-bio-rhythm.md
-    -->
-    <section class="screen active" id="screen-wakeup">
-      <div class="scene">
-        <div class="scene-art" id="wakeup-art">🌅</div>
-        <h1 class="scene-title">おはよう！</h1>
-        <p class="scene-sub" id="wakeup-subtitle">あなたは 2歳 / 夏の朝 07:00</p>
+    <!-- 旧 S1 起床画面は廃止。起床ヘッダーは S2 の先頭に統合された（SPEC-002 §1.1） -->
 
-        <div class="card">
-          <div class="card-title">今日のコンディション</div>
-          <div class="gauge-group" id="wu-gauges"></div>
-        </div>
-
-        <div class="msg-box" id="wakeup-msg">よく眠れた。今日も元気だ！</div>
-      </div>
-      <footer class="actions">
-        <button class="btn btn-primary" data-action="start-day">今日を始める</button>
-      </footer>
-    </section>
 
     <!--
       @screen S6 コアタイム（学びごと・仕事）
@@ -107,15 +94,46 @@
     </section>
 
     <!--
-      @screen S2 遊びを選ぶ（ドック型アイコンUI）
-      @spec   docs/specs/SPEC-002-play-selection.md
+      @screen S2 遊びを選ぶ（ドック型アイコンUI・S1統合）
+      @spec   docs/specs/SPEC-002-play-selection.md §1.1, §5.2 起床ヘッダー統合
       @spec   docs/specs/SPEC-007-friends.md
+      旧 S1 起床画面の内容はこの画面先頭の「起床ヘッダー」領域に統合された。
       下部のドックでアイコンをタップすると、上部プレビューに詳細が出る。
       「遊ぶ」ボタン or 同じアイコン再タップで確定して S3 に遷移。
     -->
-    <section class="screen" id="screen-choose">
+    <section class="screen active" id="screen-choose">
       <div class="scene">
-        <h2 class="scene-title small">何して遊ぶ？</h2>
+        <!--
+          @spec docs/specs/SPEC-002-play-selection.md §5.2.1
+          起床ヘッダー：1日の最初の S2 表示時のみ full モード、以降は compact モード。
+          display の切替は renderWakeupHeader() が行う。
+        -->
+        <div id="wakeup-header" class="wakeup-header">
+          <div id="wu-full" class="wakeup-full">
+            <div class="scene-art" id="wu-art">🌅</div>
+            <h2 class="scene-title" id="wu-greet">おはよう！</h2>
+            <p class="scene-sub" id="wu-subtitle">あなたは 2歳 / 夏の朝 07:00</p>
+            <div class="gauge-group" id="wu-gauges"></div>
+            <div class="msg-box" id="wu-msg">よく眠れた。今日も元気だ！</div>
+          </div>
+          <div id="wu-compact" class="wakeup-compact" hidden>
+            <div class="wu-compact-clock">
+              <span class="clock-dial clock-dial-sm" id="wu-compact-dial">
+                <svg viewBox="0 0 100 100" class="dial-svg">
+                  <circle cx="50" cy="50" r="46" class="dial-ring"/>
+                  <path class="dial-band dial-band-free" d="" fill-rule="evenodd"/>
+                  <g class="dial-bands-sleep"></g>
+                  <g class="dial-bands-core"></g>
+                  <path class="dial-fill" d="" fill-rule="evenodd"/>
+                  <text x="50" y="56" class="dial-time" text-anchor="middle">--</text>
+                </svg>
+              </span>
+            </div>
+            <div class="wu-compact-msg" id="wu-compact-msg">おかえり！夜の遊びを選ぼう</div>
+          </div>
+        </div>
+
+        <h2 class="scene-title small" id="choose-prompt">何して遊ぶ？</h2>
         <p class="scene-sub">残り余剰時間：<b id="choose-hours">4</b>h</p>
 
         <!-- プレビュー：初期はプレースホルダー -->
@@ -194,21 +212,38 @@
             <div class="gauge-group" id="result-status-gauges"></div>
             <ul class="kv-list" id="result-status"></ul>
           </div>
-          <!-- @spec SPEC-021 §5.2.7 時計円盤を before/after で2つ並べる -->
+          <!--
+            @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2.5 3 レイヤー / §5.2.7
+            before / after の 2 つ並べで時刻経過を視覚化（帯は両方に表示）
+          -->
           <div class="card">
             <div class="card-title">時間の流れ</div>
             <div class="clock-compare">
               <div class="clock-compare-item">
                 <div class="clock-compare-label">前</div>
                 <span class="clock-dial clock-dial-sm" id="result-clock-before">
-                  <svg viewBox="0 0 100 100" class="dial-svg"><circle cx="50" cy="50" r="46" class="dial-ring"/><path class="dial-fill" d="" fill-rule="evenodd"/><text x="50" y="56" class="dial-time" text-anchor="middle">--</text></svg>
+                  <svg viewBox="0 0 100 100" class="dial-svg">
+                    <circle cx="50" cy="50" r="46" class="dial-ring"/>
+                    <path class="dial-band dial-band-free" d="" fill-rule="evenodd"/>
+                    <g class="dial-bands-sleep"></g>
+                    <g class="dial-bands-core"></g>
+                    <path class="dial-fill" d="" fill-rule="evenodd"/>
+                    <text x="50" y="56" class="dial-time" text-anchor="middle">--</text>
+                  </svg>
                 </span>
               </div>
               <div class="clock-compare-arrow">→</div>
               <div class="clock-compare-item">
                 <div class="clock-compare-label">後</div>
                 <span class="clock-dial clock-dial-sm" id="result-clock-after">
-                  <svg viewBox="0 0 100 100" class="dial-svg"><circle cx="50" cy="50" r="46" class="dial-ring"/><path class="dial-fill" d="" fill-rule="evenodd"/><text x="50" y="56" class="dial-time" text-anchor="middle">--</text></svg>
+                  <svg viewBox="0 0 100 100" class="dial-svg">
+                    <circle cx="50" cy="50" r="46" class="dial-ring"/>
+                    <path class="dial-band dial-band-free" d="" fill-rule="evenodd"/>
+                    <g class="dial-bands-sleep"></g>
+                    <g class="dial-bands-core"></g>
+                    <path class="dial-fill" d="" fill-rule="evenodd"/>
+                    <text x="50" y="56" class="dial-time" text-anchor="middle">--</text>
+                  </svg>
                 </span>
               </div>
             </div>
@@ -218,17 +253,31 @@
         </div>
       </div>
 
-      <!-- 描写フェーズのフッター：スキップのみ -->
+      <!--
+        描写フェーズのフッター：スキップのみ（SPEC-003 §5.8a）
+        結果フェーズには表示しない（スキップは演出用）
+      -->
       <footer class="actions" id="actions-skip">
         <button class="btn btn-secondary" data-action="skip-playing" id="btn-skip-play">スキップ</button>
       </footer>
-      <!-- 結果フェーズのフッター：リプレイ/次へ/終わる -->
-      <footer class="actions actions-stack" id="actions-result" hidden>
+      <!--
+        結果フェーズのフッター（SPEC-003 §5.8 文脈別）
+        actions-result-normal  通常（余剰あり）
+        actions-result-core    朝の遊び終了 → 保育園へ
+        actions-result-sleep   余剰時間 0 → おやすみ
+      -->
+      <footer class="actions actions-stack" id="actions-result-normal" hidden>
         <div class="actions-row">
           <button class="btn btn-primary" data-action="replay-play" id="btn-replay-play">🔁 もう一度遊ぶ (-1h)</button>
           <button class="btn btn-secondary" data-action="choose-next" id="btn-next-play">次の遊びを選ぶ</button>
         </div>
         <button class="btn btn-ghost btn-wide" data-action="go-sleep" id="btn-go-sleep-from-play">今日おわる</button>
+      </footer>
+      <footer class="actions" id="actions-result-core" hidden>
+        <button class="btn btn-primary" data-action="goto-coretime" id="btn-goto-coretime">🏫 保育園に行く</button>
+      </footer>
+      <footer class="actions" id="actions-result-sleep" hidden>
+        <button class="btn btn-primary" data-action="go-sleep" id="btn-result-sleep">🌙 おやすみ</button>
       </footer>
     </section>
 

@@ -30,6 +30,14 @@
 
 * { box-sizing: border-box; }
 
+/*
+ * HTML5 の hidden 属性を確実に効かせる。
+ * display: flex/grid などを付けた要素では hidden 属性が上書きされることがあるため、
+ * どの要素でも [hidden] は display:none を強制する。
+ * @spec SPEC-003 §5.8 文脈別フッター排他表示 / SPEC-002 §5.2.1 起床ヘッダーの full/compact 切替
+ */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -347,6 +355,8 @@ body {
   border-top: 1px solid var(--card-border);
   flex-shrink: 0;
 }
+/* @spec SPEC-003 §5.8 文脈別フッターの排他表示：hidden 属性で必ず display:none が勝つようにする */
+.actions[hidden] { display: none !important; }
 
 .actions-hint {
   justify-content: center;
@@ -540,8 +550,23 @@ body {
   stroke-width: 2;
 }
 .clock-dial .dial-fill {
+  /* @spec SPEC-021 §5.2.5 経過塗り（濃色で現在時刻までを上書き） */
   fill: var(--accent);
   opacity: 0.85;
+}
+
+/* @spec SPEC-021 §5.2.5 3 レイヤー帯 */
+.clock-dial .dial-band-free {
+  fill: #f2cfa0;       /* 淡いオレンジ：遊べる時間帯 */
+  opacity: 0.75;
+}
+.clock-dial .dial-band-sleep {
+  fill: #3a3240;       /* 暗い紫グレー：就寝時間 */
+  opacity: 0.85;
+}
+.clock-dial .dial-band-core {
+  fill: #c3bfb0;       /* グレー：コアタイム（学び／仕事） */
+  opacity: 0.9;
 }
 .clock-dial .dial-time {
   font-size: 22px;
@@ -610,6 +635,47 @@ body {
 .clock-compare-arrow {
   font-size: 22px;
   color: var(--muted);
+}
+
+/* =========================================================================
+ * @spec docs/specs/SPEC-002-play-selection.md §1.1 起床ヘッダー（S1 統合）
+ * S2 の先頭に起床ヘッダーを常時配置。full / compact の 2 モードを持つ。
+ * ========================================================================= */
+.wakeup-header {
+  margin-bottom: 6px;
+}
+.wakeup-full {
+  text-align: center;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--card-border);
+  margin-bottom: 12px;
+  animation: fadeIn 240ms ease-out;
+}
+.wakeup-full .scene-art { margin: 2px 0 2px; font-size: 48px; }
+.wakeup-full .scene-title { font-size: 20px; margin: 2px 0; }
+.wakeup-full .scene-sub { margin: 0 0 8px; }
+.wakeup-full .msg-box { margin: 8px 0 4px; }
+
+.wakeup-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #fff6e0;
+  border: 1px dashed var(--accent-2);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+}
+/* @spec SPEC-002 §5.2.1 full/compact の排他表示：hidden 属性で必ず display:none が勝つようにする */
+.wakeup-full[hidden],
+.wakeup-compact[hidden] { display: none !important; }
+.wu-compact-clock {
+  width: 48px; height: 48px; flex-shrink: 0;
+}
+.wu-compact-clock .clock-dial { width: 48px; height: 48px; }
+.wu-compact-clock .dial-time { font-size: 26px; }
+.wu-compact-msg {
+  font-size: 13px; color: var(--fg); line-height: 1.5;
 }
 
 /* =========================================================================

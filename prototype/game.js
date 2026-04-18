@@ -363,6 +363,9 @@ let pendingPlay = null;     // 進行中の遊び
 let pendingGain = null;     // 予定している獲得値
 let pendingEvent = null;    // 発火したイベント
 let playRAF = null;         // requestAnimationFrame id
+// @spec docs/specs/SPEC-003-play-execution.md §5.8a スキップ連打防止フラグ
+// true のときのみ skipDescription() は有効に動作する。1回スキップされたら false にして以降の連打を無視。
+let skipArmed = false;
 
 // =========================================================================
 // ユーティリティ
@@ -503,6 +506,9 @@ function renderWakeupGauges() {
     <div class="clock-dial clock-dial-lg" id="wu-clock">
       <svg viewBox="0 0 100 100" class="dial-svg">
         <circle cx="50" cy="50" r="46" class="dial-ring"/>
+        <path class="dial-band dial-band-free" d="" fill-rule="evenodd"/>
+        <g class="dial-bands-sleep"></g>
+        <g class="dial-bands-core"></g>
         <path class="dial-fill" d="" fill-rule="evenodd"/>
         <text x="50" y="48" class="dial-time" text-anchor="middle">--</text>
         <text x="50" y="68" class="dial-sub"  text-anchor="middle">--</text>
@@ -530,20 +536,54 @@ function renderWakeupGauges() {
  *  - 真上 (-90度) を 0時、時計回りに 24h で 1周。
  */
 function clockDialPath(time24) {
+  return clockArcPath(0, Math.max(0, Math.min(24, time24)));
+}
+
+/**
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2.5
+ * 開始時刻 t1 → 終了時刻 t2（いずれも 0-24）の弧で扇形を描く。
+ */
+function clockArcPath(t1, t2) {
   const cx = 50, cy = 50, r = 46;
-  const t = Math.max(0, Math.min(24, time24));
-  if (t <= 0) return ""; // 0時 → 真っ白
-  if (t >= 24) {
-    // 円全体：2本の弧で円を描く
+  if (t2 <= t1) return "";
+  if (t1 <= 0 && t2 >= 24) {
     return `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r} Z`;
   }
-  const angle = (t / 24) * 2 * Math.PI - Math.PI / 2; // -90度 開始
-  const endX = cx + r * Math.cos(angle);
-  const endY = cy + r * Math.sin(angle);
-  const largeArc = t > 12 ? 1 : 0;
-  const startX = cx;
-  const startY = cy - r;
-  return `M ${cx} ${cy} L ${startX} ${startY} A ${r} ${r} 0 ${largeArc} 1 ${endX.toFixed(3)} ${endY.toFixed(3)} Z`;
+  const a1 = (t1 / 24) * 2 * Math.PI - Math.PI / 2;
+  const a2 = (t2 / 24) * 2 * Math.PI - Math.PI / 2;
+  const x1 = cx + r * Math.cos(a1);
+  const y1 = cy + r * Math.sin(a1);
+  const x2 = cx + r * Math.cos(a2);
+  const y2 = cy + r * Math.sin(a2);
+  const largeArc = (t2 - t1) > 12 ? 1 : 0;
+  return `M ${cx} ${cy} L ${x1.toFixed(3)} ${y1.toFixed(3)} A ${r} ${r} 0 ${largeArc} 1 ${x2.toFixed(3)} ${y2.toFixed(3)} Z`;
+}
+
+/**
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2.5 3 レイヤー帯
+ * プレイヤーの年齢・固定スケジュール・ライフステージから、
+ * 時計円盤に描くべき Sleep / Core の区間リストを返す。
+ */
+function computeDialBands() {
+  const sched = getFixedSchedule(player.age);
+  const stage = resolveLifeStage(player.age);
+  const coreTime = stage ? stage.coreTime : null;
+
+  // Sleep 帯：固定スケジュールがあれば [0, wakeHour] と [sleepHour, 24]
+  //   10歳以上は暫定値（0-6, 23-24）を置く
+  const sleepBands = [];
+  if (sched) {
+    if (sched.wakeHour > 0) sleepBands.push([0, sched.wakeHour]);
+    if (sched.sleepHour < 24) sleepBands.push([sched.sleepHour, 24]);
+  } else {
+    sleepBands.push([0, 6], [23, 24]);
+  }
+
+  // Core 帯：コアタイムがあれば [start, end]
+  const coreBands = [];
+  if (coreTime) coreBands.push([coreTime.startHour, coreTime.endHour]);
+
+  return { sleepBands, coreBands };
 }
 
 /**
@@ -560,8 +600,28 @@ function renderClockDial(container, opts) {
   if (!container) return;
   const { clockHour = 0, clockMinute = 0, spareHours, showText = true, showSub = false } = opts || {};
   const t = clockHour + clockMinute / 60;
+
+  // @spec SPEC-021 §5.2.5 Free 全体背景（内円全部）
+  const bandFree = container.querySelector(".dial-band-free");
+  if (bandFree) bandFree.setAttribute("d", clockArcPath(0, 24));
+
+  // @spec SPEC-021 §5.2.5 Sleep / Core 帯
+  const bands = computeDialBands();
+  const setBands = (selector, segments, className) => {
+    const group = container.querySelector(selector);
+    if (!group) return;
+    group.innerHTML = segments.map(([t1, t2]) =>
+      `<path class="dial-band ${className}" d="${clockArcPath(t1, t2)}" fill-rule="evenodd"/>`
+    ).join("");
+  };
+  setBands(".dial-bands-sleep", bands.sleepBands, "dial-band-sleep");
+  setBands(".dial-bands-core",  bands.coreBands,  "dial-band-core");
+
+  // 経過塗り（現在時刻まで）
   const path = container.querySelector(".dial-fill");
   if (path) path.setAttribute("d", clockDialPath(t));
+
+  // テキスト
   const timeEl = container.querySelector(".dial-time");
   if (timeEl) {
     if (showText) {
@@ -612,8 +672,16 @@ function resolveCoreTime(age) {
  * @spec docs/specs/SPEC-021-parameter-gauge-ui.md ゲージ表示
  * 前日の状態と生活リズムに基づいて、起床画面のメッセージとコンディションを表示する。
  */
-function renderWakeup() {
-  byId("wakeup-subtitle").textContent =
+/**
+ * @screen S2 統合起床ヘッダー（full モード）
+ * @spec docs/specs/SPEC-002-play-selection.md §1.1, §5.2.1
+ * @spec docs/specs/SPEC-020-fixed-sleep-cycle.md 低年齢の起床時刻表示
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md ゲージ表示
+ *
+ * 朝一番（その日最初の S2）で呼ばれる。時計円盤・体力ゲージ・挨拶を表示。
+ */
+function renderWakeupFull() {
+  byId("wu-subtitle").textContent =
     `あなたは ${player.age}歳 / ${SEASON_LABEL[player.season]}の朝 ${fmtTime(player.clockHour, player.clockMinute)}`;
 
   const sched = getFixedSchedule(player.age);
@@ -628,11 +696,43 @@ function renderWakeup() {
   if (player.stamina < player.staminaCap * 0.3) {
     msg += "\n体がだるい。体調不良かもしれない。";
   }
-  byId("wakeup-msg").textContent = msg;
-  byId("wakeup-art").textContent = player.bioRhythm >= 60 ? "🌅" : "😵‍💫";
+  byId("wu-msg").textContent = msg;
+  byId("wu-art").textContent = player.bioRhythm >= 60 ? "🌅" : "😵‍💫";
 
   renderWakeupGauges();
-  renderHUD();
+}
+
+/**
+ * @screen S2 統合起床ヘッダー（compact モード）
+ * @spec docs/specs/SPEC-002-play-selection.md §5.2.1
+ * コアタイム後の夜の遊びなど、2回目以降の S2 表示で使う小さな帯。
+ */
+function renderWakeupCompact() {
+  renderClockDial(byId("wu-compact-dial"), {
+    clockHour: player.clockHour,
+    clockMinute: player.clockMinute,
+    showText: true,
+  });
+  const msg = player.coreTimeDoneToday
+    ? "おかえり！夜の遊びを選ぼう"
+    : "次の遊びを選んでね";
+  byId("wu-compact-msg").textContent = msg;
+}
+
+/**
+ * @screen S2 統合起床ヘッダー全体を描画する
+ * @spec docs/specs/SPEC-002-play-selection.md §5.2.1
+ * 朝一（dailyPlays===0 && !coreTimeDoneToday）なら full、それ以外は compact。
+ */
+function renderWakeupHeader() {
+  const isMorning = (!player.coreTimeDoneToday && player.dailyPlays === 0);
+  byId("wu-full").hidden = !isMorning;
+  byId("wu-compact").hidden = isMorning;
+  byId("choose-prompt").textContent = isMorning
+    ? "何して遊ぶ？（朝の時間）"
+    : (player.coreTimeDoneToday ? "何して遊ぶ？（夜の時間）" : "何して遊ぶ？");
+  if (isMorning) renderWakeupFull();
+  else           renderWakeupCompact();
 }
 
 // =========================================================================
@@ -677,6 +777,9 @@ let selectedPlayId = null;
  * 実行可能な遊びを左、ロック中を右に配置。`unlockRequired` で未解禁は非表示。
  */
 function renderChooseScreen() {
+  // @spec SPEC-002 §5.2.1 S2 上部の起床ヘッダーを常に更新
+  renderWakeupHeader();
+
   byId("choose-hours").textContent = player.spareHours.toFixed(1).replace(".0", "");
   selectedPlayId = null;
 
@@ -812,7 +915,13 @@ function startPlay(play) {
   byId("result-panel").hidden = true;
 
   byId("actions-skip").hidden = false;
-  byId("actions-result").hidden = true;
+  // @spec SPEC-003 §5.8a スキップ連打防止：各開始時にリセット
+  skipArmed = true;
+  byId("btn-skip-play").disabled = false;
+  byId("btn-skip-play").textContent = "スキップ";
+  byId("actions-result-normal").hidden = true;
+  byId("actions-result-core").hidden = true;
+  byId("actions-result-sleep").hidden = true;
 
   showScreen("screen-playing");
 
@@ -825,6 +934,11 @@ function startPlay(play) {
     if (pct < 100) {
       playRAF = requestAnimationFrame(tick);
     } else {
+      playRAF = null;
+      // @spec SPEC-003 §5.8a 自然終了時にも skipArmed を落とし、以後のスキップクリックを無視
+      skipArmed = false;
+      const btn = byId("btn-skip-play");
+      if (btn) btn.disabled = true;
       finishDescription();
     }
   };
@@ -834,10 +948,19 @@ function startPlay(play) {
 /**
  * @screen S3 遊びの描写
  * @spec docs/specs/SPEC-003-play-execution.md §5.1
+ * @spec docs/specs/SPEC-003-play-execution.md §5.8a スキップ連打防止
+ *
  * スキップボタン：描写演出をカットして結果へ進む。
+ * 連打しても二重実行されないよう skipArmed フラグで防御する。
  */
 function skipDescription() {
+  if (!skipArmed) return;   // 連打防止
+  skipArmed = false;
+  // UI 側でも即座に disabled にして視覚的にも2度目のクリックを抑止
+  const btn = byId("btn-skip-play");
+  if (btn) btn.disabled = true;
   if (playRAF) cancelAnimationFrame(playRAF);
+  playRAF = null;
   byId("playing-bar").style.width = "100%";
   finishDescription();
 }
@@ -988,40 +1111,50 @@ function finalizePlay() {
 
 /**
  * @screen S3 結果フェーズのフッター切替
- * @spec docs/specs/SPEC-003-play-execution.md §5.7 §5.8
- * 「もう一度遊ぶ」「次の遊びを選ぶ or コアタイム or 就寝」「今日おわる」の状態を更新する。
- * 「次の遊びを選ぶ」ボタンは文脈で変化：
- *   - 余剰あり & 朝の遊び中（コアタイム前）→ "次の遊びを選ぶ"
- *   - 余剰0 & 朝の遊び中 → "保育園へ行く"（S6へ）
- *   - 余剰0 & 保育園済み → "おやすみ"（S5へ）
+ * @spec docs/specs/SPEC-003-play-execution.md §5.8 文脈別フッター
+ * @spec docs/specs/SPEC-003-play-execution.md §5.8a スキップボタンは描写フェーズ専用
+ *
+ * 3 つのフッター領域を排他表示する：
+ *   actions-result-normal  通常：🔁もう一度 ＋ 次の遊び ＋ 今日おわる
+ *   actions-result-core    朝の遊び終了→🏫保育園へ（1ボタン）
+ *   actions-result-sleep   余剰0→🌙おやすみ（1ボタン）
  */
 function showResultActions() {
+  // スキップボタンは必ず非表示（SPEC-003 §5.8a）
   byId("actions-skip").hidden = true;
-  byId("actions-result").hidden = false;
 
-  // 「もう一度遊ぶ」の有効判定（SPEC-003 §5.7）
-  const replayBtn = byId("btn-replay-play");
-  if (pendingPlay) {
-    const avail = isPlayAvailable(pendingPlay);
-    replayBtn.textContent = `🔁 もう一度遊ぶ（-${pendingPlay.timeCost}h）`;
-    replayBtn.disabled = !avail.ok;
-  }
-
-  // 「次の遊び」ボタンは常に有効、ラベルを文脈に応じて変える（goChooseFromToday が判定）
-  const nextBtn = byId("btn-next-play");
   const stage = resolveLifeStage(player.age);
   const coreTime = stage ? stage.coreTime : null;
-  nextBtn.disabled = false;
-  if (player.spareHours <= 0 && coreTime && stage.implemented && !player.coreTimeDoneToday) {
-    nextBtn.textContent = `🏫 ${coreTime.label}へ`;
-    toast(`朝の遊び時間おわり。${coreTime.label}に行こう`);
-  } else if (player.spareHours <= 0) {
-    nextBtn.textContent = "🌙 おやすみ";
-    toast("余剰時間がなくなった。夜になる…");
-  } else if (coreTime && stage.implemented && !player.coreTimeDoneToday) {
-    nextBtn.textContent = "次の遊びを選ぶ";
-  } else {
-    nextBtn.textContent = "次の遊びを選ぶ";
+  const coreTimeAvailable = !!(coreTime && stage.implemented && !player.coreTimeDoneToday);
+
+  // 文脈判定
+  const ctxNormal  = "normal";
+  const ctxCore    = "core";
+  const ctxSleep   = "sleep";
+  let ctx = ctxNormal;
+  if (player.spareHours <= 0) {
+    ctx = coreTimeAvailable ? ctxCore : ctxSleep;
+  }
+
+  byId("actions-result-normal").hidden = (ctx !== ctxNormal);
+  byId("actions-result-core").hidden   = (ctx !== ctxCore);
+  byId("actions-result-sleep").hidden  = (ctx !== ctxSleep);
+
+  if (ctx === ctxNormal) {
+    // @spec SPEC-003 §5.7 リピート可否
+    const replayBtn = byId("btn-replay-play");
+    if (pendingPlay) {
+      const avail = isPlayAvailable(pendingPlay);
+      replayBtn.textContent = `🔁 もう一度遊ぶ（-${pendingPlay.timeCost}h）`;
+      replayBtn.disabled = !avail.ok;
+    }
+    byId("btn-next-play").disabled = false;
+    byId("btn-next-play").textContent = "次の遊びを選ぶ";
+  } else if (ctx === ctxCore) {
+    byId("btn-goto-coretime").textContent = `🏫 ${coreTime.label}に行く`;
+    toast(`時間だ。${coreTime.label}に行こう`);
+  } else if (ctx === ctxSleep) {
+    toast("今日はもう遊べない。おやすみの時間だ");
   }
 }
 
@@ -1193,34 +1326,30 @@ function renderResultPanel(before) {
  *       余剰時間を「コアタイム開始 − 現在時刻」でセット
  *     - それ以外 → S6 コアタイム画面へ直行
  */
+/**
+ * @deprecated v2: 旧「今日を始める」ボタンで使われていた関数。
+ * S1 起床画面の廃止に伴い呼び出されなくなったため廃止予定。
+ * 現在は `goChooseFromToday()` が朝の遊び or コアタイム or 就寝の分岐を内包する。
+ */
 function beginDay() {
+  goChooseFromToday();
+}
+
+/**
+ * @screen S3 → S6 コアタイム画面
+ * @spec docs/specs/SPEC-003-play-execution.md §5.8 「保育園に行く」ボタン押下
+ * 結果フェーズから直接コアタイムへ遷移する。時刻を coreTime.startHour に揃える。
+ */
+function gotoCoreTimeFromResult() {
   const stage = resolveLifeStage(player.age);
   const coreTime = stage ? stage.coreTime : null;
-
-  if (!coreTime) {
-    // 老後：コアタイム無し。全時間を自由に使える。
-    player.spareHoursMax = 14;
-    player.spareHours = 14;
-    goChooseFromToday();
-    return;
+  if (!coreTime || !stage.implemented) { goChooseFromToday(); return; }
+  // 朝の余剰時間を 0 にクランプし、時刻をコアタイム開始まで早送り
+  if (player.clockHour + player.clockMinute / 60 < coreTime.startHour) {
+    player.clockHour = Math.floor(coreTime.startHour);
+    player.clockMinute = Math.round((coreTime.startHour % 1) * 60);
   }
-
-  if (!stage.implemented) {
-    beginDayUnimpl(stage, coreTime);
-    return;
-  }
-
-  // 実装済み（保育園）
-  const now = player.clockHour + player.clockMinute / 60;
-  if (!player.coreTimeDoneToday && now < coreTime.startHour) {
-    // 朝の遊び時間へ
-    const morningHours = +(coreTime.startHour - now).toFixed(1);
-    player.spareHours = morningHours;
-    goChooseFromToday();
-    return;
-  }
-
-  // 既に朝の遊び終了、またはコアタイム時間到来 → コアタイム画面
+  player.spareHours = 0;
   renderCoreTime(stage);
   showScreen("screen-coretime");
 }
@@ -1624,8 +1753,9 @@ function nextDay(sleepMode) {
   else if (!sched && sleepMode === "latenight") toast("夜更かしで生活リズムが乱れた…");
   else if (!sched && sleepMode === "early") toast("早寝でリズム回復！");
 
-  renderWakeup();
-  showScreen("screen-wakeup");
+  // @spec SPEC-002 §1.1 翌日も S2 に直行（起床ヘッダーで状態を表示）
+  renderHUD();
+  goChooseFromToday();
 }
 
 // =========================================================================
@@ -1637,11 +1767,12 @@ document.addEventListener("click", (e) => {
   if (!t || t.disabled) return;
   const a = t.dataset.action;
   switch (a) {
-    case "start-day":
-      beginDay();
-      break;
     case "close-coretime":
       closeCoreTime();
+      break;
+    case "goto-coretime":
+      // @spec SPEC-003 §5.8 結果フェーズから「保育園へ行く」でコアタイムへ
+      gotoCoreTimeFromResult();
       break;
     case "skip-playing":
       skipDescription();
@@ -1685,5 +1816,6 @@ player.staminaBaseCap = staminaBaseCapForAge(player.age);
 player.staminaCap = player.staminaBaseCap + (player.staminaBonusCap || 0);
 player.stamina = Math.min(player.stamina, player.staminaCap);
 
-renderWakeup();
+// @spec SPEC-002 §1.1 起動直後は S2 に直接出現（旧 S1 起床画面を経由しない）
 renderHUD();
+goChooseFromToday();
