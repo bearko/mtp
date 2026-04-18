@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>カネとジカンとジョウネツと - プロトタイプ</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="phone-frame">
+    <!-- 共通HUD -->
+    <header id="hud" class="hud">
+      <div class="hud-row">
+        <span id="hud-age">5歳</span>
+        <span id="hud-date">3日目(夏) 06:30</span>
+      </div>
+      <div class="hud-row hud-stats">
+        <span>❤️ <span id="hud-stamina">80</span></span>
+        <span>🌙 <span id="hud-rhythm">90</span></span>
+        <span>💰 ¥<span id="hud-money">0</span></span>
+        <span>⏳ <span id="hud-hours">6</span>h</span>
+        <span>👥 <span id="hud-friends">2</span></span>
+        <span>🔥 <span id="hud-passion">0</span></span>
+      </div>
+    </header>
+
+    <!-- S1. 起床 -->
+    <section class="screen active" id="screen-wakeup">
+      <div class="scene">
+        <div class="scene-art" id="wakeup-art">🌅</div>
+        <h1 class="scene-title">おはよう！</h1>
+        <p class="scene-sub" id="wakeup-subtitle">あなたは 5歳 / 夏の朝 06:30</p>
+
+        <div class="card">
+          <div class="card-title">今日のコンディション</div>
+          <ul class="kv-list">
+            <li><span>体力</span><b id="wu-stamina">80 / 100</b></li>
+            <li><span>生活リズム</span><b id="wu-rhythm">90 / 100</b></li>
+            <li><span>友人数</span><b id="wu-friends">2 人</b></li>
+            <li><span>余剰時間</span><b id="wu-hours">6 h</b></li>
+          </ul>
+        </div>
+
+        <div class="msg-box" id="wakeup-msg">よく眠れた。今日も元気だ！</div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-primary" data-action="start-day">今日を始める</button>
+      </footer>
+    </section>
+
+    <!-- S2. 遊びを選ぶ -->
+    <section class="screen" id="screen-choose">
+      <div class="scene">
+        <h2 class="scene-title small">何して遊ぶ？</h2>
+        <p class="scene-sub">残り余剰時間：<b id="choose-hours">6</b>h</p>
+        <div id="play-list" class="play-list"></div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-secondary" data-action="do-nothing">何もしない（1h休む）</button>
+        <button class="btn btn-ghost" data-action="go-sleep">今日をおわる</button>
+      </footer>
+    </section>
+
+    <!-- S3. 遊びの描写 -->
+    <section class="screen" id="screen-playing">
+      <div class="scene">
+        <div class="scene-art large" id="playing-icon">🎮</div>
+        <h2 class="scene-title" id="playing-name">砂場遊び</h2>
+        <p class="scene-desc" id="playing-desc">あなたは砂場で山を作り始めた…</p>
+
+        <div class="progress-wrap">
+          <div class="progress">
+            <div class="progress-bar" id="playing-bar"></div>
+          </div>
+          <div class="progress-label" id="playing-timer">遊び進行中…</div>
+        </div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-secondary" data-action="skip-playing">スキップ</button>
+      </footer>
+    </section>
+
+    <!-- S4. ランダムイベント -->
+    <section class="screen" id="screen-event">
+      <div class="scene">
+        <div class="scene-art" id="event-icon">⚡</div>
+        <h2 class="scene-title small" id="event-title">ランダムイベント</h2>
+        <p class="scene-desc" id="event-desc">近所の子に話しかけられた！</p>
+        <div class="card" id="event-effects"></div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-primary" data-action="close-event">なるほど</button>
+      </footer>
+    </section>
+
+    <!-- S5. 遊び終了 -->
+    <section class="screen" id="screen-finish">
+      <div class="scene">
+        <div class="scene-art">🎉</div>
+        <h2 class="scene-title">遊び終了！</h2>
+        <p class="scene-sub" id="finish-playname">🏖 砂場遊び (1h)</p>
+
+        <div class="card">
+          <div class="card-title">獲得した原体験</div>
+          <ul class="kv-list" id="finish-gain"></ul>
+        </div>
+        <div class="card" id="finish-event-card" hidden>
+          <div class="card-title">イベント補正</div>
+          <ul class="kv-list" id="finish-event"></ul>
+        </div>
+        <div class="msg-box">
+          ジョウネツ +<span id="finish-passion">3</span>
+        </div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-primary" data-action="apply-params">次へ</button>
+      </footer>
+    </section>
+
+    <!-- S6. パラメーター反映 -->
+    <section class="screen" id="screen-params">
+      <div class="scene">
+        <div class="scene-art">📈</div>
+        <h2 class="scene-title">パラメーター反映</h2>
+        <div class="card">
+          <div class="card-title">原体験Lv</div>
+          <ul class="kv-list" id="params-exp"></ul>
+        </div>
+        <div class="card">
+          <div class="card-title">ステータス</div>
+          <ul class="kv-list" id="params-status"></ul>
+        </div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-primary" data-action="advance-time">次へ</button>
+      </footer>
+    </section>
+
+    <!-- S7. 時間経過 -->
+    <section class="screen" id="screen-time">
+      <div class="scene">
+        <div class="scene-art">🕒</div>
+        <h2 class="scene-title small">時間が過ぎた</h2>
+        <p class="scene-sub" id="time-transition">06:30 → 07:30</p>
+        <div class="card">
+          <div class="card-title">今日の残り余剰時間</div>
+          <div class="progress">
+            <div class="progress-bar" id="time-bar"></div>
+          </div>
+          <p class="scene-sub" id="time-remaining">5 h</p>
+        </div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-primary" data-action="choose-next">次の遊びを選ぶ</button>
+        <button class="btn btn-secondary" data-action="go-sleep">今日をおわる</button>
+      </footer>
+    </section>
+
+    <!-- S8. 就寝 -->
+    <section class="screen" id="screen-sleep">
+      <div class="scene">
+        <div class="scene-art">🌙</div>
+        <h2 class="scene-title">夜になった</h2>
+
+        <div class="card">
+          <div class="card-title">今日のまとめ</div>
+          <ul class="kv-list" id="sleep-summary"></ul>
+        </div>
+
+        <p class="scene-sub">いつ寝る？</p>
+        <div class="sleep-options">
+          <button class="sleep-card" data-sleep="early">
+            <div class="sleep-title">🛌 早寝 (21:00)</div>
+            <div class="sleep-effect">リズム +10 / 体力 +5</div>
+          </button>
+          <button class="sleep-card" data-sleep="normal">
+            <div class="sleep-title">😴 普通 (23:00)</div>
+            <div class="sleep-effect">リズム 変化なし</div>
+          </button>
+          <button class="sleep-card" data-sleep="latenight">
+            <div class="sleep-title">🌃 夜更かし (25:00)</div>
+            <div class="sleep-effect">リズム -15 / 体力 -10<br/>（深夜遊びが追加できる）</div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- トースト -->
+    <div id="toast" class="toast" hidden></div>
+  </div>
+
+  <script src="./game.js"></script>
+</body>
+</html>
