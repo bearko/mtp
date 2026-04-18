@@ -23,17 +23,26 @@
       <div class="hud-row">
         <span id="hud-age">2歳</span>
         <span id="hud-stage" title="ライフステージ">🏫 保育園</span>
-        <span id="hud-date">1日目(夏) 07:00</span>
+        <span id="hud-date">1日目(夏)</span>
+        <!--
+          @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2 時計円盤（HUD 用ミニサイズ）
+          現在時刻を扇形で塗りつぶす。JS の renderClockDial() が <path> を更新する。
+        -->
+        <span class="clock-dial clock-dial-mini" id="hud-clock" title="現在時刻 / 残り余剰時間">
+          <svg viewBox="0 0 100 100" class="dial-svg" aria-label="時計円盤">
+            <circle cx="50" cy="50" r="46" class="dial-ring"/>
+            <path class="dial-fill" d="" fill-rule="evenodd"/>
+            <text x="50" y="56" class="dial-time" text-anchor="middle">07:00</text>
+          </svg>
+        </span>
       </div>
       <div class="hud-row hud-stats">
         <span class="hud-gauge" title="体力">
-          <span class="hud-gauge-label">❤️ <span id="hud-stamina">8</span>/<span id="hud-stamina-cap">15</span></span>
-          <span class="gauge-mini"><span class="gauge-mini-bar" id="hud-stamina-bar"></span></span>
+          <!-- @spec SPEC-021 §5.1.2 起動時に "currentValue/cap" の値が一致して満タン表示になること -->
+          <span class="hud-gauge-label">❤️ <span id="hud-stamina">15</span>/<span id="hud-stamina-cap">15</span></span>
+          <span class="gauge-mini"><span class="gauge-mini-bar" id="hud-stamina-bar" style="width:100%"></span></span>
         </span>
-        <span class="hud-gauge" title="余剰時間">
-          <span class="hud-gauge-label">⏳ <span id="hud-hours">4</span>h</span>
-          <span class="gauge-mini"><span class="gauge-mini-bar" id="hud-hours-bar"></span></span>
-        </span>
+        <span title="余剰時間">⏳ <span id="hud-hours">2</span>h</span>
         <span title="友人数">👥 <span id="hud-friends">2</span></span>
         <span title="ジョウネツ">🔥 <span id="hud-passion">0</span></span>
         <span title="所持金">💰 ¥<span id="hud-money">0</span></span>
@@ -185,12 +194,25 @@
             <div class="gauge-group" id="result-status-gauges"></div>
             <ul class="kv-list" id="result-status"></ul>
           </div>
+          <!-- @spec SPEC-021 §5.2.7 時計円盤を before/after で2つ並べる -->
           <div class="card">
             <div class="card-title">時間の流れ</div>
-            <ul class="kv-list">
-              <li><span>🕒 時刻</span><b id="result-clock">07:00 → 08:00</b></li>
-              <li><span>⏳ 余剰時間</span><b id="result-spare">4h → 3h</b></li>
-            </ul>
+            <div class="clock-compare">
+              <div class="clock-compare-item">
+                <div class="clock-compare-label">前</div>
+                <span class="clock-dial clock-dial-sm" id="result-clock-before">
+                  <svg viewBox="0 0 100 100" class="dial-svg"><circle cx="50" cy="50" r="46" class="dial-ring"/><path class="dial-fill" d="" fill-rule="evenodd"/><text x="50" y="56" class="dial-time" text-anchor="middle">--</text></svg>
+                </span>
+              </div>
+              <div class="clock-compare-arrow">→</div>
+              <div class="clock-compare-item">
+                <div class="clock-compare-label">後</div>
+                <span class="clock-dial clock-dial-sm" id="result-clock-after">
+                  <svg viewBox="0 0 100 100" class="dial-svg"><circle cx="50" cy="50" r="46" class="dial-ring"/><path class="dial-fill" d="" fill-rule="evenodd"/><text x="50" y="56" class="dial-time" text-anchor="middle">--</text></svg>
+                </span>
+              </div>
+            </div>
+            <p class="scene-sub" id="result-spare" style="margin: 8px 0 0;">⏳ 余剰時間 4h → 3h</p>
           </div>
           <div class="msg-box" id="result-passion">ジョウネツ +3</div>
         </div>

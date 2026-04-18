@@ -425,12 +425,13 @@ function majorGainCategory(gain) {
 /**
  * @spec docs/specs/SPEC-001-life-stage.md §6
  * @spec docs/specs/SPEC-010-core-time.md §6
- * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.7 HUDミニゲージ
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.1.2 体力は起動時に 100% 表示
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2 時計円盤で現在時刻を表示
  * 共通HUDの描画。全画面共通。
  */
 function renderHUD() {
   byId("hud-age").textContent = `${player.age}歳`;
-  byId("hud-date").textContent = `${player.day}日目(${SEASON_LABEL[player.season]}) ${fmtTime(player.clockHour, player.clockMinute)}`;
+  byId("hud-date").textContent = `${player.day}日目(${SEASON_LABEL[player.season]})`;
   byId("hud-stamina").textContent = Math.max(0, Math.floor(player.stamina));
   byId("hud-stamina-cap").textContent = Math.floor(player.staminaCap || 0);
   byId("hud-money").textContent = player.money;
@@ -438,9 +439,16 @@ function renderHUD() {
   byId("hud-friends").textContent = player.friends;
   byId("hud-passion").textContent = player.passion;
 
-  // HUDミニゲージ
+  // HUD 体力ミニゲージ（staminaCap を分母に、起動時は 100% 満タン）
   applyGaugePercent(byId("hud-stamina-bar"), player.stamina, player.staminaCap);
-  applyGaugePercent(byId("hud-hours-bar"),   player.spareHours, player.spareHoursMax || 1);
+
+  // HUD 時計円盤（余剰時間ゲージを置換）
+  renderClockDial(byId("hud-clock"), {
+    clockHour: player.clockHour,
+    clockMinute: player.clockMinute,
+    spareHours: player.spareHours,
+    showText: false,
+  });
 
   const stage = resolveLifeStage(player.age);
   const stageEl = byId("hud-stage");
@@ -492,13 +500,87 @@ function renderWakeupGauges() {
   const root = byId("wu-gauges");
   if (!root) return;
   root.innerHTML = `
+    <div class="clock-dial clock-dial-lg" id="wu-clock">
+      <svg viewBox="0 0 100 100" class="dial-svg">
+        <circle cx="50" cy="50" r="46" class="dial-ring"/>
+        <path class="dial-fill" d="" fill-rule="evenodd"/>
+        <text x="50" y="48" class="dial-time" text-anchor="middle">--</text>
+        <text x="50" y="68" class="dial-sub"  text-anchor="middle">--</text>
+      </svg>
+    </div>
     <div class="gauge" id="wu-g-stamina"></div>
-    <div class="gauge" id="wu-g-time"></div>
     <div class="gauge" id="wu-g-rhythm"></div>
   `;
+  renderClockDial(byId("wu-clock"), {
+    clockHour: player.clockHour,
+    clockMinute: player.clockMinute,
+    spareHours: player.spareHours,
+    showText: true,
+    showSub: true,
+  });
   renderGauge(byId("wu-g-stamina"), { current: player.stamina, max: player.staminaCap, label: "❤️ 体力", kind: "stamina" });
-  renderGauge(byId("wu-g-time"),    { current: player.spareHours, max: player.spareHoursMax, label: "⏳ 余剰時間", kind: "time" });
   renderGauge(byId("wu-g-rhythm"),  { current: player.bioRhythm, max: 100, label: "🌙 生活リズム", kind: "stamina" });
+}
+
+/**
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2.4
+ * 時刻(0〜24) から「中心→真上→時計回りに time 分の扇形」の SVG path を作る。
+ *  - 中心：(cx, cy) = (50, 50)
+ *  - 半径：r = 46（外枠と同じ）
+ *  - 真上 (-90度) を 0時、時計回りに 24h で 1周。
+ */
+function clockDialPath(time24) {
+  const cx = 50, cy = 50, r = 46;
+  const t = Math.max(0, Math.min(24, time24));
+  if (t <= 0) return ""; // 0時 → 真っ白
+  if (t >= 24) {
+    // 円全体：2本の弧で円を描く
+    return `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r} Z`;
+  }
+  const angle = (t / 24) * 2 * Math.PI - Math.PI / 2; // -90度 開始
+  const endX = cx + r * Math.cos(angle);
+  const endY = cy + r * Math.sin(angle);
+  const largeArc = t > 12 ? 1 : 0;
+  const startX = cx;
+  const startY = cy - r;
+  return `M ${cx} ${cy} L ${startX} ${startY} A ${r} ${r} 0 ${largeArc} 1 ${endX.toFixed(3)} ${endY.toFixed(3)} Z`;
+}
+
+/**
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2 時計円盤の描画
+ * SVG の path.d と text を更新する。
+ *
+ * options:
+ *   clockHour, clockMinute : 現在時刻（0-24, 0-59）
+ *   spareHours             : 残り余剰時間（h）
+ *   showText               : 中心の時刻テキストを表示するか
+ *   showSub                : 中心下の「残り Xh」テキストを表示するか
+ */
+function renderClockDial(container, opts) {
+  if (!container) return;
+  const { clockHour = 0, clockMinute = 0, spareHours, showText = true, showSub = false } = opts || {};
+  const t = clockHour + clockMinute / 60;
+  const path = container.querySelector(".dial-fill");
+  if (path) path.setAttribute("d", clockDialPath(t));
+  const timeEl = container.querySelector(".dial-time");
+  if (timeEl) {
+    if (showText) {
+      timeEl.textContent = fmtTime(clockHour, clockMinute);
+      timeEl.style.display = "";
+    } else {
+      timeEl.style.display = "none";
+    }
+  }
+  const subEl = container.querySelector(".dial-sub");
+  if (subEl) {
+    if (showSub && spareHours !== undefined) {
+      const s = Number(spareHours).toFixed(1).replace(".0", "");
+      subEl.textContent = `残り ${s}h`;
+      subEl.style.display = "";
+    } else {
+      subEl.style.display = "none";
+    }
+  }
 }
 
 /**
@@ -838,6 +920,8 @@ function finalizePlay() {
     bioRhythm: player.bioRhythm,
     passion: player.passion,
     clock: fmtTime(player.clockHour, player.clockMinute),
+    clockHour: player.clockHour,
+    clockMinute: player.clockMinute,
     spareHours: player.spareHours,
   };
 
@@ -980,9 +1064,13 @@ function handleStaminaDepleted() {
     toast(`体力ゼロ…2時間お昼寝した（体力+${recover}）`, 2400);
     renderHUD();
 
-    // 結果フェーズの表示更新（時刻と体力の再描画）
-    byId("result-clock").textContent = `${byId("result-clock").textContent.split("→")[0]}→ ${fmtTime(player.clockHour, player.clockMinute)} (+仮眠2h)`;
-    byId("result-spare").textContent = `余剰時間 ${player.spareHours}h`;
+    // 結果フェーズの時計円盤を強制睡眠後の時刻に更新
+    renderClockDial(byId("result-clock-after"), {
+      clockHour: player.clockHour,
+      clockMinute: player.clockMinute,
+      showText: true,
+    });
+    byId("result-spare").textContent = `⏳ 余剰時間 ${player.spareHours}h（+仮眠2h）`;
 
     // 余剰時間 0 なら自動就寝
     if (player.spareHours <= 0) {
@@ -1065,9 +1153,19 @@ function renderResultPanel(before) {
   }
   byId("result-status").innerHTML = statusRows.join("");
 
-  // ---- 時間経過 ----
-  byId("result-clock").textContent = `${before.clock} → ${fmtTime(player.clockHour, player.clockMinute)}`;
-  byId("result-spare").textContent = `${before.spareHours}h → ${player.spareHours}h`;
+  // ---- 時間経過：before/after の時計円盤 ----
+  // @spec SPEC-021 §5.2.7 S3 の「時間の流れ」カードで before / after を並べる
+  renderClockDial(byId("result-clock-before"), {
+    clockHour: before.clockHour,
+    clockMinute: before.clockMinute,
+    showText: true,
+  });
+  renderClockDial(byId("result-clock-after"), {
+    clockHour: player.clockHour,
+    clockMinute: player.clockMinute,
+    showText: true,
+  });
+  byId("result-spare").textContent = `⏳ 余剰時間 ${before.spareHours}h → ${player.spareHours}h`;
 
   // ---- 没頭ボーナス表示 ----
   const passionMsg = pendingGain && pendingGain.passion
