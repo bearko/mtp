@@ -21,6 +21,7 @@
     <header id="hud" class="hud">
       <div class="hud-row">
         <span id="hud-age">5歳</span>
+        <span id="hud-stage" title="ライフステージ">🏫 保育園</span>
         <span id="hud-date">3日目(夏) 06:30</span>
       </div>
       <div class="hud-row hud-stats">
@@ -58,6 +59,40 @@
       </div>
       <footer class="actions">
         <button class="btn btn-primary" data-action="start-day">今日を始める</button>
+      </footer>
+    </section>
+
+    <!--
+      @screen S6 コアタイム（学びごと・仕事）
+      @spec   docs/specs/SPEC-010-core-time.md  ライフステージ共通フレームワーク
+      @spec   docs/specs/SPEC-011-nursery.md    保育園（1-3歳）の実装
+      このプロト段階では、1-3歳の保育園コアタイムだけが実装されている。
+      他のライフステージ（幼稚園〜社会人）は SPEC-012〜SPEC-018 で定義されているが未実装。
+    -->
+    <section class="screen" id="screen-coretime">
+      <div class="scene">
+        <div class="scene-art" id="ct-icon">🏫</div>
+        <h2 class="scene-title" id="ct-title">保育園に行ってきた</h2>
+        <p class="scene-sub" id="ct-subtitle">09:00 〜 16:00</p>
+
+        <div class="card">
+          <div class="card-title">今日の一日</div>
+          <ul class="kv-list" id="ct-timeline"></ul>
+        </div>
+
+        <div class="card" id="ct-discovery-card" hidden>
+          <div class="card-title">✨ 発見！</div>
+          <p id="ct-discovery-text" class="scene-desc" style="margin:4px 0 10px;text-align:left;"></p>
+          <ul class="kv-list" id="ct-discovery-effects"></ul>
+        </div>
+
+        <div class="card">
+          <div class="card-title">獲得したもの</div>
+          <ul class="kv-list" id="ct-gain"></ul>
+        </div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-primary" data-action="close-coretime">家に帰る</button>
       </footer>
     </section>
 
