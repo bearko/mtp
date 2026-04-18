@@ -7,8 +7,8 @@
 | 仕様ID | 機能名 | ステータス | 対応ファイル | 最終更新 |
 |---|---|---|---|---|
 | [SPEC-001](./SPEC-001-life-stage.md) | ライフステージ / プレイヤー状態 | Active | `prototype/game.js` (DEFAULT_PLAYER, LIFE_STAGES) | 2026-04-18 |
-| [SPEC-002](./SPEC-002-play-selection.md) | 遊び選択（ドック型アイコンUI） | Active | `prototype/game.js` (PLAYS, isPlayAvailable, renderChooseScreen, selectPlay, confirmPlay) | 2026-04-18 |
-| [SPEC-003](./SPEC-003-play-execution.md) | 遊びの描写と結果統合（もう一度遊ぶ対応） | Active | `prototype/game.js` (startPlay, finalizePlay, replayPlay) | 2026-04-18 |
+| [SPEC-002](./SPEC-002-play-selection.md) | 遊び選択（ドック型UI・起床画面統合） | Active | `prototype/game.js` (PLAYS, isPlayAvailable, renderChooseScreen, selectPlay, confirmPlay, renderWakeupHeader) | 2026-04-18 |
+| [SPEC-003](./SPEC-003-play-execution.md) | 遊びの描写と結果統合（文脈別フッター・スキップ連打防止） | Active | `prototype/game.js` (startPlay, finalizePlay, replayPlay, showResultActions) | 2026-04-18 |
 | [SPEC-004](./SPEC-004-random-event.md) | ランダムイベント | Active | `prototype/game.js` (EVENTS, rollEvent) | 2026-04-18 |
 | [SPEC-005](./SPEC-005-parameter.md) | 原体験パラメーター / Lv算出 | Active | `prototype/game.js` (levelFromExp, applyGain) | 2026-04-18 |
 | [SPEC-006](./SPEC-006-bio-rhythm.md) | 生活リズム | Active | `prototype/game.js` (nextDay, sleep) | 2026-04-18 |
@@ -17,8 +17,8 @@
 | [SPEC-009](./SPEC-009-ui-layout.md) | UIレイアウト（固定HUD・固定フッター） | Active | `prototype/styles.css`, `prototype/index.html` | 2026-04-18 |
 | [SPEC-010](./SPEC-010-core-time.md) | コアタイム（学びごと・仕事）フレームワーク | Active | `prototype/game.js` (LIFE_STAGES, resolveCoreTime) | 2026-04-18 |
 | [SPEC-019](./SPEC-019-stamina-cap.md) | 体力上限（年齢依存）と体力ゼロ挙動 | Active（保育園のみ実装） | `prototype/game.js` (STAMINA_CAP_TABLE, staminaCapForAge, handleStaminaDepleted) | 2026-04-18 |
-| [SPEC-020](./SPEC-020-fixed-sleep-cycle.md) | 固定起床・就寝サイクル（低年齢） | Active（保育園のみ実装） | `prototype/game.js` (getFixedSchedule, beginDay, goSleep) | 2026-04-18 |
-| [SPEC-021](./SPEC-021-parameter-gauge-ui.md) | パラメーター表示UI（ゲージ＋時計円盤） | Active | `prototype/game.js` (renderGauge, renderClockDial) / `prototype/styles.css` (.gauge, .clock-dial) | 2026-04-18 |
+| [SPEC-020](./SPEC-020-fixed-sleep-cycle.md) | 固定起床・就寝サイクル（低年齢・就寝UI分岐） | Active（保育園のみ実装） | `prototype/game.js` (getFixedSchedule, beginDay, goSleep) | 2026-04-18 |
+| [SPEC-021](./SPEC-021-parameter-gauge-ui.md) | パラメーター表示UI（時計円盤＋帯の色分け） | Active | `prototype/game.js` (renderGauge, renderClockDial, computeDialBands) / `prototype/styles.css` (.gauge, .clock-dial) | 2026-04-18 |
 
 ## ライフステージ別コアタイム
 
