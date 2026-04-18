@@ -8,7 +8,7 @@
 </head>
 <!--
   このファイルは仕様駆動開発（docs/DEVELOPMENT_RULES.md）に従う。
-  画面全体の設計は docs/screen-design.md、
+  画面全体の設計は docs/screens/SCREEN-DESIGN.md、
   各機能の詳細仕様は docs/specs/SPEC-INDEX.md を参照。
 -->
 <body>
@@ -161,9 +161,24 @@
             <ul class="kv-list" id="preview-gain"></ul>
           </div>
 
+          <!--
+            @spec docs/specs/SPEC-022-play-category.md §6 タグ表示
+            @spec docs/specs/SPEC-024-skill.md §6 関連スキルLv
+          -->
+          <div class="card" id="preview-category-card" hidden>
+            <div class="card-title">🏷 カテゴリ & スキル</div>
+            <div class="category-chips" id="preview-category-chips"></div>
+            <ul class="kv-list" id="preview-skills" style="margin-top:6px;"></ul>
+          </div>
+
           <div class="card" id="preview-friend-card" hidden>
             <div class="card-title">👥 友人条件</div>
             <p class="preview-note" id="preview-friend"></p>
+          </div>
+
+          <!-- @spec docs/specs/SPEC-002-play-selection.md §5.9 低体力プレイ警告 -->
+          <div class="card warn" id="preview-low-stamina" hidden>
+            <p class="preview-note" id="preview-low-stamina-text"></p>
           </div>
 
           <div class="card warn" id="preview-lock" hidden>
@@ -211,6 +226,24 @@
             <div class="card-title">ステータス</div>
             <div class="gauge-group" id="result-status-gauges"></div>
             <ul class="kv-list" id="result-status"></ul>
+          </div>
+          <!--
+            @spec docs/specs/SPEC-024-skill.md §5.3 §5.4
+            @spec docs/specs/SPEC-022-play-category.md §6
+            獲得スキル・熟練ブースト・低体力倍率を表示
+          -->
+          <!--
+            @spec docs/specs/SPEC-024-skill.md §6 §6.1
+            @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.4a
+            スキルにも差分ハイライト付き Lv ゲージを表示
+          -->
+          <div class="card" id="result-skills-card" hidden>
+            <div class="card-title">🏷 獲得スキル</div>
+            <div class="gauge-group" id="result-skills"></div>
+            <p class="preview-note" id="result-boost-note"></p>
+          </div>
+          <div class="card warn" id="result-low-stamina-warn" hidden>
+            <p class="preview-note" id="result-low-stamina-text"></p>
           </div>
           <!--
             @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2.5 3 レイヤー / §5.2.7
@@ -294,6 +327,26 @@
       </div>
       <footer class="actions">
         <button class="btn btn-primary" data-action="close-event">なるほど</button>
+      </footer>
+    </section>
+
+    <!--
+      @screen  S7 遊びツリー
+      @screens docs/screens/SCREEN-DESIGN.md §2.7
+      @spec    docs/specs/SPEC-023-play-tree.md
+      @spec    docs/specs/SPEC-022-play-category.md
+      @spec    docs/specs/SPEC-024-skill.md
+      現ライフステージの遊びをカテゴリ別に表示。先のステージはシルエット表示で予告。
+    -->
+    <section class="screen" id="screen-tree">
+      <div class="scene">
+        <div class="scene-art">🌳</div>
+        <h2 class="scene-title">遊びツリー</h2>
+        <p class="scene-sub" id="tree-stage-label">今のステージ：保育園</p>
+        <div class="tree-body" id="tree-body"></div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-primary" data-action="close-tree">遊び選択に戻る</button>
       </footer>
     </section>
 

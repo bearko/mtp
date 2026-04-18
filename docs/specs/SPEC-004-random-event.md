@@ -56,7 +56,7 @@
 
 ## 6. UIへの反映
 - 画面：S4 ランダムイベント（`#screen-event`）
-- 画面設計書：`docs/screen-design.md` §2.4
+- 画面設計書：`docs/screens/SCREEN-DESIGN.md` §2.4
 
 ## 7. 想定される利用シナリオ
 - ごっこ遊び中に「近所の子に話しかけられた」が発生 → 友人+1 + 交流+5。  

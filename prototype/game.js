@@ -4,7 +4,7 @@
  * 仕様駆動開発ルール：docs/DEVELOPMENT_RULES.md
  * 全仕様索引：docs/specs/SPEC-INDEX.md
  *
- * 画面構成（docs/screen-design.md）：
+ * 画面構成（docs/screens/SCREEN-DESIGN.md）：
  *   S1 起床
  *     ↓ 今日を始める
  *   [コアタイム判定 SPEC-010]
@@ -22,8 +22,37 @@
 // =========================================================================
 
 /**
+ * @spec docs/specs/SPEC-022-play-category.md §5.1
+ * 遊びカテゴリマスタ。遊びの `categories` 配列で参照される ID と UI 表示ラベルの辞書。
+ * プロト段階では保育園で使う 10 カテゴリのみ定義。
+ */
+const CATEGORIES = {
+  movement:     { label: "運動",     group: "身体" },
+  outdoor_toy:  { label: "遊具",     group: "身体" },
+  water:        { label: "水遊び",   group: "身体" },
+  nature:       { label: "自然",     group: "身体" },
+  crafting:     { label: "工作",     group: "創作" },
+  imagination:  { label: "想像",     group: "創作" },
+  music:        { label: "音楽",     group: "創作" },
+  reading:      { label: "読書",     group: "探求" },
+  literacy:     { label: "文字",     group: "探求" },
+  science:      { label: "観察",     group: "探求" },
+  social_play:  { label: "共遊",     group: "交流" },
+  friendship:   { label: "交友",     group: "交流" },
+  daily_life:   { label: "生活",     group: "生活" },
+  sensitivity:  { label: "感受性",   group: "生活" },
+  tradition:    { label: "伝統",     group: "文化" },
+  tech:         { label: "技術",     group: "文化" },
+  competition:  { label: "競技",     group: "文化" },
+  travel:       { label: "旅",       group: "文化" },
+};
+// カテゴリグループの表示順
+const CATEGORY_GROUP_ORDER = ["身体", "創作", "探求", "交流", "生活", "文化"];
+
+/**
  * @spec docs/specs/SPEC-002-play-selection.md
  * @spec docs/specs/SPEC-007-friends.md
+ * @spec docs/specs/SPEC-022-play-category.md §5.2 遊びマスタへのカテゴリ付与
  * 遊びマスタ。プロト段階では未就学児〜小学生向けを中心に収録。
  */
 const PLAYS = [
@@ -37,6 +66,7 @@ const PLAYS = [
     seasons: ["spring", "summer", "autumn"],
     ageMin: 1,
     ageMax: 10,
+    categories: ["outdoor_toy", "crafting", "nature"],
     gain: { physical: 10, creative: 5 },
     descriptions: [
       "砂で大きな山を作り始めた…",
@@ -54,6 +84,7 @@ const PLAYS = [
     ageMin: 3,
     minFriends: 1,
     friendBonusPerPerson: 3,
+    categories: ["movement", "social_play"],
     gain: { physical: 15, social: 10 },
     descriptions: [
       "「もういいかい？」全力ダッシュ！",
@@ -70,6 +101,7 @@ const PLAYS = [
     staminaCost: 25,
     seasons: ["summer"],
     ageMin: 2,
+    categories: ["water", "movement"],
     gain: { physical: 25, social: 5 },
     descriptions: [
       "水しぶきを上げてジャンプ！",
@@ -86,6 +118,7 @@ const PLAYS = [
     staminaCost: 5,
     ageMin: 1,
     ageMax: 12,
+    categories: ["crafting", "imagination"],
     gain: { creative: 15 },
     descriptions: [
       "粘土をこねて、恐竜を作ってみた。",
@@ -101,6 +134,7 @@ const PLAYS = [
     moneyCost: 0,
     staminaCost: 15,
     ageMin: 3,
+    categories: ["movement", "outdoor_toy"],
     gain: { physical: 12 },
     descriptions: [
       "ぴょんぴょん飛び跳ねる。空が近い！",
@@ -117,6 +151,7 @@ const PLAYS = [
     staminaCost: 20,
     seasons: ["winter"],
     ageMin: 2,
+    categories: ["nature", "movement", "tradition"],
     gain: { physical: 15, creative: 8 },
     descriptions: [
       "雪だるまを作り始めた。大きいぞ！",
@@ -132,6 +167,7 @@ const PLAYS = [
     moneyCost: 0,
     staminaCost: 2,
     ageMin: 1,
+    categories: ["reading", "literacy", "sensitivity"],
     gain: { explore: 10, creative: 3 },
     descriptions: [
       "大好きな絵本。何回読んでも面白い。",
@@ -148,6 +184,7 @@ const PLAYS = [
     staminaCost: 8,
     ageMin: 2,
     ageMax: 10,
+    categories: ["outdoor_toy", "movement"],
     gain: { physical: 8, social: 3 },
     descriptions: [
       "何度も滑る。階段を登るのがちょっと大変。",
@@ -167,6 +204,7 @@ const PLAYS = [
     staminaCost: 12,
     ageMin: 2,
     ageMax: 12,
+    categories: ["outdoor_toy", "movement", "competition"],
     gain: { physical: 15, social: 4 },
     unlockRequired: true,
     descriptions: [
@@ -184,6 +222,7 @@ const PLAYS = [
     staminaCost: 10,
     seasons: ["summer", "autumn"],
     ageMin: 4,
+    categories: ["nature", "science"],
     gain: { explore: 12, physical: 5 },
     descriptions: [
       "草むらにいるバッタを追いかけた。",
@@ -202,6 +241,7 @@ const PLAYS = [
     ageMax: 10,
     minFriends: 1,
     friendBonusPerPerson: 2,
+    categories: ["imagination", "social_play", "friendship"],
     gain: { creative: 10, social: 12 },
     descriptions: [
       "今日はパン屋さんごっこ。",
@@ -332,6 +372,8 @@ const DEFAULT_PLAYER = {
   friends: 2,
   passion: 0,
   exp: { physical: 0, creative: 0, explore: 0, social: 0, competitive: 0 },
+  // @spec SPEC-024 §5.7 スキル（カテゴリ 1:1、Lv 1 - 100）。遅延初期化。
+  skills: {},
   dailyPlays: 0,
   lastPlayCategory: null,
   consecutiveCategoryCount: 0,
@@ -394,6 +436,53 @@ function toast(msg, ms = 1800) {
  */
 function levelFromExp(exp) {
   return Math.floor(Math.sqrt(Math.max(0, exp) / 10));
+}
+
+/**
+ * @spec docs/specs/SPEC-024-skill.md §5.2
+ * スキルLv を計算。1〜100 クランプ。
+ * exp=0 → Lv1, exp=10 → Lv2, exp=40 → Lv3, ..., exp=98010 → Lv99, exp>=100000 → Lv100
+ */
+function skillLvFromExp(exp) {
+  const lv = Math.floor(Math.sqrt(Math.max(0, exp) / 10)) + 1;
+  return Math.min(100, Math.max(1, lv));
+}
+
+/**
+ * @spec docs/specs/SPEC-024-skill.md §5.7
+ * スキル状態を遅延初期化して返す（無ければ {exp:0, lv:1} を作る）。
+ */
+function ensureSkill(catId) {
+  if (!player.skills[catId]) player.skills[catId] = { exp: 0, lv: 1 };
+  return player.skills[catId];
+}
+
+/**
+ * @spec docs/specs/SPEC-024-skill.md §5.4
+ * 遊びの各カテゴリの所持スキルLv 平均から熟練ブースト係数を返す。
+ * Lv1 平均 → 1.00、Lv51 以上 → 上限 2.00。
+ */
+function skillBoostMultiplier(play) {
+  const cats = play.categories || [];
+  if (cats.length === 0) return 1.0;
+  let sum = 0;
+  for (const c of cats) {
+    const s = player.skills[c];
+    sum += s ? s.lv : 1;
+  }
+  const avg = sum / cats.length;
+  return Math.min(2.0, 1 + (avg - 1) * 0.02);
+}
+
+/**
+ * @spec docs/specs/SPEC-002-play-selection.md §5.9 低体力プレイ
+ * 体力不足で遊ぶ場合の経験値倍率（0〜1）。通常プレイは 1。
+ */
+function lowStaminaMultiplier(play) {
+  const cost = play.staminaCost || 0;
+  if (cost <= 0) return 1.0;
+  if (player.stamina >= cost) return 1.0;
+  return Math.max(0, player.stamina / cost);
 }
 
 function fmtTime(h, m = 0) {
@@ -496,6 +585,136 @@ function renderGauge(container, { current, max, label, kind, delta }) {
     <div class="gauge-track"><div class="gauge-bar ${barClass}" style="width:${pct}%"></div></div>
     <div class="gauge-label"><span>${label}</span><b>${displayValue}${deltaHtml}</b></div>
   `;
+}
+
+/**
+ * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.4a 差分ハイライト付きゲージ
+ *
+ * 「元の経験値までの base 部分（オレンジ）」の上に「今回増えた分の delta（緑）」を
+ * アニメーションで伸ばすゲージを描画する。
+ *
+ * opts:
+ *   label           : ゲージ左ラベル
+ *   beforeExp       : 変化前の累計経験値
+ *   afterExp        : 変化後の累計経験値
+ *   lv              : 現在（after 時点）のLv
+ *   lvUp            : Lvアップしたか
+ *   lvFn            : 経験値→Lvに使った関数（ブートストラップ用、省略可能）
+ *   kind            : 'exp' | 'skill'（色調整用）
+ *
+ *  Lvごとの exp 区間は `baseAtLv(lv) = lv * lv * 10`（原体験）または
+ *  `(lv-1) * (lv-1) * 10`（スキル、Lv=1 開始）で計算する。本関数は
+ *  呼び出し側に `lvFn` を渡せるようにして、両方の曲線に対応する。
+ */
+function renderGaugeWithDelta(container, opts) {
+  if (!container) return;
+  const {
+    label,
+    beforeExp,
+    afterExp,
+    lv,
+    lvUp = false,
+    kind = "exp",
+    // Lvから「そのLvに到達するための累計 exp 下限」を返す関数
+    lvBaseExp = (l) => l * l * 10,
+  } = opts;
+
+  // 現在Lv（after 時点）の区間
+  const curBase = lvBaseExp(lv);
+  const nextBase = lvBaseExp(lv + 1);
+  const range = Math.max(1, nextBase - curBase);
+
+  // 新Lv 区間内の afterPct（余剰分）。Lv100 など上限時は 100%
+  const afterPct = Math.max(0, Math.min(100, ((afterExp - curBase) / range) * 100));
+
+  container.classList.add("gauge", "gauge-with-delta");
+  if (lvUp) container.classList.add("lv-up");
+
+  const gainedExp = afterExp - beforeExp;
+  const lvUpTag = lvUp ? " ⬆ Lv UP!" : "";
+
+  if (!lvUp) {
+    // === (a) 通常プレイ：現Lv 区間内で base から delta を伸ばす ===
+    const basePct = Math.max(0, Math.min(100, ((beforeExp - curBase) / range) * 100));
+    const deltaPct = Math.max(0, afterPct - basePct);
+    const displayValue = `${afterExp - curBase}/${range}`;
+
+    container.innerHTML = `
+      <div class="gauge-track">
+        <div class="gauge-bar-base" style="width:${basePct}%"></div>
+        <div class="gauge-bar-delta" style="left:${basePct}%; width:0%"></div>
+      </div>
+      <div class="gauge-label">
+        <span>${label} Lv${lv}${lvUpTag}</span>
+        <b>${displayValue}<span class="delta">+${gainedExp}</span></b>
+      </div>
+    `;
+    const deltaEl = container.querySelector(".gauge-bar-delta");
+    if (deltaEl) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => { deltaEl.style.width = deltaPct + "%"; });
+      });
+    }
+    return;
+  }
+
+  // === (b) Lvアップ時：フェーズA 満タン → フェーズB リセット → フェーズC 新Lv 余剰 ===
+  // @spec SPEC-021 §5.4a.2 (b)
+  const prevLv = lv - 1;
+  const prevBase = lvBaseExp(prevLv);
+  const prevRange = Math.max(1, curBase - prevBase);
+  const prevBasePct = Math.max(0, Math.min(100, ((beforeExp - prevBase) / prevRange) * 100));
+  const overflowPct = afterPct;  // 新Lv 区間内の余剰
+
+  const displayValueAfter = `${afterExp - curBase}/${range}`;
+
+  // 最初は「前Lv の状態」を表示
+  container.innerHTML = `
+    <div class="gauge-track">
+      <div class="gauge-bar-base" style="width:${prevBasePct}%"></div>
+      <div class="gauge-bar-delta" style="left:${prevBasePct}%; width:0%"></div>
+    </div>
+    <div class="gauge-label">
+      <span>${label} Lv${prevLv}</span>
+      <b><span class="delta">+${gainedExp}</span></b>
+    </div>
+  `;
+
+  const deltaEl = container.querySelector(".gauge-bar-delta");
+  const baseEl  = container.querySelector(".gauge-bar-base");
+  const labelSpan = container.querySelector(".gauge-label span");
+  const labelBold = container.querySelector(".gauge-label b");
+
+  // フェーズA：次フレームで delta を右端まで伸ばす（満タンアニメ 600ms）
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (deltaEl) deltaEl.style.width = (100 - prevBasePct) + "%";
+    });
+  });
+
+  // フェーズB：700ms後に 0% リセット + 新Lv ラベルへ
+  setTimeout(() => {
+    if (!container.isConnected) return;
+    if (baseEl)  baseEl.style.width = "0%";
+    if (deltaEl) {
+      // transition を一瞬切ってから値を 0 にリセット（手前に戻らないようにするため）
+      deltaEl.style.transition = "none";
+      deltaEl.style.left = "0%";
+      deltaEl.style.width = "0%";
+      // 次フレームで transition を戻す
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          deltaEl.style.transition = "";
+          // フェーズC：新Lv 余剰分を伸ばす
+          deltaEl.style.width = overflowPct + "%";
+        });
+      });
+    }
+    if (labelSpan) labelSpan.textContent = `${label} Lv${lv}${lvUpTag}`;
+    if (labelBold) {
+      labelBold.innerHTML = `${displayValueAfter}<span class="delta">+${gainedExp}</span>`;
+    }
+  }, 700);
 }
 
 /**
@@ -750,23 +969,49 @@ function renderWakeupHeader() {
  * `unlockRequired` が true の遊びは、player.unlockedPlays に含まれるときだけ候補に出す
  *  （候補外なので reasons でなく isHidden を立てる）。
  */
+/**
+ * @spec docs/specs/SPEC-002-play-selection.md §5.1 v3 絞り込みルール
+ *
+ * 戻り値 { ok, reasons, isHidden, isLowStamina }
+ *   ok           : true ならドックの「遊ぶ」ボタンが有効
+ *   reasons      : ロック理由の文字列配列（非空ならロック中 or 体力不足）
+ *   isHidden     : true ならドック自体に表示しない（体力不足を除く全ロック条件）
+ *   isLowStamina : true なら体力不足だが遊べる（低体力プレイ SPEC-002 §5.9）
+ */
 function isPlayAvailable(play) {
+  // 解禁条件未達 → 完全非表示
   if (play.unlockRequired && !(player.unlockedPlays || []).includes(play.id)) {
     return { ok: false, reasons: ["まだ知らない遊び"], isHidden: true };
   }
-  const reasons = [];
+
+  // v3: 体力不足以外のロック条件は isHidden=true でドック非表示
+  const hideReasons = [];
   if (play.seasons && !play.seasons.includes(player.season)) {
-    reasons.push(`${SEASON_LABEL[player.season]}は季節外`);
+    hideReasons.push(`${SEASON_LABEL[player.season]}は季節外`);
   }
-  if (play.ageMin && player.age < play.ageMin) reasons.push(`${play.ageMin}歳以上が必要`);
-  if (play.ageMax && player.age > play.ageMax) reasons.push(`${play.ageMax}歳まで`);
-  if (play.moneyCost > player.money) reasons.push(`所持金不足 (¥${play.moneyCost}必要)`);
-  if (play.timeCost > player.spareHours) reasons.push(`時間不足`);
-  if ((play.staminaCost || 0) > player.stamina) reasons.push(`体力不足`);
+  if (play.ageMin && player.age < play.ageMin) hideReasons.push(`${play.ageMin}歳以上が必要`);
+  if (play.ageMax && player.age > play.ageMax) hideReasons.push(`${play.ageMax}歳まで`);
+  if (play.moneyCost > player.money) hideReasons.push(`所持金不足 (¥${play.moneyCost}必要)`);
+  if (play.timeCost > player.spareHours) hideReasons.push(`時間不足`);
   if (play.minFriends && player.friends < play.minFriends) {
-    reasons.push(`友人${play.minFriends}人以上必要`);
+    hideReasons.push(`友人${play.minFriends}人以上必要`);
   }
-  return { ok: reasons.length === 0, reasons };
+  if (hideReasons.length > 0) {
+    return { ok: false, reasons: hideReasons, isHidden: true };
+  }
+
+  // 体力不足のみ：低体力プレイとして実行可能
+  if ((play.staminaCost || 0) > player.stamina) {
+    const mult = Math.max(0, player.stamina / (play.staminaCost || 1));
+    const pct = Math.round(mult * 100);
+    return {
+      ok: true,
+      reasons: [`体力不足：経験値 ${pct}%`],
+      isLowStamina: true,
+    };
+  }
+
+  return { ok: true, reasons: [] };
 }
 
 // @spec SPEC-002 §5.3 インタラクションフロー
@@ -800,7 +1045,7 @@ function renderChooseScreen() {
 
   candidates.forEach(({ play, avail }) => {
     const btn = document.createElement("button");
-    btn.className = "dock-icon" + (avail.ok ? "" : " locked");
+    btn.className = "dock-icon" + (avail.isLowStamina ? " low-stamina" : "");
     btn.textContent = play.icon;
     btn.setAttribute("aria-label", `${play.name}, ${play.timeCost}時間, ${
       Object.entries(play.gain).map(([k, v]) => `${LABELS[k]}+${v}`).join(", ")
@@ -809,6 +1054,21 @@ function renderChooseScreen() {
     btn.addEventListener("click", () => selectPlay(play.id));
     dock.appendChild(btn);
   });
+
+  // @spec SPEC-002 §5.1.1 §5.1.2 / SPEC-023 §5.1 ドック最右端に 🌳 遊びツリーアイコン
+  // 遊びアイコンではなく「画面遷移ナビ」として、ピル型＋濃緑＋ラベルで差別化する。
+  const treeBtn = document.createElement("button");
+  treeBtn.className = "dock-icon dock-tree";
+  treeBtn.innerHTML = `
+    <span class="dock-tree-icon">🌳</span>
+    <span class="dock-tree-label">ツリー</span>
+  `;
+  treeBtn.setAttribute("aria-label", "遊びツリー画面へ遷移");
+  treeBtn.addEventListener("click", () => {
+    renderPlayTreeScreen();
+    showScreen("screen-tree");
+  });
+  dock.appendChild(treeBtn);
 
   // @spec SPEC-002 §5.3.1 初期状態：起床ヘッダー表示 + プレビュー非表示
   byId("wakeup-header").hidden = false;
@@ -863,6 +1123,28 @@ function selectPlay(id) {
     .map(([k, v]) => `<li><span>${LABELS[k]}</span><b class="up">+${v}</b></li>`)
     .join("");
 
+  // @spec SPEC-022 §6 / SPEC-024 §6 カテゴリチップと関連スキルLv
+  const cats = play.categories || [];
+  if (cats.length > 0) {
+    byId("preview-category-card").hidden = false;
+    byId("preview-category-chips").innerHTML = cats
+      .map((c) => {
+        const label = (CATEGORIES[c] && CATEGORIES[c].label) || c;
+        return `<span class="chip">${label}</span>`;
+      })
+      .join("");
+    byId("preview-skills").innerHTML = cats
+      .map((c) => {
+        const label = (CATEGORIES[c] && CATEGORIES[c].label) || c;
+        const s = player.skills[c];
+        const lv = s ? s.lv : 1;
+        return `<li><span>${label}</span><b>Lv${lv}</b></li>`;
+      })
+      .join("");
+  } else {
+    byId("preview-category-card").hidden = true;
+  }
+
   if (play.minFriends) {
     byId("preview-friend-card").hidden = false;
     byId("preview-friend").textContent = `要友人 ${play.minFriends}人以上${
@@ -872,17 +1154,27 @@ function selectPlay(id) {
     byId("preview-friend-card").hidden = true;
   }
 
-  // ロック理由表示と「遊ぶ」ボタンの enable/disable
-  const confirmBtn = byId("btn-confirm-play");
-  if (avail.ok) {
-    byId("preview-lock").hidden = true;
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = `🎮 遊ぶ（-${play.timeCost}h）`;
+  // @spec SPEC-002 §5.9 低体力プレイ警告
+  const lowWarn = byId("preview-low-stamina");
+  if (avail.isLowStamina) {
+    lowWarn.hidden = false;
+    byId("preview-low-stamina-text").textContent =
+      `⚠ ${avail.reasons[0]}（遊べるけど全力では楽しめない）`;
   } else {
-    byId("preview-lock").hidden = false;
-    byId("preview-lock-text").textContent = `⚠ ${avail.reasons.join(" / ")}`;
+    lowWarn.hidden = true;
+  }
+
+  // ロック理由表示と「遊ぶ」ボタンの enable/disable（v3：isHidden ルートは呼ばれない）
+  const confirmBtn = byId("btn-confirm-play");
+  byId("preview-lock").hidden = true;
+  if (avail.ok) {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = avail.isLowStamina
+      ? `⚠ 無理して遊ぶ（-${play.timeCost}h）`
+      : `🎮 遊ぶ（-${play.timeCost}h）`;
+  } else {
     confirmBtn.disabled = true;
-    confirmBtn.textContent = "ロック中";
+    confirmBtn.textContent = "できない";
   }
 }
 
@@ -1027,19 +1319,45 @@ function effectLabel(key) {
 function finalizePlay() {
   const play = pendingPlay;
 
+  // ---- ①' 熟練ブースト・低体力倍率を算出（SPEC-024 §5.4 / SPEC-002 §5.9）----
+  const skillBoost   = skillBoostMultiplier(play);
+  const lowStamMul   = lowStaminaMultiplier(play);
+  // 2 つを合成して経験値系に掛ける基本倍率
+  const gainBoost    = skillBoost * lowStamMul;
+
   // ---- ① 獲得経験値の計算 ----
-  const gain = { ...play.gain };
-  // @spec SPEC-007 §5.2 友人数ボーナス
-  if (play.friendBonusPerPerson) {
-    const mainKey = majorGainCategory(play.gain) || "social";
-    gain[mainKey] = (gain[mainKey] || 0) + play.friendBonusPerPerson * player.friends;
+  const gain = {};
+  for (const [k, v] of Object.entries(play.gain)) {
+    gain[k] = Math.round(v * gainBoost);
   }
 
-  // @spec SPEC-003 §5.2 没頭ボーナス
+  // @spec SPEC-007 §5.2 友人数ボーナス（熟練・低体力倍率を適用）
+  if (play.friendBonusPerPerson) {
+    const mainKey = majorGainCategory(play.gain) || "social";
+    const friendBonus = Math.round(play.friendBonusPerPerson * player.friends * gainBoost);
+    gain[mainKey] = (gain[mainKey] || 0) + friendBonus;
+  }
+
+  // @spec SPEC-003 §5.2 没頭ボーナス（熟練ブーストは適用しない、低体力のみ）
   const mainCat = majorGainCategory(play.gain);
   let passionGain = 3;
   if (mainCat && player.lastPlayCategory === mainCat) {
     passionGain += 2 + player.consecutiveCategoryCount;
+  }
+  passionGain = Math.floor(passionGain * lowStamMul);
+
+  // ---- ②' スキル経験値の事前計算（SPEC-024 §5.3）----
+  // baseExp = play.gain の 5 カテゴリ合計 × gainBoost
+  // 各カテゴリ当たり = baseExp / categories.length
+  const cats = play.categories || [];
+  const baseExpTotal = Object.values(play.gain).reduce((a, b) => a + b, 0);
+  const skillExpPerCategory = cats.length > 0
+    ? Math.round((baseExpTotal * gainBoost) / cats.length)
+    : 0;
+  const skillBefore = {};
+  for (const c of cats) {
+    ensureSkill(c);
+    skillBefore[c] = { exp: player.skills[c].exp, lv: player.skills[c].lv };
   }
 
   // ---- ② 反映前スナップショット ----
@@ -1054,11 +1372,22 @@ function finalizePlay() {
     clockHour: player.clockHour,
     clockMinute: player.clockMinute,
     spareHours: player.spareHours,
+    gainBoost,
+    lowStamMul,
+    skillBoost,
+    skillBefore,
   };
 
   // ---- ③ 経験値加算 ----
   for (const [k, v] of Object.entries(gain)) {
     player.exp[k] = (player.exp[k] || 0) + v;
+  }
+
+  // ---- ③' スキル経験値加算（SPEC-024 §5.3）----
+  for (const c of cats) {
+    const s = player.skills[c];
+    s.exp += skillExpPerCategory;
+    s.lv = skillLvFromExp(s.exp);
   }
 
   // ---- ④ 基本ステータス反映 ----
@@ -1097,7 +1426,14 @@ function finalizePlay() {
     player.lastPlayCategory = mainCat;
   }
 
-  pendingGain = { gain, passion: passionGain };
+  pendingGain = {
+    gain,
+    passion: passionGain,
+    skillExpPerCategory,
+    skillBoost,
+    lowStamMul,
+    cats,
+  };
 
   // ---- ⑧ UIへ結果を描画 ----
   renderResultPanel(before);
@@ -1289,33 +1625,33 @@ function handleStaminaDepleted() {
 function renderResultPanel(before) {
   byId("result-panel").hidden = false;
 
-  // ---- 原体験（Lvゲージ SPEC-021）----
+  // ---- 原体験（差分ハイライト付きLvゲージ SPEC-021 §5.4a）----
   const expRoot = byId("result-exp-gauges");
-  const expHtml = [];
+  const expChangedKeys = [];
   Object.keys(LABELS).forEach((k) => {
     const b = before.exp[k] || 0;
     const a = player.exp[k] || 0;
     if (a === b) return;
-    const bLv = levelFromExp(b);
-    const aLv = levelFromExp(a);
-    const nextLvNeeded = (aLv + 1) * (aLv + 1) * 10;
-    const curLvBase = aLv * aLv * 10;
-    const progressCurrent = a - curLvBase;
-    const progressMax = nextLvNeeded - curLvBase;
-    const lvUp = aLv > bLv;
-    expHtml.push(`<div class="gauge" data-exp="${k}" id="result-exp-${k}"></div>`);
-    // あとから renderGauge で埋める
-    setTimeout(() => {
-      renderGauge(byId(`result-exp-${k}`), {
-        current: progressCurrent,
-        max: progressMax,
-        label: `${LABELS[k]} Lv${aLv}${lvUp ? " ⬆ Lv UP!" : ""}`,
-        kind: "exp",
-        delta: a - b,
-      });
-    }, 0);
+    expChangedKeys.push({ k, b, a });
   });
-  expRoot.innerHTML = expHtml.join("") || `<p style="color:var(--muted);font-size:13px;">（経験値の変化なし）</p>`;
+  if (expChangedKeys.length === 0) {
+    expRoot.innerHTML = `<p style="color:var(--muted);font-size:13px;">（経験値の変化なし）</p>`;
+  } else {
+    expRoot.innerHTML = expChangedKeys.map(({ k }) => `<div id="result-exp-${k}"></div>`).join("");
+    for (const { k, b, a } of expChangedKeys) {
+      const bLv = levelFromExp(b);
+      const aLv = levelFromExp(a);
+      renderGaugeWithDelta(byId(`result-exp-${k}`), {
+        label: LABELS[k],
+        beforeExp: b,
+        afterExp: a,
+        lv: aLv,
+        lvUp: aLv > bLv,
+        kind: "exp",
+        lvBaseExp: (l) => l * l * 10, // SPEC-005 曲線
+      });
+    }
+  }
 
   // ---- ステータスゲージ（体力）----
   const statusGaugeRoot = byId("result-status-gauges");
@@ -1340,6 +1676,56 @@ function renderResultPanel(before) {
     statusRows.push(`<li><span>🔥 ジョウネツ</span><b class="up">${before.passion} → ${player.passion}</b></li>`);
   }
   byId("result-status").innerHTML = statusRows.join("");
+
+  // ---- 獲得スキル（差分ハイライト付きLvゲージ SPEC-024 §6.1 / SPEC-021 §5.4a）----
+  const skillsCard  = byId("result-skills-card");
+  const skillsEl    = byId("result-skills");
+  const boostNoteEl = byId("result-boost-note");
+  const cats = (before.skillBefore && Object.keys(before.skillBefore)) || [];
+  if (cats.length > 0) {
+    skillsCard.hidden = false;
+    // コンテナを用意
+    skillsEl.innerHTML = cats.map((c) => `
+      <div class="skill-entry">
+        <div class="skill-label">🏷 ${(CATEGORIES[c] && CATEGORIES[c].label) || c}</div>
+        <div id="result-skill-${c}"></div>
+      </div>
+    `).join("");
+    // @spec SPEC-024 §5.2 スキル曲線: skillLvFromExp(exp) = floor(sqrt(exp/10)) + 1
+    //   これを逆算：Lv L の「下限 exp」= (L-1)^2 * 10
+    const skillLvBaseExp = (lv) => (lv - 1) * (lv - 1) * 10;
+    for (const c of cats) {
+      const sb = before.skillBefore[c];
+      const sa = player.skills[c];
+      renderGaugeWithDelta(byId(`result-skill-${c}`), {
+        label: "",  // 外側の .skill-label を使うので空文字
+        beforeExp: sb.exp,
+        afterExp: sa.exp,
+        lv: sa.lv,
+        lvUp: sa.lv > sb.lv,
+        kind: "exp",
+        lvBaseExp: skillLvBaseExp,
+      });
+    }
+    const parts = [];
+    if (before.skillBoost && before.skillBoost > 1.001) {
+      parts.push(`熟練ブースト × ${before.skillBoost.toFixed(2)}`);
+    }
+    boostNoteEl.textContent = parts.join(" / ");
+    boostNoteEl.style.display = parts.length ? "" : "none";
+  } else {
+    skillsCard.hidden = true;
+  }
+
+  // ---- 低体力プレイの警告（SPEC-002 §5.9）----
+  const warnCard = byId("result-low-stamina-warn");
+  if (before.lowStamMul !== undefined && before.lowStamMul < 1.0) {
+    warnCard.hidden = false;
+    byId("result-low-stamina-text").textContent =
+      `⚠ 体力不足で遊んだ：獲得経験値 × ${Math.round(before.lowStamMul * 100)}%（子どもは無茶する）`;
+  } else {
+    warnCard.hidden = true;
+  }
 
   // ---- 時間経過：before/after の時計円盤 ----
   // @spec SPEC-021 §5.2.7 S3 の「時間の流れ」カードで before / after を並べる
@@ -1651,6 +2037,149 @@ function closeCoreTime() {
 }
 
 // =========================================================================
+// @screen S7 遊びツリー
+// @spec docs/specs/SPEC-023-play-tree.md
+// =========================================================================
+
+/**
+ * @spec docs/specs/SPEC-023-play-tree.md §5.5 ノード状態の判定
+ */
+function classifyTreeNode(play) {
+  const stage = resolveLifeStage(player.age);
+  if (!stage) return "future";
+  // この遊びが現ステージ（年齢範囲内）で想定されているかを大まかに判定
+  const inStageAge = (play.ageMin == null || play.ageMin <= stage.ageMax) &&
+                     (play.ageMax == null || play.ageMax >= stage.ageMin);
+  if (!inStageAge) return "future";
+
+  if (play.unlockRequired && !(player.unlockedPlays || []).includes(play.id)) {
+    return "nearlock";
+  }
+  const avail = isPlayAvailable(play);
+  if (avail.ok) return "playable";
+  return "nearlock";
+}
+
+/**
+ * @spec docs/specs/SPEC-023-play-tree.md §5.4
+ * 解放条件を 1 行テキストにまとめる。
+ */
+function formatUnlockRequirement(play) {
+  const parts = [];
+  if (play.ageMin != null && play.ageMax != null) parts.push(`${play.ageMin}〜${play.ageMax}歳`);
+  else if (play.ageMin != null) parts.push(`${play.ageMin}歳〜`);
+  else if (play.ageMax != null) parts.push(`〜${play.ageMax}歳`);
+  if (play.seasons) {
+    const map = { spring: "春", summer: "夏", autumn: "秋", winter: "冬" };
+    parts.push(play.seasons.map((s) => map[s]).join("・") + "限定");
+  }
+  if (play.moneyCost > 0) parts.push(`¥${play.moneyCost}`);
+  if (play.minFriends) parts.push(`友人${play.minFriends}人以上`);
+  if (play.unlockRequired) parts.push("発見で解禁");
+  if (parts.length === 0) parts.push("いつでも");
+  return parts.join(" / ");
+}
+
+/**
+ * @screen S7
+ * @spec docs/specs/SPEC-023-play-tree.md §5.2, §5.3, §5.7
+ * プレイヤーの現ライフステージ遊びをカテゴリグループごとに描画し、
+ * 次ステージの代表遊びをシルエットで紹介する。
+ */
+function renderPlayTreeScreen() {
+  const stage = resolveLifeStage(player.age);
+  byId("tree-stage-label").textContent =
+    `今のステージ：${stage ? stage.icon + " " + stage.label : "—"}`;
+
+  const body = byId("tree-body");
+  body.innerHTML = "";
+
+  // 1) 現ライフステージで表示する遊び（年齢範囲が現ステージと重なるもの）
+  const currentPlays = PLAYS.filter((p) => {
+    const inStage = (p.ageMin == null || p.ageMin <= (stage ? stage.ageMax : 100)) &&
+                    (p.ageMax == null || p.ageMax >= (stage ? stage.ageMin : 1));
+    return inStage;
+  });
+
+  // カテゴリグループごとにセクション化
+  CATEGORY_GROUP_ORDER.forEach((group) => {
+    const catsInGroup = Object.keys(CATEGORIES).filter((c) => CATEGORIES[c].group === group);
+    const playsInGroup = currentPlays.filter((p) =>
+      (p.categories || []).some((c) => catsInGroup.includes(c))
+    );
+    if (playsInGroup.length === 0) return;
+
+    // セクション見出し
+    const title = document.createElement("div");
+    title.className = "tree-section-title";
+    title.textContent = `─ ${group} ─`;
+    body.appendChild(title);
+
+    // プレイ可能な遊びを上に、それ以外を下に
+    playsInGroup
+      .map((p) => ({ play: p, state: classifyTreeNode(p) }))
+      .sort((a, b) => {
+        const order = { playable: 0, nearlock: 1, future: 2, hidden: 3 };
+        return order[a.state] - order[b.state];
+      })
+      .forEach(({ play, state }) => {
+        const node = document.createElement("button");
+        node.className = `tree-node state-${state}`;
+        const statusLabel = {
+          playable: "🟢 今遊べる",
+          nearlock: "🟠 条件あり",
+          future: "⚪ 先のステージ",
+          hidden: "？？？",
+        }[state];
+        node.innerHTML = `
+          <div class="tree-node-icon">${play.icon || "🎮"}</div>
+          <div class="tree-node-body">
+            <div class="tree-node-name">${play.name}</div>
+            <div class="tree-node-req">${formatUnlockRequirement(play)}</div>
+          </div>
+          <div class="tree-node-status">${statusLabel}</div>
+        `;
+        node.addEventListener("click", () => {
+          if (state === "playable") {
+            toast("戻って選ぶとすぐ遊べるよ", 1600);
+          } else if (state === "nearlock") {
+            toast(formatUnlockRequirement(play), 2000);
+          } else {
+            toast("まだ遊べないよ", 1600);
+          }
+        });
+        body.appendChild(node);
+      });
+  });
+
+  // 2) 次のライフステージの予告
+  const stageIdx = LIFE_STAGES.findIndex((s) => s === stage);
+  const nextStage = stageIdx >= 0 ? LIFE_STAGES[stageIdx + 1] : null;
+  if (nextStage) {
+    const future = document.createElement("div");
+    future.className = "tree-future-section";
+    future.innerHTML = `
+      <div class="tree-future-title">${nextStage.icon} 次のステージ：${nextStage.label}（${nextStage.ageMin}歳〜）</div>
+      <div class="tree-future-sub">そのときが楽しみ…</div>
+    `;
+    body.appendChild(future);
+  }
+
+  // 3) もっと先のティザー
+  if (nextStage) {
+    const teaser = document.createElement("div");
+    teaser.className = "tree-future-section";
+    teaser.innerHTML = `
+      <div class="tree-future-title">🌌 もっと先…</div>
+      <div class="tree-future-sub">小学校、中学校、そして大人へ。人生には、まだまだたくさんの遊びが待っている。</div>
+    `;
+    body.appendChild(teaser);
+  }
+
+  renderHUD();
+}
+
+// =========================================================================
 // 「1h休む」（遊び選択画面で使う）
 // =========================================================================
 
@@ -1834,6 +2363,11 @@ document.addEventListener("click", (e) => {
   switch (a) {
     case "close-coretime":
       closeCoreTime();
+      break;
+    case "close-tree":
+      // @spec docs/specs/SPEC-023-play-tree.md §5.1 S7 → S2
+      renderChooseScreen();
+      showScreen("screen-choose");
       break;
     case "goto-coretime":
       // @spec SPEC-003 §5.8 結果フェーズから「保育園へ行く」でコアタイムへ

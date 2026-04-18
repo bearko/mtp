@@ -451,6 +451,167 @@ body {
 }
 
 /* =========================================================================
+ * @spec docs/specs/SPEC-022-play-category.md §6 カテゴリチップ
+ * ========================================================================= */
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #eee3c8;
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* =========================================================================
+ * @spec docs/specs/SPEC-002-play-selection.md §5.9 低体力プレイのドック印
+ * ========================================================================= */
+.dock-icon.low-stamina {
+  background: #fff1df;
+  border-color: var(--accent-2);
+  position: relative;
+}
+.dock-icon.low-stamina::after {
+  content: "⚠";
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  font-size: 14px;
+  background: var(--card-bg);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+}
+/*
+  @spec docs/specs/SPEC-002-play-selection.md §5.1.2 遊びツリーアイコンの視覚差別化
+  「遊びアイコン」ではなく「画面遷移ナビ」であることを一目で伝えるため、
+  他の遊びアイコンと **別のデザイン言語（ピル型・濃緑・ラベル併記）** を採用する。
+*/
+.dock-icon.dock-tree {
+  width: auto;
+  min-width: 72px;
+  padding: 6px 12px;
+  border-radius: 26px;           /* ピル型 */
+  background: #3d6b4a;           /* 濃い緑 */
+  color: #ffffff;
+  border: 2px solid #2f5437;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+  line-height: 1;
+  margin-left: 8px;              /* 他アイコンとの間に区切り感を出す */
+  box-shadow: 0 2px 6px rgba(61, 107, 74, 0.35);
+  position: relative;
+}
+.dock-icon.dock-tree::before {
+  /* 他の遊びアイコンとの境界を示す左側の縦棒 */
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--card-border);
+}
+.dock-icon.dock-tree .dock-tree-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.dock-icon.dock-tree .dock-tree-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #ffffff;
+  margin-top: 2px;
+}
+.dock-icon.dock-tree:active {
+  transform: scale(0.95);
+}
+
+/*
+  @spec docs/specs/SPEC-024-skill.md §6.1 スキル行
+  結果画面で「カテゴリ名」＋「差分ハイライトゲージ」をセットで並べる
+*/
+.skill-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.skill-label {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+/* =========================================================================
+ * @spec docs/specs/SPEC-023-play-tree.md S7 遊びツリー画面
+ * ========================================================================= */
+.tree-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tree-section-title {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin: 10px 4px 2px;
+  border-bottom: 1px dashed var(--card-border);
+  padding-bottom: 4px;
+}
+.tree-node {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+}
+.tree-node:active { transform: scale(0.99); }
+.tree-node.state-playable { border-color: var(--good); }
+.tree-node.state-nearlock { background: #fff7ea; border-color: var(--accent-2); }
+.tree-node.state-future   { opacity: 0.55; }
+.tree-node.state-hidden   { opacity: 0.45; cursor: default; }
+.tree-node-icon {
+  width: 36px; height: 36px; font-size: 26px;
+  display: flex; align-items: center; justify-content: center;
+  background: #f0e8d1; border-radius: 10px; flex-shrink: 0;
+}
+.tree-node-body { flex: 1; min-width: 0; }
+.tree-node-name { font-weight: 700; font-size: 14px; }
+.tree-node-req  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.tree-node-status { font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.tree-node.state-playable .tree-node-status { color: var(--good); }
+.tree-node.state-nearlock .tree-node-status { color: var(--accent); }
+.tree-node.state-future   .tree-node-status { color: var(--muted); }
+
+.tree-future-section {
+  background: #f4eedf;
+  border: 1px dashed var(--card-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-top: 12px;
+}
+.tree-future-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+.tree-future-sub   { color: var(--muted); font-size: 12px; }
+
+/* =========================================================================
  * @spec docs/specs/SPEC-021-parameter-gauge-ui.md パラメーターゲージUI
  * ========================================================================= */
 
@@ -510,6 +671,41 @@ body {
 .gauge-bar.warn { background: var(--accent-2); }
 .gauge-bar.bad  { background: var(--bad); }
 .gauge-bar.exp  { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+
+/*
+  @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.4a 差分ハイライト付きゲージ
+  経験値ゲージの「元の分」と「今回増えた分（緑ハイライト）」を重ねて表示する。
+*/
+.gauge-with-delta .gauge-track { position: relative; overflow: hidden; }
+.gauge-bar-base {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 400ms ease-out;
+}
+.gauge-bar-delta {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0%;
+  background: var(--good);     /* 緑 */
+  transition: width 600ms ease-out, left 600ms ease-out, opacity 500ms ease;
+  opacity: 0.95;
+  box-shadow: 0 0 6px rgba(76, 175, 122, 0.5);
+}
+/* Lvアップ演出：ハイライトが伸び切ったあとに満タン → ゼロへの切替フラッシュ */
+.gauge-with-delta.lv-up .gauge-bar-delta {
+  animation: gauge-lvup-flash 500ms ease-in-out 700ms 1;
+}
+@keyframes gauge-lvup-flash {
+  0%   { opacity: 0.95; }
+  40%  { opacity: 1;     filter: brightness(1.3); }
+  100% { opacity: 0.95; filter: brightness(1); }
+}
 
 .gauge-label {
   display: flex;
