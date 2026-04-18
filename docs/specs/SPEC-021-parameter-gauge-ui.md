@@ -224,7 +224,7 @@ function renderClockDial(container, { clockHour, clockMinute, spareHours }):
 
 ## 6. UIへの反映
 
-- 画面設計書：`docs/screen-design.md` §1 共通HUD / 各画面
+- 画面設計書：`docs/screens/SCREEN-DESIGN.md` §1 共通HUD / 各画面
 - 画面：S1, S3, S5, S6 の各 Scene に時計円盤と体力ゲージを配置
 
 ## 7. 想定される利用シナリオ
