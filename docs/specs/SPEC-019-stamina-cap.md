@@ -101,9 +101,104 @@ function staminaBaseCapForAge(age):
   1. 回復量 = `staminaCap * 0.30`（小数点以下切り捨て）
   2. `player.stamina` を回復量にセット
   3. 時刻を 2h 進める
-  4. 余剰時間を 2h 減らす（`max(0, spare - 2)`）
+  4. 余剰時間を 2h 減らす（ただし **§5.4.1a の吸収ルール** が優先）
   5. トースト「強制的にお昼寝した…体力が少し戻った」
   6. 余剰時間が 0 になった場合、自動で S5 就寝画面に遷移
+
+#### 5.4.1a 強制睡眠のコアタイム吸収ルール（v2 追加・重要）
+
+朝の遊び中に強制睡眠（2h 仮眠）が発動した場合、**睡眠時間の一部または全部をコアタイムに被せる** ことで、プレイヤーの夜の余剰時間を守る。
+
+ルール：
+- 仮眠 2h のうち、**コアタイム開始時刻以降に重なった分は「コアタイムが仮眠を吸収した」扱い** にし、夜の余剰時間から差し引かない。
+- 仮眠終了時刻がコアタイム終了時刻を超えた場合は、**超過分のみ** 夜の余剰時間から差し引く。
+
+計算式：
+```
+仮眠開始時刻   = player.clockHour（進める前）
+仮眠終了時刻   = 仮眠開始時刻 + 2h
+コアタイム開始 = coreTime.startHour
+コアタイム終了 = coreTime.endHour
+
+コアタイムと仮眠の重なり = max(0, min(仮眠終了, コアタイム終了) − max(仮眠開始, コアタイム開始))
+仮眠でコアタイム外に消費した時間 = 2 − コアタイムとの重なり
+超過分（コアタイム後に食い込んだ仮眠）= max(0, 仮眠終了 − コアタイム終了)
+
+朝の余剰時間への影響 = 仮眠でコアタイム外に消費した時間 − 超過分
+  = ただし朝の余剰は 2h を上限とする
+
+夜の余剰時間への影響 = 超過分
+```
+
+イメージ：
+```
+ケース A: 朝 8:00 に体力 0 → 仮眠 8:00〜10:00 → コアタイム 9:00〜16:00 と 1h 重なる
+  朝の余剰 -1h（8:00〜9:00 が仮眠）
+  コアタイムが 9:00 に自動開始（コアタイム消化は通常どおり）
+  夜の余剰 -0h（コアタイム時間内だけで仮眠完了） ← これが改修の要点
+
+ケース B: 朝 7:00 に体力 0 → 仮眠 7:00〜9:00 → 全部コアタイム前
+  朝の余剰 -2h
+  コアタイム 9:00〜16:00 通常消化
+  夜の余剰 -0h
+
+ケース C: コアタイム中（12:00 で）仮眠発動 → 12:00〜14:00、全部コアタイム内
+  仮眠がコアタイムを侵食しないので、特に夜の余剰への影響はない（プロト段階ではコアタイム中の遊びは発生しないので発生しないケース）
+
+ケース D: コアタイム後 16:30 に体力 0 → 仮眠 16:30〜18:30
+  朝の余剰 -0h
+  夜の余剰 -2h（通常どおり）
+```
+
+#### 5.4.1b 吸収ルール発動時のコアタイム進行
+
+- 仮眠によって時計が `coreTime.startHour` を超えた場合、その時点で通常の「朝の遊び終了 → コアタイムへ」の分岐が自動的に走る（SPEC-003 §5.8 core ctx）。
+- プレイヤーはそのまま「🏫 保育園に行く」ボタンでコアタイム画面に進める。仮眠時点で時刻が 16:00 を超えることはほぼ無いが、もし超えた場合は `clockHour = coreTime.endHour` にクランプして `coreTimeDoneToday = true` を立て、夜の遊びへ遷移する。
+
+#### 5.4.1c 計算の簡略化（プロト実装）
+
+プロト段階では以下の簡略式で実装する：
+```js
+// 仮眠開始時刻
+const napStart = player.clockHour + player.clockMinute / 60;
+const napEnd   = napStart + 2;
+
+// コアタイム情報
+const stage = resolveLifeStage(player.age);
+const core  = stage ? stage.coreTime : null;
+
+// 1) 時刻を 2h 進める
+player.clockHour   = Math.floor(napEnd);
+player.clockMinute = Math.round((napEnd - Math.floor(napEnd)) * 60);
+
+// 2) 朝の余剰（now < core.startHour の間のみ有効）から差し引くべき時間
+let morningDecrease = 0;
+if (core && napStart < core.startHour) {
+  morningDecrease = Math.min(2, core.startHour - napStart);
+}
+
+// 3) コアタイム超過分（夜の余剰から差し引く）
+let eveningDecrease = 0;
+if (core && napEnd > core.endHour) {
+  eveningDecrease = napEnd - core.endHour;
+}
+
+// 4) コアタイムがない（老後）または朝の余剰とも関係ないケース
+if (!core) {
+  // 老後は通常どおり余剰時間から 2h 差し引き
+  player.spareHours = Math.max(0, player.spareHours - 2);
+} else {
+  // 朝の余剰を消費（朝の遊び時間中だった場合）
+  player.spareHours = Math.max(0, player.spareHours - morningDecrease);
+  // 夜の余剰分は後で coreTime 終了後に recomputeSpareHoursAfterCoreTime() を通して
+  // 自動的に反映される。超過分がある場合は別途減算する。
+  if (eveningDecrease > 0) {
+    player._napOverflow = (player._napOverflow || 0) + eveningDecrease;
+  }
+}
+```
+
+`_napOverflow` は `recomputeSpareHoursAfterCoreTime()` で `spareHours` から差し引いて消費する（コアタイム消化後に一度だけ適用）。
 
 #### 5.4.2 強制終了の詳細（13歳以上）
 - 発生場所：遊びの結果フェーズで体力が 0 になった直後。
@@ -133,6 +228,9 @@ staminaBonusCap       遊び・発見で追加される恒久ボーナス
 depletedDays          体力ゼロを記録した日の配列（numeric day）
 depletedDaysThisYear  今年の体力ゼロ記録日数（年齢繰り上げ時に集計）
 retirementDecayLocked 老後減衰ロック（trueの年は -2/year が入らない）
+_napOverflow          強制睡眠がコアタイム終了後まで食い込んだ時間（h）。
+                      コアタイム消化時に夜の余剰から差し引かれ、即リセット。
+                      （SPEC-019 §5.4.1a の吸収ルール用）
 ```
 
 ## 6. UIへの反映
