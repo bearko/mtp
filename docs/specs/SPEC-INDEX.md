@@ -1,0 +1,22 @@
+# 仕様書 索引 / Spec Index
+
+> 仕様駆動開発のルールは [`../DEVELOPMENT_RULES.md`](../DEVELOPMENT_RULES.md) を参照。
+
+| 仕様ID | 機能名 | ステータス | 対応ファイル | 最終更新 |
+|---|---|---|---|---|
+| [SPEC-001](./SPEC-001-life-stage.md) | ライフステージ / プレイヤー状態 | Active | `prototype/game.js` (DEFAULT_PLAYER) | 2026-04-18 |
+| [SPEC-002](./SPEC-002-play-selection.md) | 遊び選択（候補抽出と実行可否） | Active | `prototype/game.js` (isPlayAvailable, renderChooseScreen) | 2026-04-18 |
+| [SPEC-003](./SPEC-003-play-execution.md) | 遊びの描写と結果統合（コアループ） | Active | `prototype/game.js` (startPlay, finalizePlay) | 2026-04-18 |
+| [SPEC-004](./SPEC-004-random-event.md) | ランダムイベント | Active | `prototype/game.js` (EVENTS, rollEvent) | 2026-04-18 |
+| [SPEC-005](./SPEC-005-parameter.md) | 原体験パラメーター / Lv算出 | Active | `prototype/game.js` (levelFromExp, applyGain) | 2026-04-18 |
+| [SPEC-006](./SPEC-006-bio-rhythm.md) | 生活リズム | Active | `prototype/game.js` (nextDay, sleep) | 2026-04-18 |
+| [SPEC-007](./SPEC-007-friends.md) | 友人数 | Active | `prototype/game.js` (isPlayAvailable, friend bonus) | 2026-04-18 |
+| [SPEC-008](./SPEC-008-sleep.md) | 就寝と翌日への遷移 | Active | `prototype/game.js` (goSleep, sleep, nextDay) | 2026-04-18 |
+| [SPEC-009](./SPEC-009-ui-layout.md) | UIレイアウト（固定HUD・固定フッター） | Active | `prototype/styles.css`, `prototype/index.html` | 2026-04-18 |
+
+## 新規仕様書を追加するとき
+
+1. 連番 `SPEC-00N` を確保
+2. 本索引に行を追加
+3. [`../DEVELOPMENT_RULES.md`](../DEVELOPMENT_RULES.md) の §2 のテンプレートに沿って記述
+4. コード側に `@spec` 注釈を入れる

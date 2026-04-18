@@ -1,9 +1,29 @@
 /**
  * カネとジカンとジョウネツと - プロトタイプ
- * 骨子（起床→遊び→描写→イベント→終了→反映→時間経過→就寝）の最小実装
+ *
+ * 仕様駆動開発ルール：docs/DEVELOPMENT_RULES.md
+ * 全仕様索引：docs/specs/SPEC-INDEX.md
+ *
+ * 画面構成（docs/screen-design.md）：
+ *   S1 起床  →  S2 遊びを選ぶ  →  S3 遊びの描写(結果統合)  →  [S4 イベント]
+ *                                        ↓
+ *                                    余剰時間>0 → S2 へ戻る
+ *                                    余剰時間=0 → S5 就寝
+ *                                    ↓
+ *                                  翌日 S1 起床
+ *
+ * 各関数の頭にある @spec コメントは、コードが読めない人でも挙動を仕様書から把握できるようにするためのルール。
  */
 
-// ===== 遊びマスタ（プロト用・未就学児〜小学生レベル）=====
+// =========================================================================
+// マスタデータ
+// =========================================================================
+
+/**
+ * @spec docs/specs/SPEC-002-play-selection.md
+ * @spec docs/specs/SPEC-007-friends.md
+ * 遊びマスタ。プロト段階では未就学児〜小学生向けを中心に収録。
+ */
 const PLAYS = [
   {
     id: "sandbox",
@@ -169,53 +189,23 @@ const PLAYS = [
   },
 ];
 
-// ===== ランダムイベントマスタ =====
+/**
+ * @spec docs/specs/SPEC-004-random-event.md
+ * ランダムイベントマスタ。weight付きで抽選される。
+ */
 const EVENTS = [
-  {
-    id: "new_friend",
-    text: "近所の子に話しかけられて、仲良くなった！",
-    icon: "🤝",
-    effect: { friends: 1, social: 5 },
-    weight: 10,
-  },
-  {
-    id: "coins",
-    text: "地面で100円玉を拾った！",
-    icon: "🪙",
-    effect: { money: 100 },
-    weight: 6,
-  },
-  {
-    id: "praised",
-    text: "先生に上手だと褒められた。自信がついた！",
-    icon: "🌟",
-    effect: { passion: 5, creative: 5 },
-    weight: 8,
-  },
-  {
-    id: "tripped",
-    text: "派手に転んだ。ちょっとケガ…",
-    icon: "🩹",
-    effect: { stamina: -10 },
-    weight: 6,
-  },
-  {
-    id: "weather",
-    text: "急に天気が崩れてきた。",
-    icon: "🌧",
-    effect: { stamina: -5 },
-    weight: 5,
-  },
-  {
-    id: "flow",
-    text: "気がつけば夢中になっていた。これが「没頭」か…",
-    icon: "🔥",
-    effect: { passion: 10 },
-    weight: 7,
-  },
+  { id: "new_friend", text: "近所の子に話しかけられて、仲良くなった！", icon: "🤝", effect: { friends: 1, social: 5 }, weight: 10 },
+  { id: "coins",      text: "地面で100円玉を拾った！",              icon: "🪙", effect: { money: 100 },                 weight: 6 },
+  { id: "praised",    text: "先生に上手だと褒められた。自信がついた！", icon: "🌟", effect: { passion: 5, creative: 5 },    weight: 8 },
+  { id: "tripped",    text: "派手に転んだ。ちょっとケガ…",           icon: "🩹", effect: { stamina: -10 },                weight: 6 },
+  { id: "weather",    text: "急に天気が崩れてきた。",                icon: "🌧",  effect: { stamina: -5 },                 weight: 5 },
+  { id: "flow",       text: "気がつけば夢中になっていた。これが「没頭」か…", icon: "🔥", effect: { passion: 10 },         weight: 7 },
 ];
 
-// ===== 初期プレイヤー状態 =====
+/**
+ * @spec docs/specs/SPEC-001-life-stage.md
+ * 初期プレイヤー状態。
+ */
 const DEFAULT_PLAYER = {
   age: 5,
   day: 1,
@@ -228,15 +218,8 @@ const DEFAULT_PLAYER = {
   money: 0,
   friends: 2,
   passion: 0,
-  exp: {
-    physical: 0,
-    creative: 0,
-    explore: 0,
-    social: 0,
-    competitive: 0,
-  },
+  exp: { physical: 0, creative: 0, explore: 0, social: 0, competitive: 0 },
   dailyPlays: 0,
-  dailyGainTotal: 0,
   lastPlayCategory: null,
   consecutiveCategoryCount: 0,
 };
@@ -251,24 +234,27 @@ const LABELS = {
 
 const SEASON_LABEL = { spring: "春", summer: "夏", autumn: "秋", winter: "冬" };
 
-// ===== 状態 =====
+// =========================================================================
+// 状態
+// =========================================================================
 let player = structuredClone(DEFAULT_PLAYER);
-let pendingPlay = null;
-let pendingGain = null;
-let pendingEvent = null;
+let pendingPlay = null;     // 進行中の遊び
+let pendingGain = null;     // 予定している獲得値
+let pendingEvent = null;    // 発火したイベント
+let playRAF = null;         // requestAnimationFrame id
 
-// ===== ユーティリティ =====
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => document.querySelectorAll(sel);
+// =========================================================================
+// ユーティリティ
+// =========================================================================
 const byId = (id) => document.getElementById(id);
+const $$ = (sel) => document.querySelectorAll(sel);
 
 function showScreen(id) {
   $$(".screen").forEach((el) => el.classList.remove("active"));
   byId(id).classList.add("active");
-  window.scrollTo({ top: 0 });
 }
 
-function toast(msg, ms = 1600) {
+function toast(msg, ms = 1800) {
   const t = byId("toast");
   t.textContent = msg;
   t.hidden = false;
@@ -276,15 +262,12 @@ function toast(msg, ms = 1600) {
   t._timer = setTimeout(() => { t.hidden = true; }, ms);
 }
 
+/**
+ * @spec docs/specs/SPEC-005-parameter.md §5.1
+ * exp から Lv を算出する: Lv = floor(sqrt(exp / 10))
+ */
 function levelFromExp(exp) {
-  return Math.floor(Math.sqrt(exp / 10));
-}
-
-function expToNextLv(exp) {
-  const lv = levelFromExp(exp);
-  const next = (lv + 1) * (lv + 1) * 10;
-  const curBase = lv * lv * 10;
-  return { lv, pct: Math.floor(((exp - curBase) / (next - curBase)) * 100) };
+  return Math.floor(Math.sqrt(Math.max(0, exp) / 10));
 }
 
 function fmtTime(h, m = 0) {
@@ -301,6 +284,10 @@ function pickWeighted(list) {
   return list[list.length - 1];
 }
 
+/**
+ * @spec docs/specs/SPEC-007-friends.md §5.2
+ * 遊びの主カテゴリ（gain の最大値を持つカテゴリ）を返す。
+ */
 function majorGainCategory(gain) {
   let best = null;
   let bestVal = 0;
@@ -310,7 +297,14 @@ function majorGainCategory(gain) {
   return best;
 }
 
-// ===== HUD更新 =====
+// =========================================================================
+// HUD
+// =========================================================================
+
+/**
+ * @spec docs/specs/SPEC-001-life-stage.md §6
+ * 共通HUDの描画。全画面共通。
+ */
 function renderHUD() {
   byId("hud-age").textContent = `${player.age}歳`;
   byId("hud-date").textContent = `${player.day}日目(${SEASON_LABEL[player.season]}) ${fmtTime(player.clockHour, player.clockMinute)}`;
@@ -322,9 +316,19 @@ function renderHUD() {
   byId("hud-passion").textContent = player.passion;
 }
 
-// ===== S1 起床 =====
+// =========================================================================
+// S1. 起床
+// =========================================================================
+
+/**
+ * @screen S1 起床
+ * @spec docs/specs/SPEC-001-life-stage.md
+ * @spec docs/specs/SPEC-006-bio-rhythm.md
+ * 前日の状態と生活リズムに基づいて、起床画面のメッセージとコンディションを表示する。
+ */
 function renderWakeup() {
-  byId("wakeup-subtitle").textContent = `あなたは ${player.age}歳 / ${SEASON_LABEL[player.season]}の朝 ${fmtTime(player.clockHour, player.clockMinute)}`;
+  byId("wakeup-subtitle").textContent =
+    `あなたは ${player.age}歳 / ${SEASON_LABEL[player.season]}の朝 ${fmtTime(player.clockHour, player.clockMinute)}`;
   byId("wu-stamina").textContent = `${Math.floor(player.stamina)} / 100`;
   byId("wu-rhythm").textContent = `${Math.floor(player.bioRhythm)} / 100`;
   byId("wu-friends").textContent = `${player.friends} 人`;
@@ -340,7 +344,16 @@ function renderWakeup() {
   renderHUD();
 }
 
-// ===== S2 遊びを選ぶ =====
+// =========================================================================
+// S2. 遊びを選ぶ
+// =========================================================================
+
+/**
+ * @screen S2 遊びを選ぶ
+ * @spec docs/specs/SPEC-002-play-selection.md §5.1
+ * @spec docs/specs/SPEC-007-friends.md §5.1
+ * 遊びの実行可否を判定する。満たされない条件を reasons に並べて返す。
+ */
 function isPlayAvailable(play) {
   const reasons = [];
   if (play.seasons && !play.seasons.includes(player.season)) {
@@ -357,13 +370,19 @@ function isPlayAvailable(play) {
   return { ok: reasons.length === 0, reasons };
 }
 
+/**
+ * @screen S2 遊びを選ぶ
+ * @spec docs/specs/SPEC-002-play-selection.md §5.2
+ * 実行可能な遊びを上に、ロック中を下に表示する。
+ */
 function renderChooseScreen() {
   byId("choose-hours").textContent = player.spareHours.toFixed(1).replace(".0", "");
   const list = byId("play-list");
   list.innerHTML = "";
 
-  const candidates = PLAYS.map((p) => ({ play: p, avail: isPlayAvailable(p) }));
-  const sorted = candidates.sort((a, b) => (b.avail.ok ? 1 : 0) - (a.avail.ok ? 1 : 0));
+  const sorted = PLAYS
+    .map((p) => ({ play: p, avail: isPlayAvailable(p) }))
+    .sort((a, b) => (b.avail.ok ? 1 : 0) - (a.avail.ok ? 1 : 0));
 
   sorted.forEach(({ play, avail }) => {
     const card = document.createElement("div");
@@ -397,7 +416,9 @@ function renderChooseScreen() {
     if (play.minFriends) {
       const req = document.createElement("div");
       req.className = "play-meta";
-      req.textContent = `👥 要友人 ${play.minFriends}人以上${play.friendBonusPerPerson ? `（1人ごと経験値+${play.friendBonusPerPerson}）` : ""}`;
+      req.textContent = `👥 要友人 ${play.minFriends}人以上${
+        play.friendBonusPerPerson ? `（1人ごと経験値+${play.friendBonusPerPerson}）` : ""
+      }`;
       card.appendChild(req);
     }
 
@@ -414,9 +435,7 @@ function renderChooseScreen() {
     btn.className = avail.ok ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm";
     btn.textContent = avail.ok ? "遊ぶ" : "ロック";
     btn.disabled = !avail.ok;
-    btn.addEventListener("click", () => {
-      if (avail.ok) startPlay(play);
-    });
+    btn.addEventListener("click", () => { if (avail.ok) startPlay(play); });
     actions.appendChild(btn);
     card.appendChild(actions);
 
@@ -426,151 +445,167 @@ function renderChooseScreen() {
   renderHUD();
 }
 
-// ===== S3 遊びの描写 =====
+// =========================================================================
+// S3. 遊びの描写（結果統合版）
+// =========================================================================
+
+/**
+ * @screen S3 遊びの描写（結果統合）
+ * @spec docs/specs/SPEC-003-play-execution.md §5.1
+ * 遊びを開始する：描写フェーズ（プログレスバー）を開始し、終了後に finalizePlay へ。
+ */
 function startPlay(play) {
   pendingPlay = play;
-  const desc = play.descriptions[Math.floor(Math.random() * play.descriptions.length)];
+  pendingGain = null;
+  pendingEvent = null;
+
   byId("playing-icon").textContent = play.icon;
   byId("playing-name").textContent = play.name;
-  byId("playing-desc").textContent = desc;
+  byId("playing-desc").textContent =
+    play.descriptions[Math.floor(Math.random() * play.descriptions.length)];
+
   byId("playing-bar").style.width = "0%";
-  byId("playing-timer").textContent = `遊び進行中… 0%`;
+  byId("playing-timer").textContent = "遊び進行中… 0%";
+  byId("playing-progress-wrap").hidden = false;
+  byId("result-panel").hidden = true;
+
+  byId("btn-skip-play").hidden = false;
+  byId("btn-next-play").hidden = true;
+  byId("btn-go-sleep-from-play").hidden = true;
 
   showScreen("screen-playing");
 
-  let pct = 0;
-  const duration = 2400;
+  const duration = 2200;
   const start = performance.now();
   const tick = (t) => {
-    pct = Math.min(100, Math.round(((t - start) / duration) * 100));
+    const pct = Math.min(100, Math.round(((t - start) / duration) * 100));
     byId("playing-bar").style.width = pct + "%";
     byId("playing-timer").textContent = `遊び進行中… ${pct}%`;
-    if (pct < 100 && pendingPlay) {
-      pendingPlay._raf = requestAnimationFrame(tick);
-    } else if (pct >= 100) {
-      finishPlayingScreen();
+    if (pct < 100) {
+      playRAF = requestAnimationFrame(tick);
+    } else {
+      finishDescription();
     }
   };
-  pendingPlay._raf = requestAnimationFrame(tick);
+  playRAF = requestAnimationFrame(tick);
 }
 
-function skipPlaying() {
-  if (pendingPlay && pendingPlay._raf) cancelAnimationFrame(pendingPlay._raf);
+/**
+ * @screen S3 遊びの描写
+ * @spec docs/specs/SPEC-003-play-execution.md §5.1
+ * スキップボタン：描写演出をカットして結果へ進む。
+ */
+function skipDescription() {
+  if (playRAF) cancelAnimationFrame(playRAF);
   byId("playing-bar").style.width = "100%";
-  finishPlayingScreen();
+  finishDescription();
 }
 
-function finishPlayingScreen() {
-  // 原体験差分を先に計算
-  const play = pendingPlay;
-  const gainBase = { ...play.gain };
-
-  // 友人数ボーナス
-  if (play.friendBonusPerPerson) {
-    const bonus = play.friendBonusPerPerson * player.friends;
-    const mainKey = majorGainCategory(play.gain) || "social";
-    gainBase[mainKey] = (gainBase[mainKey] || 0) + bonus;
-  }
-
-  // 没頭（連続同カテゴリ）ボーナス
-  const mainCat = majorGainCategory(play.gain);
-  let passionGain = 3;
-  if (mainCat && player.lastPlayCategory === mainCat) {
-    passionGain += 2 + player.consecutiveCategoryCount;
-  }
-
-  pendingGain = {
-    play,
-    gain: gainBase,
-    passion: passionGain,
-    mainCat,
-  };
-
-  // ランダムイベントを 35% で発火
+/**
+ * @screen S3 → S4 分岐
+ * @spec docs/specs/SPEC-003-play-execution.md §5.1
+ * @spec docs/specs/SPEC-004-random-event.md §5.1
+ * 描写フェーズ終了後、35%で S4 ランダムイベントへ。
+ * それ以外は直接、結果統合表示へ。
+ */
+function finishDescription() {
   if (Math.random() < 0.35) {
     pendingEvent = pickWeighted(EVENTS);
     renderEvent();
     showScreen("screen-event");
   } else {
     pendingEvent = null;
-    renderFinish();
-    showScreen("screen-finish");
+    finalizePlay();
   }
 }
 
-// ===== S4 ランダムイベント =====
+/**
+ * @screen S4 ランダムイベント
+ * @spec docs/specs/SPEC-004-random-event.md §5.3
+ * イベントの効果表示（実反映は finalizePlay 内で行う）。
+ */
 function renderEvent() {
   byId("event-icon").textContent = pendingEvent.icon;
   byId("event-desc").textContent = pendingEvent.text;
-  const box = byId("event-effects");
   const rows = Object.entries(pendingEvent.effect)
     .map(([k, v]) => `<li><span>${effectLabel(k)}</span><b class="${v > 0 ? "up" : "down"}">${v > 0 ? "+" : ""}${v}</b></li>`)
     .join("");
-  box.innerHTML = `<div class="card-title">変化</div><ul class="kv-list">${rows}</ul>`;
+  byId("event-effects").innerHTML = `<div class="card-title">変化</div><ul class="kv-list">${rows}</ul>`;
 }
 
 function effectLabel(key) {
   if (LABELS[key]) return LABELS[key];
-  const map = {
-    friends: "友人数",
-    money: "所持金",
-    stamina: "体力",
-    passion: "ジョウネツ",
-    bioRhythm: "生活リズム",
-  };
+  const map = { friends: "友人数", money: "所持金", stamina: "体力", passion: "ジョウネツ", bioRhythm: "生活リズム" };
   return map[key] || key;
 }
 
-// ===== S5 遊び終了 =====
-function renderFinish() {
-  const { play, gain, passion } = pendingGain;
-  byId("finish-playname").textContent = `${play.icon} ${play.name} (${play.timeCost}h)`;
-  byId("finish-passion").textContent = passion;
+/**
+ * @screen S3 結果フェーズ（旧 S5 遊び終了 + S6 反映 + S7 時間経過 を統合）
+ * @spec docs/specs/SPEC-003-play-execution.md §5.2-5.4
+ * @spec docs/specs/SPEC-005-parameter.md §5.2
+ * @spec docs/specs/SPEC-007-friends.md §5.2
+ *
+ * 1画面の下部に結果をフェードインで表示する。
+ * ① 獲得原体験の計算（基本gain + 友人数ボーナス）
+ * ② イベント効果の合算
+ * ③ プレイヤー状態へ反映（exp, stamina, money, passion, friends, spareHours, clock）
+ * ④ UIに差分として表示
+ * ⑤ アクションボタンを「次の遊び」「今日おわる」に切替
+ */
+function finalizePlay() {
+  const play = pendingPlay;
 
-  const gainEl = byId("finish-gain");
-  gainEl.innerHTML = Object.entries(gain)
-    .map(([k, v]) => `<li><span>${LABELS[k]}</span><b class="up">+${v}</b></li>`)
-    .join("");
-
-  if (pendingEvent) {
-    byId("finish-event-card").hidden = false;
-    byId("finish-event").innerHTML = Object.entries(pendingEvent.effect)
-      .map(([k, v]) => `<li><span>${effectLabel(k)}</span><b class="${v > 0 ? "up" : "down"}">${v > 0 ? "+" : ""}${v}</b></li>`)
-      .join("");
-  } else {
-    byId("finish-event-card").hidden = true;
+  // ---- ① 獲得経験値の計算 ----
+  const gain = { ...play.gain };
+  // @spec SPEC-007 §5.2 友人数ボーナス
+  if (play.friendBonusPerPerson) {
+    const mainKey = majorGainCategory(play.gain) || "social";
+    gain[mainKey] = (gain[mainKey] || 0) + play.friendBonusPerPerson * player.friends;
   }
-}
 
-// ===== S6 パラメーター反映 =====
-function applyParams() {
-  const { play, gain, passion, mainCat } = pendingGain;
+  // @spec SPEC-003 §5.2 没頭ボーナス
+  const mainCat = majorGainCategory(play.gain);
+  let passionGain = 3;
+  if (mainCat && player.lastPlayCategory === mainCat) {
+    passionGain += 2 + player.consecutiveCategoryCount;
+  }
 
+  // ---- ② 反映前スナップショット ----
   const before = {
     exp: { ...player.exp },
     stamina: player.stamina,
     money: player.money,
-    passion: player.passion,
     friends: player.friends,
     bioRhythm: player.bioRhythm,
+    passion: player.passion,
+    clock: fmtTime(player.clockHour, player.clockMinute),
+    spareHours: player.spareHours,
   };
 
-  // 原体験加算
+  // ---- ③ 経験値加算 ----
   for (const [k, v] of Object.entries(gain)) {
     player.exp[k] = (player.exp[k] || 0) + v;
   }
-  // ステータス
+
+  // ---- ④ 基本ステータス反映 ----
   player.stamina = Math.max(0, player.stamina - (play.staminaCost || 0));
   player.money = Math.max(0, player.money - (play.moneyCost || 0));
-  player.passion += passion;
+  player.passion += passionGain;
+
+  // ---- ⑤ 時間経過 ----
+  const h = Math.floor(play.timeCost);
+  const m = Math.round((play.timeCost - h) * 60);
+  player.clockHour += h;
+  player.clockMinute += m;
+  if (player.clockMinute >= 60) { player.clockHour += 1; player.clockMinute -= 60; }
   player.spareHours = Math.max(0, +(player.spareHours - play.timeCost).toFixed(1));
   player.dailyPlays += 1;
 
-  // イベント反映
+  // ---- ⑥ イベント効果の反映 ----
   if (pendingEvent) {
     const e = pendingEvent.effect;
     if (e.friends) player.friends = Math.max(0, player.friends + e.friends);
-    if (e.money) player.money = Math.max(0, player.money + e.money);
+    if (e.money)   player.money   = Math.max(0, player.money + e.money);
     if (e.stamina) player.stamina = Math.max(0, Math.min(100, player.stamina + e.stamina));
     if (e.passion) player.passion = Math.max(0, player.passion + e.passion);
     if (e.bioRhythm) player.bioRhythm = Math.max(0, Math.min(100, player.bioRhythm + e.bioRhythm));
@@ -579,7 +614,7 @@ function applyParams() {
     }
   }
 
-  // 没頭カウント
+  // ---- ⑦ 没頭カウント更新 ----
   if (mainCat === player.lastPlayCategory) {
     player.consecutiveCategoryCount += 1;
   } else {
@@ -587,97 +622,112 @@ function applyParams() {
     player.lastPlayCategory = mainCat;
   }
 
-  renderParams(before);
-  showScreen("screen-params");
+  pendingGain = { gain, passion: passionGain };
+
+  // ---- ⑧ UIへ結果を描画 ----
+  renderResultPanel(before);
+  renderHUD();
+
+  // ---- ⑨ アクションボタンの切替 ----
+  byId("btn-skip-play").hidden = true;
+  byId("btn-next-play").hidden = false;
+  byId("btn-go-sleep-from-play").hidden = false;
+
+  // 余剰時間がないなら次は就寝のみ
+  if (player.spareHours <= 0) {
+    byId("btn-next-play").disabled = true;
+    toast("余剰時間がなくなった。夜になる…");
+  } else {
+    byId("btn-next-play").disabled = false;
+  }
+
+  // S4から戻ってきた場合は、S3画面を再表示
+  showScreen("screen-playing");
 }
 
-function renderParams(before) {
-  const expEl = byId("params-exp");
-  expEl.innerHTML = Object.keys(LABELS).map((k) => {
+/**
+ * @screen S3 結果フェーズ
+ * @spec docs/specs/SPEC-003-play-execution.md §5
+ * @spec docs/specs/SPEC-005-parameter.md §5.3
+ * スナップショットと現在値を比較して、差分だけを見やすく描画する。
+ */
+function renderResultPanel(before) {
+  byId("result-panel").hidden = false;
+
+  // 原体験（Lv表記付き）
+  const gainEl = byId("result-gain");
+  const rows = Object.keys(LABELS).map((k) => {
     const b = before.exp[k] || 0;
     const a = player.exp[k] || 0;
+    if (a === b) return "";
     const bLv = levelFromExp(b);
     const aLv = levelFromExp(a);
-    const diff = a - b;
-    if (diff === 0) return "";
     const lvUp = aLv > bLv ? " <span style='color:var(--good)'>⬆ Lv UP</span>" : "";
-    return `<li><span>${LABELS[k]}</span><b class="up">Lv${bLv} → Lv${aLv} (+${diff}exp)${lvUp}</b></li>`;
+    return `<li><span>${LABELS[k]}</span><b class="up">Lv${bLv}→Lv${aLv} (+${a - b}exp)${lvUp}</b></li>`;
   }).filter(Boolean).join("");
+  gainEl.innerHTML = rows || `<li><span>（変化なし）</span><b>-</b></li>`;
 
-  const statusEl = byId("params-status");
-  const rows = [];
+  // ステータス差分
+  const statusRows = [];
   if (before.stamina !== player.stamina) {
-    rows.push(`<li><span>体力</span><b class="${player.stamina >= before.stamina ? "up" : "down"}">${Math.floor(before.stamina)} → ${Math.floor(player.stamina)}</b></li>`);
+    statusRows.push(`<li><span>体力</span><b class="${player.stamina >= before.stamina ? "up" : "down"}">${Math.floor(before.stamina)} → ${Math.floor(player.stamina)}</b></li>`);
   }
   if (before.money !== player.money) {
-    rows.push(`<li><span>所持金</span><b class="${player.money >= before.money ? "up" : "down"}">¥${before.money} → ¥${player.money}</b></li>`);
-  }
-  if (before.passion !== player.passion) {
-    rows.push(`<li><span>ジョウネツ</span><b class="up">${before.passion} → ${player.passion}</b></li>`);
+    statusRows.push(`<li><span>所持金</span><b class="${player.money >= before.money ? "up" : "down"}">¥${before.money} → ¥${player.money}</b></li>`);
   }
   if (before.friends !== player.friends) {
-    rows.push(`<li><span>友人数</span><b class="${player.friends >= before.friends ? "up" : "down"}">${before.friends} → ${player.friends}</b></li>`);
+    statusRows.push(`<li><span>友人数</span><b class="${player.friends >= before.friends ? "up" : "down"}">${before.friends} → ${player.friends}</b></li>`);
   }
-  if (before.bioRhythm !== player.bioRhythm) {
-    rows.push(`<li><span>生活リズム</span><b class="${player.bioRhythm >= before.bioRhythm ? "up" : "down"}">${Math.floor(before.bioRhythm)} → ${Math.floor(player.bioRhythm)}</b></li>`);
+  if (before.passion !== player.passion) {
+    statusRows.push(`<li><span>🔥 ジョウネツ</span><b class="up">${before.passion} → ${player.passion}</b></li>`);
   }
-  statusEl.innerHTML = rows.join("");
-  renderHUD();
+  byId("result-status").innerHTML = statusRows.length
+    ? statusRows.join("")
+    : `<li><span>（差分なし）</span><b>-</b></li>`;
+
+  // 時間経過
+  byId("result-clock").textContent = `${before.clock} → ${fmtTime(player.clockHour, player.clockMinute)}`;
+  byId("result-spare").textContent = `${before.spareHours}h → ${player.spareHours}h`;
+
+  // 没頭ボーナスの表示
+  const passionMsg = pendingGain && pendingGain.passion
+    ? `🔥 ジョウネツ +${pendingGain.passion}${player.consecutiveCategoryCount > 0 ? `（同カテゴリ ${player.consecutiveCategoryCount + 1}連続の没頭ボーナス）` : ""}`
+    : "";
+  byId("result-passion").textContent = passionMsg;
+
+  // 描写フェーズの UI を縮小（プログレスは残す）
+  byId("playing-progress-wrap").hidden = true;
 }
 
-// ===== S7 時間経過 =====
-function advanceTime() {
-  const beforeClock = fmtTime(player.clockHour, player.clockMinute);
-  const play = pendingPlay;
-  const h = Math.floor(play.timeCost);
-  const m = Math.round((play.timeCost - h) * 60);
-  player.clockHour += h;
-  player.clockMinute += m;
-  if (player.clockMinute >= 60) {
-    player.clockHour += 1;
-    player.clockMinute -= 60;
-  }
-  byId("time-transition").textContent = `${beforeClock} → ${fmtTime(player.clockHour, player.clockMinute)}`;
-  byId("time-remaining").textContent = `${player.spareHours} h`;
+// =========================================================================
+// 「1h休む」（遊び選択画面で使う）
+// =========================================================================
 
-  const pct = Math.min(100, (player.spareHours / 8) * 100);
-  byId("time-bar").style.width = pct + "%";
-
-  // 余剰時間がなくなれば自動で就寝へ
-  showScreen("screen-time");
-  if (player.spareHours <= 0) {
-    toast("余剰時間がなくなった。夜になる…");
-    setTimeout(() => goSleep(), 900);
-  }
-}
-
-function chooseNextPlay() {
-  if (player.spareHours <= 0) {
-    toast("もう遊ぶ時間がない…");
-    return;
-  }
-  renderChooseScreen();
-  showScreen("screen-choose");
-}
-
-// ===== 「何もしない」（1h休む）=====
+/**
+ * @screen S2 遊びを選ぶ
+ * @spec docs/specs/SPEC-002-play-selection.md §8
+ * 1時間だけ休憩。余剰時間を1減らす代わりに体力+5。
+ */
 function doNothing() {
-  if (player.spareHours < 1) {
-    toast("休む時間もない！");
-    return;
-  }
+  if (player.spareHours < 1) { toast("休む時間もない！"); return; }
   player.spareHours = +(player.spareHours - 1).toFixed(1);
   player.stamina = Math.min(100, player.stamina + 5);
   player.clockHour += 1;
   toast("1時間休んだ（体力 +5）");
-  renderHUD();
   renderChooseScreen();
 }
 
-// ===== S8 就寝 =====
+// =========================================================================
+// S5. 就寝
+// =========================================================================
+
+/**
+ * @screen S5 就寝
+ * @spec docs/specs/SPEC-008-sleep.md §5.1
+ * 1日の成果を表示し、就寝モード選択を促す。
+ */
 function goSleep() {
-  const ul = byId("sleep-summary");
-  ul.innerHTML = `
+  byId("sleep-summary").innerHTML = `
     <li><span>遊んだ回数</span><b>${player.dailyPlays} 回</b></li>
     <li><span>現在のジョウネツ</span><b>${player.passion}</b></li>
     <li><span>体力</span><b>${Math.floor(player.stamina)} / 100</b></li>
@@ -687,6 +737,12 @@ function goSleep() {
   showScreen("screen-sleep");
 }
 
+/**
+ * @screen S5 就寝 → S1 起床
+ * @spec docs/specs/SPEC-006-bio-rhythm.md §5.1
+ * @spec docs/specs/SPEC-008-sleep.md §5.2
+ * 就寝モードに応じて生活リズムと体力を変化させ、翌日に進む。
+ */
 function sleep(mode) {
   if (mode === "early") {
     player.bioRhythm = Math.min(100, player.bioRhythm + 10);
@@ -695,41 +751,37 @@ function sleep(mode) {
     player.stamina = Math.min(100, player.stamina + 15);
   } else if (mode === "latenight") {
     player.bioRhythm = Math.max(0, player.bioRhythm - 15);
-    player.stamina = Math.max(0, player.stamina - 10 + 10);
-    // 夜更かしで +1h の遊び権が翌日に（ここでは体力+10で補填という擬似処理）
   }
-  // 翌日に進む
   nextDay(mode);
 }
 
+/**
+ * @spec docs/specs/SPEC-006-bio-rhythm.md §5.2-5.4
+ * @spec docs/specs/SPEC-008-sleep.md §5.3
+ * 翌日の起床時刻・余剰時間・体調不良を生活リズムと就寝モードから決定する。
+ */
 function nextDay(sleepMode) {
   player.day += 1;
-  // 季節の擬似ローテ（30日で変わる）
   const seasons = ["spring", "summer", "autumn", "winter"];
   if (player.day % 30 === 0) {
     const idx = seasons.indexOf(player.season);
     player.season = seasons[(idx + 1) % 4];
   }
-  // 年齢の擬似ローテ（120日で1歳加齢）
   if (player.day % 120 === 0) player.age += 1;
 
-  // 起床時刻と余剰時間
-  let wakeH = 6;
-  let wakeM = 30;
-  if (player.bioRhythm < 40) {
-    wakeH = 9; wakeM = 0;
-  } else if (player.bioRhythm < 70) {
-    wakeH = 7; wakeM = 30;
-  }
+  // 起床時刻（SPEC-006 §5.2）
+  let wakeH = 6, wakeM = 30;
+  if (player.bioRhythm < 40) { wakeH = 9; wakeM = 0; }
+  else if (player.bioRhythm < 70) { wakeH = 7; wakeM = 30; }
 
-  // 体調不良判定：リズム<60で夜更かししていた場合、確率30%で発動
+  // 体調不良（SPEC-006 §5.4）
   let sickness = false;
   if (sleepMode === "latenight" && player.bioRhythm < 60 && Math.random() < 0.3) {
     sickness = true;
     player.stamina = Math.max(0, player.stamina - 15);
   }
 
-  // 余剰時間のベース（未就学児=6h 想定）
+  // 余剰時間（SPEC-006 §5.3）
   let base = 6;
   if (sleepMode === "latenight") base += 1;
   if (wakeH >= 9) base -= 2;
@@ -741,22 +793,21 @@ function nextDay(sleepMode) {
   player.clockMinute = wakeM;
   player.dailyPlays = 0;
 
-  if (sickness) {
-    toast("朝から体調がすぐれない…（余剰時間 -2h）", 2400);
-  } else if (sleepMode === "latenight") {
-    toast("夜更かしで生活リズムが乱れた…");
-  } else if (sleepMode === "early") {
-    toast("早寝でリズム回復！");
-  }
+  if (sickness) toast("朝から体調がすぐれない…（余剰時間 -2h）", 2400);
+  else if (sleepMode === "latenight") toast("夜更かしで生活リズムが乱れた…");
+  else if (sleepMode === "early") toast("早寝でリズム回復！");
 
   renderWakeup();
   showScreen("screen-wakeup");
 }
 
-// ===== イベント配線 =====
+// =========================================================================
+// イベント配線
+// =========================================================================
+
 document.addEventListener("click", (e) => {
   const t = e.target.closest("[data-action]");
-  if (!t) return;
+  if (!t || t.disabled) return;
   const a = t.dataset.action;
   switch (a) {
     case "start-day":
@@ -764,20 +815,15 @@ document.addEventListener("click", (e) => {
       showScreen("screen-choose");
       break;
     case "skip-playing":
-      skipPlaying();
+      skipDescription();
       break;
     case "close-event":
-      renderFinish();
-      showScreen("screen-finish");
-      break;
-    case "apply-params":
-      applyParams();
-      break;
-    case "advance-time":
-      advanceTime();
+      finalizePlay();
       break;
     case "choose-next":
-      chooseNextPlay();
+      if (player.spareHours <= 0) { toast("もう遊ぶ時間がない…"); return; }
+      renderChooseScreen();
+      showScreen("screen-choose");
       break;
     case "do-nothing":
       doNothing();
@@ -794,6 +840,8 @@ document.addEventListener("click", (e) => {
   sleep(s.dataset.sleep);
 });
 
-// ===== 初期描画 =====
+// =========================================================================
+// 初期描画
+// =========================================================================
 renderWakeup();
 renderHUD();
