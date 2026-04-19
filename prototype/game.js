@@ -408,6 +408,68 @@ let NURSERY_DISCOVERIES = DEFAULT_NURSERY_DISCOVERIES;
 /** @spec SPEC-026 §5.2.1 チュートリアル専用の発見（絵本→滑り台→砂場） */
 let TUTORIAL_DISCOVERIES = [];
 
+/* =========================================================================
+ * @spec SPEC-031 / SPEC-032 転生イントロのシーン定義とランダム名マスタ
+ *   - ISEKAI_SCENES / NAMES は起動時に data/isekai.json / data/names.json から
+ *     上書きされる。読み込み失敗時は DEFAULT_ISEKAI_SCENES / DEFAULT_NAMES を使う。
+ * ========================================================================= */
+const DEFAULT_ISEKAI_SCENES = [
+  {
+    id: "scene1",
+    bg: "dark",
+    messages: [
+      { speaker: "narration", text: "・・・" },
+      { speaker: "mystery",   text: "・・・次の方どうぞ" },
+    ],
+  },
+  {
+    id: "scene2",
+    bg: "halo",
+    steps: [
+      { type: "message", speaker: "god", text: "はい。では確認のためにお名前をお願いします" },
+      { type: "input",   field: "playerName", placeholder: "お名前をどうぞ", confirmLabel: "決定" },
+      { type: "message", speaker: "god", text: "ありがとうございます。{playerName}さんですね" },
+      { type: "message", speaker: "god", text: "前世はブラック企業で働きづめてボロボロになりながら、30歳で交通事故に遭い、ここにいる、と……" },
+      { type: "message", speaker: "god", text: "あなたは、これから『転生』します" },
+      { type: "message", speaker: "god", text: "次はもっと遊んでからまた来てくださいね。" },
+    ],
+  },
+  {
+    id: "scene3",
+    bg: "certificate",
+    certificate: {
+      title: "転生証明書",
+      fields: [
+        { label: "転生先", value: "人間" },
+        { label: "国",     value: "日本" },
+        { label: "家庭",   value: "中流家庭" },
+        { label: "性別",   value: "男" },
+        { label: "寿命",   value: "100歳" },
+        { label: "発行日", value: "2026年4月1日" },
+      ],
+      stampText: "神",
+      prompt: "内容をご確認のうえ、タップで承認を受けてください",
+      afterStampPrompt: "承認されました。タップで次へ",
+    },
+  },
+  {
+    id: "scene4",
+    bg: "dawn",
+    messages: [
+      { speaker: "narration", text: "2026年4月1日　誕生" },
+      { speaker: "narration", text: "名前は『{avatarName}』となった" },
+      { speaker: "narration", text: "温かい家庭で育てられ、1歳の誕生日を迎えた" },
+      { speaker: "narration", text: "さて、今日は何をして遊ぼうか" },
+    ],
+  },
+];
+const DEFAULT_NAMES = {
+  male:   ["晃", "翔太", "蓮", "陽翔"],
+  female: ["美咲", "結衣", "さくら", "葵"],
+};
+let ISEKAI_SCENES = DEFAULT_ISEKAI_SCENES;
+let NAMES         = DEFAULT_NAMES;
+
 /**
  * @spec docs/specs/SPEC-028-master-data.md §6.1
  * マスタデータを data/ 配下の JSON から読み込む。ファイル URL の場合は fetch に失敗するので、
@@ -449,6 +511,32 @@ async function loadMasters() {
   }
 }
 
+/**
+ * @spec docs/specs/SPEC-032-message-master.md §4
+ * メッセージマスタ（転生イントロ・名前）を data/ 配下から読み込む。
+ * 失敗時は DEFAULT_ISEKAI_SCENES / DEFAULT_NAMES をそのまま使う。
+ */
+async function loadMessageMasters() {
+  try {
+    const [isekai, names] = await Promise.all([
+      fetch("./data/isekai.json").then((r) => { if (!r.ok) throw new Error("isekai " + r.status); return r.json(); }),
+      fetch("./data/names.json").then((r) => { if (!r.ok) throw new Error("names "  + r.status); return r.json(); }),
+    ]);
+    if (Array.isArray(isekai.scenes) && isekai.scenes.length > 0) {
+      ISEKAI_SCENES = isekai.scenes;
+    }
+    if (names && (Array.isArray(names.male) || Array.isArray(names.female))) {
+      NAMES = {
+        male:   (Array.isArray(names.male)   && names.male.length   > 0) ? names.male   : DEFAULT_NAMES.male,
+        female: (Array.isArray(names.female) && names.female.length > 0) ? names.female : DEFAULT_NAMES.female,
+      };
+    }
+    console.log(`[master] loaded: isekai scenes=${ISEKAI_SCENES.length}, names=male:${NAMES.male.length}/female:${NAMES.female.length}`);
+  } catch (err) {
+    console.warn("[master] message load failed, using DEFAULT_*", err);
+  }
+}
+
 /** @spec SPEC-028 §5.4 相互参照の整合性チェック */
 function validateMasters() {
   for (const p of PLAYS) {
@@ -474,9 +562,12 @@ function validateMasters() {
  * 2歳の体力上限 = 15（SPEC-019）、起床=07:00（SPEC-020）、朝の余剰=2h。
  */
 const DEFAULT_PLAYER = {
-  age: 2,
+  // @spec SPEC-031 §7 転生イントロで入力・付与される名前
+  name: "",         // 前世の本人名（プレイヤーが入力）
+  avatarName: "",   // 異世界での主人公名（ランダム）
+  age: 1,
   day: 1,
-  season: "summer",
+  season: "spring",
   clockHour: 7,
   clockMinute: 0,
   // @spec SPEC-026 §5.2 Day 1 は Phase 0（保育園休業）、1 日 8h 自由遊び
@@ -580,6 +671,11 @@ function showScreen(id) {
   // @spec SPEC-029 §4.2 screen-playing 以外に遷移したら動画を停止＆解放
   if (id !== "screen-playing") {
     hidePlayVideo();
+  }
+  // @spec SPEC-030 §4.4 / SPEC-031 §6.4 タイトル・転生イントロ中は HUD を隠す
+  const hud = byId("hud");
+  if (hud) {
+    hud.hidden = (id === "screen-title" || id === "screen-isekai");
   }
 }
 
@@ -739,7 +835,8 @@ function majorGainCategory(gain) {
  */
 function renderHUD() {
   byId("hud-age").textContent = `${player.age}歳`;
-  byId("hud-date").textContent = `${player.day}日目(${SEASON_LABEL[player.season]})`;
+  // @spec SPEC-001 §5.7 HUD の日付は「YYYY年M月D日（曜日）」に統一
+  byId("hud-date").textContent = formatFullDate(player.day);
   byId("hud-stamina").textContent = Math.max(0, Math.floor(player.stamina));
   byId("hud-stamina-cap").textContent = Math.floor(player.staminaCap || 0);
   byId("hud-money").textContent = player.money;
@@ -3786,19 +3883,267 @@ player.staminaBaseCap = staminaBaseCapForAge(player.age);
 player.staminaCap = player.staminaBaseCap + (player.staminaBonusCap || 0);
 player.stamina = Math.min(player.stamina, player.staminaCap);
 
-// @spec SPEC-028 §4 マスタデータの外部ファイル読み込み後に初期画面を立ち上げる。
-(async function boot() {
-  await loadMasters();
+// =========================================================================
+// @spec SPEC-030 タイトル画面 / SPEC-031 転生イントロ
+// =========================================================================
 
-  // @spec SPEC-002 §1.1 起動直後は S2 に直接出現（旧 S1 起床画面を経由しない）
-  // @spec SPEC-025 §5.3 情熱プロファイル未選択ならまず S8 を表示
+/**
+ * @spec SPEC-030 §5.2 新規ゲーム開始：player を初期化して転生イントロへ
+ */
+function startNewGame() {
+  // プレイヤーを deep clone で初期化
+  player = JSON.parse(JSON.stringify(DEFAULT_PLAYER));
+  player.stamina = Math.min(player.stamina, player.staminaCap);
+  startIsekaiIntro();
+}
+
+/**
+ * @spec SPEC-031 §6 転生イントロの状態
+ * sceneIndex: 現在のシーン番号（0 〜 scenes.length-1）
+ * stepIndex:  シーン内のメッセージ／ステップのインデックス
+ * inputActive: 名前入力フェーズで advance をブロック
+ * stampShown: 証明書シーンでハンコ演出済みか
+ */
+let isekaiState = {
+  sceneIndex: 0,
+  stepIndex: 0,
+  inputActive: false,
+  stampShown: false,
+};
+
+/** ランダムに異世界での主人公名を選ぶ */
+function randomAvatarName(gender) {
+  const arr = (NAMES && NAMES[gender]) ? NAMES[gender] : DEFAULT_NAMES.male;
+  if (!arr || arr.length === 0) return "晃";
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/** メッセージ内の {playerName} {avatarName} を player の値で置換 */
+function interpolateMessage(text) {
+  const map = {
+    playerName: player && player.name,
+    avatarName: player && player.avatarName,
+  };
+  return String(text || "").replace(/\{(\w+)\}/g, (_, key) => {
+    if (Object.prototype.hasOwnProperty.call(map, key)) {
+      return map[key] || `{${key}}`;
+    }
+    const v = player && player[key];
+    return (v == null || v === "") ? `{${key}}` : v;
+  });
+}
+
+function speakerLabel(speaker) {
+  switch (speaker) {
+    case "narration": return "（ナレーション）";
+    case "mystery":   return "？？？";
+    case "god":       return "？？？";
+    case "player":    return player.name || "あなた";
+    default:          return speaker || "";
+  }
+}
+
+/** @spec SPEC-031 §4 転生イントロ開始 */
+function startIsekaiIntro() {
+  isekaiState = { sceneIndex: 0, stepIndex: 0, inputActive: false, stampShown: false };
+  showScreen("screen-isekai");
+  renderIsekaiCurrent();
+}
+
+/** 現在の sceneIndex / stepIndex に応じて画面を描画 */
+function renderIsekaiCurrent() {
+  const scenes = ISEKAI_SCENES;
+  const scene = scenes[isekaiState.sceneIndex];
+  const root = byId("screen-isekai");
+  if (!scene) { finishIsekaiIntro(); return; }
+
+  root.setAttribute("data-scene", scene.id);
+
+  // 背景差し替え
+  const bg = byId("isekai-bg");
+  bg.className = "isekai-bg bg-" + (scene.bg || "dark");
+
+  // 後光は scene2 のみ
+  byId("isekai-halo").hidden = (scene.bg !== "halo");
+
+  // 証明書は scene3 のみ
+  const cert = byId("isekai-certificate");
+  if (scene.bg === "certificate" && scene.certificate) {
+    cert.hidden = false;
+    byId("isekai-cert-title").textContent = scene.certificate.title || "転生証明書";
+    const fieldsEl = byId("isekai-cert-fields");
+    fieldsEl.innerHTML = (scene.certificate.fields || [])
+      .map((f) => `<dt>${f.label}</dt><dd>${f.value}</dd>`).join("");
+    byId("isekai-stamp-text").textContent = scene.certificate.stampText || "神";
+    byId("isekai-stamp").classList.toggle("stamped", isekaiState.stampShown);
+    byId("isekai-stamp").hidden = !isekaiState.stampShown;
+    const promptText = isekaiState.stampShown
+      ? (scene.certificate.afterStampPrompt || "タップで次へ")
+      : (scene.certificate.prompt || "タップで承認");
+    byId("isekai-speaker").textContent = "";
+    byId("isekai-message").textContent = promptText;
+  } else {
+    cert.hidden = true;
+  }
+
+  // メッセージ or ステップの描画
+  const items = scene.steps || scene.messages || [];
+  if (scene.bg !== "certificate") {
+    const item = items[isekaiState.stepIndex];
+    if (!item) {
+      // このシーンのメッセージは尽きた → 次のシーンへ
+      advanceIsekai();
+      return;
+    }
+    const inputRow = byId("isekai-input-row");
+    if (item.type === "input") {
+      // 名前入力フェーズ
+      isekaiState.inputActive = true;
+      byId("isekai-speaker").textContent = "";
+      byId("isekai-message").textContent = (item.placeholder || "") + "（未入力なら自動で名前が決まります）";
+      inputRow.hidden = false;
+      const inp = byId("isekai-input");
+      inp.placeholder = item.placeholder || "";
+      inp.value = player.name || "";
+      byId("isekai-input-btn").textContent = item.confirmLabel || "決定";
+      byId("isekai-hint").classList.add("hidden");
+      setTimeout(() => { try { inp.focus(); } catch (e) {} }, 50);
+    } else {
+      // 通常メッセージ
+      isekaiState.inputActive = false;
+      inputRow.hidden = true;
+      byId("isekai-speaker").textContent = speakerLabel(item.speaker);
+      byId("isekai-message").textContent = interpolateMessage(item.text);
+      byId("isekai-hint").classList.remove("hidden");
+    }
+  } else {
+    byId("isekai-input-row").hidden = true;
+    byId("isekai-hint").classList.remove("hidden");
+  }
+}
+
+/** @spec SPEC-031 §6.1 タップで次へ */
+function advanceIsekai() {
+  if (isekaiState.inputActive) return;  // 入力フェーズ中は進まない
+
+  const scenes = ISEKAI_SCENES;
+  const scene = scenes[isekaiState.sceneIndex];
+  if (!scene) { finishIsekaiIntro(); return; }
+
+  // 証明書シーン：未捺印ならタップでハンコ、捺印済みなら次シーンへ
+  if (scene.bg === "certificate") {
+    if (!isekaiState.stampShown) {
+      isekaiState.stampShown = true;
+      byId("isekai-stamp").hidden = false;
+      // アニメーション再発火のために一旦クラスを外す
+      byId("isekai-stamp").classList.remove("stamped");
+      // reflow
+      void byId("isekai-stamp").offsetWidth;
+      byId("isekai-stamp").classList.add("stamped");
+      byId("isekai-message").textContent =
+        (scene.certificate && scene.certificate.afterStampPrompt) || "承認されました。タップで次へ";
+      return;
+    }
+    // 次のシーンへ
+    gotoNextIsekaiScene();
+    return;
+  }
+
+  const items = scene.steps || scene.messages || [];
+  isekaiState.stepIndex += 1;
+
+  if (isekaiState.stepIndex >= items.length) {
+    gotoNextIsekaiScene();
+    return;
+  }
+  renderIsekaiCurrent();
+}
+
+function gotoNextIsekaiScene() {
+  isekaiState.sceneIndex += 1;
+  isekaiState.stepIndex = 0;
+  if (isekaiState.sceneIndex >= ISEKAI_SCENES.length) {
+    finishIsekaiIntro();
+    return;
+  }
+  // シーン 4 突入時に主人公名をランダム決定
+  const next = ISEKAI_SCENES[isekaiState.sceneIndex];
+  if (next && next.id === "scene4" && !player.avatarName) {
+    // 証明書の性別に従う（SPEC-031 §5.2）
+    const cert = (ISEKAI_SCENES.find((s) => s.bg === "certificate") || {}).certificate || {};
+    const genderField = (cert.fields || []).find((f) => f.label === "性別");
+    const gender = (genderField && genderField.value === "女") ? "female" : "male";
+    player.avatarName = randomAvatarName(gender);
+  }
+  renderIsekaiCurrent();
+}
+
+/** @spec SPEC-031 §4.2 名前入力フェーズの確定 */
+function confirmIsekaiInput() {
+  const inp = byId("isekai-input");
+  const raw = (inp && inp.value) ? inp.value.trim() : "";
+  if (raw) {
+    player.name = raw;
+  } else {
+    // 未入力ならランダム（名前マスタから適当に）
+    player.name = randomAvatarName("male");
+  }
+  isekaiState.inputActive = false;
+  byId("isekai-input-row").hidden = true;
+  byId("isekai-hint").classList.remove("hidden");
+  // 次のメッセージへ
+  isekaiState.stepIndex += 1;
+  renderIsekaiCurrent();
+}
+
+/** @spec SPEC-031 §4.4 イントロ終了 → 本編 S2 へ */
+function finishIsekaiIntro() {
+  // シーン 4 を経由せずに終わる可能性に備え、avatarName が空ならここでも決定
+  if (!player.avatarName) {
+    player.avatarName = randomAvatarName("male");
+  }
+  goChooseFromToday();
+}
+
+// @spec SPEC-028 §4  マスタデータを全部読み込んでから画面を立ち上げる
+// @spec SPEC-030 §4.3 起動直後は必ず S0 タイトル画面
+// @spec SPEC-031 §5  転生イントロはタイトルの「はじめから」から入る
+(async function boot() {
+  await Promise.all([
+    loadMasters(),
+    loadMessageMasters(),
+  ]);
+
   renderHUD();
 
   // 介入モーダルの閉じるボタンは dom-load 後に配線
   const _btnInterruptClose = byId("btn-interrupt-close");
   if (_btnInterruptClose) _btnInterruptClose.addEventListener("click", closeInterrupt);
 
-  // @spec SPEC-026 §5.3.1 プロファイル選択は Phase 1 突入時（Day 8）に行う。
-  //   Day 1〜7（phase0）は手動モードで絵本→滑り台→砂場を遊ぶだけなのでプロファイル不要。
-  goChooseFromToday();
+  // @spec SPEC-030 タイトル画面 → 「はじめから」で startNewGame()
+  const btnStart = byId("btn-title-start");
+  if (btnStart) btnStart.addEventListener("click", startNewGame);
+
+  // @spec SPEC-031 §6.2 転生イントロ：ステージ全体タップで advanceIsekai
+  const isekaiStage = byId("isekai-stage");
+  if (isekaiStage) {
+    isekaiStage.addEventListener("click", (e) => {
+      // 入力フィールドや決定ボタンの上ではタップで進行しない
+      const inp = byId("isekai-input-row");
+      if (inp && !inp.hidden && inp.contains(e.target)) return;
+      advanceIsekai();
+    });
+  }
+  const btnIsekaiConfirm = byId("isekai-input-btn");
+  if (btnIsekaiConfirm) btnIsekaiConfirm.addEventListener("click", (e) => {
+    e.stopPropagation();
+    confirmIsekaiInput();
+  });
+  const isekaiInput = byId("isekai-input");
+  if (isekaiInput) isekaiInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); confirmIsekaiInput(); }
+  });
+
+  // 起動時は HUD を一旦非表示にしておく（タイトル中は HUD は要らない）
+  showScreen("screen-title");
 })();

@@ -27,6 +27,9 @@
 | [SPEC-027](./SPEC-027-renrakucho.md) | 連絡帳サマリ（保育園・幼稚園の世界観演出） | Active（保育園のみ実装） | `prototype/game.js` (buildRenrakuchoEntry) / `prototype/styles.css` (.renrakucho-*) | 2026-04-18 |
 | [SPEC-028](./SPEC-028-master-data.md) | マスタデータ管理（JSONテーブル化） | Active | `prototype/data/*.json` / `prototype/game.js` (loadMasters) | 2026-04-18 |
 | [SPEC-029](./SPEC-029-play-video.md) | 遊び中ムービー再生（`data/videos/{playId}.mp4`） | Active | `prototype/data/videos/*.mp4` / `prototype/game.js` (tryPlayIntroVideo / hidePlayVideo) / `prototype/index.html` (#play-video) | 2026-04-19 |
+| [SPEC-030](./SPEC-030-title-screen.md) | タイトル画面「りとらいふ」（S0） | Active | `prototype/index.html` (#screen-title) / `prototype/game.js` (renderTitleScreen, startNewGame) | 2026-04-19 |
+| [SPEC-031](./SPEC-031-isekai-intro.md) | 転生イントロ演出（4シーン紙芝居） | Active | `prototype/data/isekai.json`, `prototype/data/names.json` / `prototype/game.js` (startIsekaiIntro, advanceIsekai) | 2026-04-19 |
+| [SPEC-032](./SPEC-032-message-master.md) | メッセージマスタ（セリフ・名前の JSON 外部化） | Active | `prototype/data/isekai.json`, `prototype/data/names.json` / `prototype/game.js` (loadMessageMasters) | 2026-04-19 |
 
 ## ライフステージ別コアタイム
 
