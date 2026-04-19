@@ -161,5 +161,46 @@
     },
     "unlockPlayId": "sandbox",
     "triggerPlayId": "slide"
+  },
+  {
+    "id": "parental_outing_zoo",
+    "scope": "parental_outing",
+    "icon": "🦒",
+    "name": "動物園",
+    "text": "おとうさん・おかあさんに動物園に連れて行ってもらった！",
+    "lifeStageTag": "nursery",
+    "weight": 4,
+    "effect": { "intellect": 30, "sensitivity": 20, "social": 10, "passion": 8 }
+  },
+  {
+    "id": "parental_outing_aquarium",
+    "scope": "parental_outing",
+    "icon": "🐠",
+    "name": "水族館",
+    "text": "水族館でたくさんの魚を見た！",
+    "lifeStageTag": "nursery",
+    "weight": 3,
+    "effect": { "intellect": 25, "sensitivity": 25, "social": 8, "passion": 7 }
+  },
+  {
+    "id": "parental_outing_bigpark",
+    "scope": "parental_outing",
+    "icon": "🏞️",
+    "name": "大きな公園",
+    "text": "遠くの大きな公園で、見たことない遊具で遊んだ！",
+    "lifeStageTag": "nursery",
+    "weight": 3,
+    "effect": { "body": 30, "social": 15, "passion": 10 }
+  },
+  {
+    "id": "infection_cold",
+    "scope": "infection",
+    "icon": "🤒",
+    "name": "風邪",
+    "text": "保育園で風邪をもらってきた。しばらくお休み。",
+    "lifeStageTag": "nursery",
+    "weight": 2,
+    "durationDays": 3,
+    "effect": { "passion": -3 }
   }
 ]

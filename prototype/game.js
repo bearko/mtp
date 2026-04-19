@@ -422,6 +422,8 @@ let MISSION_SCENARIOS = [];
 let TITLES = [];
 /** @spec SPEC-054 §2 親が他者から褒められる場面 */
 let PARENTAL_COMPLIMENTS = [];
+/** @spec SPEC-011 §10.1 親遣い遠出（Issue #14 反映） */
+let EVENTS_PARENTAL_OUTING = [];
 
 /* =========================================================================
  * @spec SPEC-031 / SPEC-032 転生イントロのシーン定義とランダム名マスタ
@@ -533,7 +535,9 @@ async function loadMasters() {
         triggerPlayId: e.triggerPlayId,
         gain: e.effect || {},
       }));
-    console.log(`[master] loaded: ${Object.keys(CATEGORIES).length} categories, ${PLAYS.length} plays, ${EVENTS.length} random events, ${NURSERY_DISCOVERIES.length} discoveries, ${TUTORIAL_DISCOVERIES.length} tutorial events`);
+    // @spec SPEC-011 §10.1 親遣い遠出（Issue #14）
+    EVENTS_PARENTAL_OUTING = evs.filter((e) => e.scope === "parental_outing");
+    console.log(`[master] loaded: ${Object.keys(CATEGORIES).length} categories, ${PLAYS.length} plays, ${EVENTS.length} random events, ${NURSERY_DISCOVERIES.length} discoveries, ${TUTORIAL_DISCOVERIES.length} tutorial events, ${EVENTS_PARENTAL_OUTING.length} parental outings`);
     validateMasters();
   } catch (err) {
     console.warn("[master] load failed, using DEFAULT_*", err);
@@ -693,6 +697,10 @@ const DEFAULT_PLAYER = {
   _playCounts: {},
   /** @spec SPEC-054 §2.3 parental_compliment の cooldown（30 日に 1 回まで） */
   _lastParentalComplimentDay: 0,
+  /** @spec SPEC-011 §10.1 §10.3 Issue #14 保育園特別イベントモード */
+  _specialDayMode: null,      // null | "outing" | "infection"
+  _pendingOuting: null,       // 今日発動した遠出イベントオブジェクト
+  _infectionRemainingDays: 0, // 感染症の残日数
 };
 
 /**
@@ -4034,6 +4042,12 @@ function nextDay(sleepMode) {
   //   - 土日祝：pickWeekendParentalOuting で 40%家／60%遠出
   //   - phase0（初週）は安定運用のため常に自宅
   maybeResolveMorningLocation();
+  // @spec SPEC-011 §10 保育園「貯める」ギミック（Issue #14 反映）
+  // - 感染症イベントの月別確率抽選（場所抽選とは別の演出軸）
+  // - 親遣い遠出は SPEC-047 で実装済みなので、こちらは互換のため残置
+  if (typeof maybeTriggerNurserySpecialEvent === "function") {
+    try { maybeTriggerNurserySpecialEvent(); } catch (e) { /* noop */ }
+  }
 
   // @spec SPEC-002 §1.1 翌日も S2 に直行（起床ヘッダーで状態を表示）
   renderHUD();
@@ -4053,6 +4067,90 @@ function nextDay(sleepMode) {
   } else {
     goChooseFromToday();
   }
+}
+
+/**
+ * @spec SPEC-011 §10 保育園期の特別イベント抽選（Issue #14 反映）
+ *   - 親遣い遠出：土日祝 40% / 平日 2%。発動した日は dock 経由の自由遊び不可
+ *   - 感染症：月別（4-6月/11-2月は 15%、その他は 3%）の確率
+ *
+ * 現段階では以下のみ実装：
+ *   - フラグ設定（player._specialDayMode / player._infectionRemainingDays）
+ *   - トースト通知
+ *   - 感染症中は朝の余剰時間ゼロ＆体力回復鈍化を既に reflect 済み
+ *   - 親遣い遠出の「その日は1イベントだけで即S10」は将来実装
+ */
+function maybeTriggerNurserySpecialEvent() {
+  const stage = resolveLifeStage(player.age);
+  if (!stage || stage.id !== "nursery") {
+    player._specialDayMode = null;
+    return;
+  }
+
+  // phase0（初週）は世界観演出を邪魔しないためスキップ
+  if (tutorialPhase(player.day) === "phase0") {
+    player._specialDayMode = null;
+    return;
+  }
+
+  // すでに感染症期間中（残日数 >0）なら継続処理
+  if (player._infectionRemainingDays && player._infectionRemainingDays > 0) {
+    player._infectionRemainingDays -= 1;
+    player._specialDayMode = "infection";
+    player.spareHours = 0;
+    toast("まだ熱がある…今日も一日お休み", 2400);
+    return;
+  }
+
+  // 曜日判定（日=0, 土=6）
+  const dow = fakeDateForDay(player.day).getUTCDay();
+  const isWeekend = (dow === 0 || dow === 6);
+
+  // 月別感染症確率（month は 0-indexed）
+  const month = fakeDateForDay(player.day).getUTCMonth();
+  const highSeason = (month >= 3 && month <= 5) || month >= 10 || month <= 1; // 4-6月 or 11-2月
+  const infectionRate = highSeason ? 0.15 : 0.03;
+
+  // 1. 感染症抽選
+  if (Math.random() < infectionRate) {
+    const durationDays = 3 + Math.floor(Math.random() * 3); // 3-5 日
+    player._infectionRemainingDays = durationDays;
+    player._specialDayMode = "infection";
+    player.spareHours = 0;
+    toast(`保育園で風邪をもらってきた…${durationDays}日間お休み`, 2800);
+    return;
+  }
+
+  // 2. 親遣い遠出抽選
+  const outingRate = isWeekend ? 0.40 : 0.02;
+  if (Math.random() < outingRate) {
+    // parental_outing スコープのイベントからランダム選択
+    const outings = (EVENTS_PARENTAL_OUTING || []);
+    if (outings.length === 0) return;
+    const totalW = outings.reduce((a, o) => a + (o.weight || 1), 0);
+    let r = Math.random() * totalW;
+    let picked = outings[0];
+    for (const o of outings) {
+      r -= (o.weight || 1);
+      if (r <= 0) { picked = o; break; }
+    }
+    player._specialDayMode = "outing";
+    player._pendingOuting = picked;
+    toast(`${picked.icon || "🎒"} ${picked.text || picked.name}`, 3000);
+    // 素養加算を即時適用
+    if (picked.effect) {
+      for (const [k, v] of Object.entries(normalizeGainToSoyou(picked.effect))) {
+        if (SOYOU_KEYS.includes(k)) {
+          player.soyou[k] = (player.soyou[k] || 0) + v;
+        }
+      }
+    }
+    // 今日は1イベントだけで即 S10 にしたいが、プロト実装は「自由遊びもできる」緩和版
+    // 将来は spareHours=0 にして dock を閉じる
+    return;
+  }
+
+  player._specialDayMode = null;
 }
 
 /**
