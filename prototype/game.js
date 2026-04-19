@@ -26,7 +26,7 @@
  * 遊びカテゴリマスタ。遊びの `categories` 配列で参照される ID と UI 表示ラベルの辞書。
  * プロト段階では保育園で使う 10 カテゴリのみ定義。
  */
-const CATEGORIES = {
+const DEFAULT_CATEGORIES = {
   movement:     { label: "運動",     group: "身体" },
   outdoor_toy:  { label: "遊具",     group: "身体" },
   water:        { label: "水遊び",   group: "身体" },
@@ -105,7 +105,7 @@ function tempoDaysPerTurn(age) {
  * @spec docs/specs/SPEC-022-play-category.md §5.2 遊びマスタへのカテゴリ付与
  * 遊びマスタ。プロト段階では未就学児〜小学生向けを中心に収録。
  */
-const PLAYS = [
+const DEFAULT_PLAYS = [
   {
     id: "sandbox",
     name: "砂場遊び",
@@ -305,7 +305,7 @@ const PLAYS = [
  * @spec docs/specs/SPEC-004-random-event.md
  * ランダムイベントマスタ。weight付きで抽選される。
  */
-const EVENTS = [
+const DEFAULT_EVENTS = [
   { id: "new_friend", text: "近所の子に話しかけられて、仲良くなった！", icon: "🤝", effect: { friends: 1, social: 5 }, weight: 10 },
   { id: "coins",      text: "地面で100円玉を拾った！",              icon: "🪙", effect: { money: 100 },                 weight: 6 },
   { id: "praised",    text: "先生に上手だと褒められた。自信がついた！", icon: "🌟", effect: { passion: 5, creative: 5 },    weight: 8 },
@@ -386,7 +386,7 @@ function getFixedSchedule(age) {
  * 保育園コアタイムで抽選される「発見」の候補。
  * `unlockPlayId` があるものは、その遊びを player.unlockedPlays に追加する。
  */
-const NURSERY_DISCOVERIES = [
+const DEFAULT_NURSERY_DISCOVERIES = [
   { id: "meet_new_friend",  text: "新しいお友達と仲良くなった！",                    weight: 10, gain: { friends: 1, social: 5 } },
   { id: "learn_slide",      text: "大きな滑り台の上手な滑り方を教えてもらった！",    weight: 8,  gain: { physical: 3 }, unlockPlayId: "big_slide" },
   { id: "learn_sandcastle", text: "砂場で先生にお城の作り方を教わった！",            weight: 8,  gain: { creative: 5, physical: 3 } },
@@ -395,6 +395,74 @@ const NURSERY_DISCOVERIES = [
   { id: "cry_then_smile",   text: "友達とおもちゃを取り合って泣いた…最後は仲直り。", weight: 4,  gain: { social: 4, passion: 2 } },
   { id: "park_adventure",   text: "公園で小さな虫を見つけて観察した！",              weight: 5,  gain: { explore: 4, physical: 2 } },
 ];
+
+/*
+ * @spec docs/specs/SPEC-028-master-data.md §4 §6
+ * マスタは let で保持して、loadMasters() が data/*.json から fetch して上書きできるようにする。
+ * 読み込み失敗時は DEFAULT_* のハードコード値をそのまま使う。
+ */
+let CATEGORIES          = DEFAULT_CATEGORIES;
+let PLAYS               = DEFAULT_PLAYS;
+let EVENTS              = DEFAULT_EVENTS;
+let NURSERY_DISCOVERIES = DEFAULT_NURSERY_DISCOVERIES;
+/** @spec SPEC-026 §5.2.1 チュートリアル専用の発見（絵本→滑り台→砂場） */
+let TUTORIAL_DISCOVERIES = [];
+
+/**
+ * @spec docs/specs/SPEC-028-master-data.md §6.1
+ * マスタデータを data/ 配下の JSON から読み込む。ファイル URL の場合は fetch に失敗するので、
+ * DEFAULT_* をそのまま使う（プロト段階の簡易運用）。
+ */
+async function loadMasters() {
+  try {
+    const [cat, plays, evs] = await Promise.all([
+      fetch("./data/categories.json").then((r) => { if (!r.ok) throw new Error("categories " + r.status); return r.json(); }),
+      fetch("./data/plays.json").then((r) => { if (!r.ok) throw new Error("plays " + r.status); return r.json(); }),
+      fetch("./data/events.json").then((r) => { if (!r.ok) throw new Error("events " + r.status); return r.json(); }),
+    ]);
+    CATEGORIES = cat;
+    PLAYS = plays;
+    EVENTS = evs.filter((e) => e.scope === "random_play");
+    NURSERY_DISCOVERIES = evs
+      .filter((e) => e.scope === "nursery_discovery")
+      .map((e) => ({
+        id: e.id,
+        text: e.text,
+        weight: e.weight || 1,
+        gain: e.effect || {},
+        unlockPlayId: e.unlockPlayId,
+      }));
+    TUTORIAL_DISCOVERIES = evs
+      .filter((e) => e.scope === "tutorial_phase0")
+      .map((e) => ({
+        id: e.id,
+        text: e.text,
+        icon: e.icon || "✨",
+        unlockPlayId: e.unlockPlayId,
+        triggerPlayId: e.triggerPlayId,
+        gain: e.effect || {},
+      }));
+    console.log(`[master] loaded: ${Object.keys(CATEGORIES).length} categories, ${PLAYS.length} plays, ${EVENTS.length} random events, ${NURSERY_DISCOVERIES.length} discoveries, ${TUTORIAL_DISCOVERIES.length} tutorial events`);
+    validateMasters();
+  } catch (err) {
+    console.warn("[master] load failed, using DEFAULT_*", err);
+  }
+}
+
+/** @spec SPEC-028 §5.4 相互参照の整合性チェック */
+function validateMasters() {
+  for (const p of PLAYS) {
+    for (const c of (p.categories || [])) {
+      if (!CATEGORIES[c]) console.warn(`[master] play '${p.id}' references unknown category '${c}'`);
+    }
+  }
+  const playIds = new Set(PLAYS.map((p) => p.id));
+  for (const e of [...EVENTS, ...NURSERY_DISCOVERIES, ...TUTORIAL_DISCOVERIES]) {
+    if (e.unlockPlayId && !playIds.has(e.unlockPlayId)) {
+      console.warn(`[master] event '${e.id}' unlocks unknown play '${e.unlockPlayId}'`);
+    }
+  }
+}
 
 /**
  * @spec docs/specs/SPEC-001-life-stage.md
@@ -411,8 +479,9 @@ const DEFAULT_PLAYER = {
   season: "summer",
   clockHour: 7,
   clockMinute: 0,
-  spareHours: 2,       // 朝の遊び時間 07:00-09:00（SPEC-020 §5.2）
-  spareHoursMax: 4,    // 1日の余剰時間ベース（朝2h + 夜2h）SPEC-021 分母用
+  // @spec SPEC-026 §5.2 Day 1 は Phase 0（保育園休業）、1 日 8h 自由遊び
+  spareHours: 8,
+  spareHoursMax: 8,    // 1日の余剰時間ベース（SPEC-021 分母用）
   stamina: 15,
   staminaCap: 15,
   staminaBaseCap: 15,
@@ -467,6 +536,10 @@ const DEFAULT_PLAYER = {
   _skipTarget: null,
   /** 目的地までのカウントダウン日数 */
   _skipRemainingDays: 0,
+  /** @spec SPEC-026 §5.3 §5.4 チュートリアル境界日のモーダル表示済みフラグ */
+  _tutorialBoundariesSeen: { day8: false, day15: false },
+  /** @spec SPEC-026 §5.2.1 チュートリアル発見の保留キュー（finalizePlay 後に通知） */
+  _pendingTutorialInterrupts: [],
 };
 
 const LABELS = {
@@ -957,8 +1030,74 @@ function resolveLifeStage(age) {
  * 現在のライフステージの coreTime を返す（null の場合はコアタイム無し）。
  */
 function resolveCoreTime(age) {
+  // @spec SPEC-026 §5.2 Phase 0 は保育園コアタイムを休業（null 返し）
+  if (tutorialPhase(player.day) === "phase0") return null;
   const stage = resolveLifeStage(age);
   return stage ? stage.coreTime : null;
+}
+
+/**
+ * @spec docs/specs/SPEC-026-tutorial.md §5.1
+ * 現在のチュートリアル段階を返す。
+ *   phase0: Day 1〜7 初週（保育園休業・遊び段階解禁）
+ *   phase1: Day 8〜14 2週目（保育園再開・発見イベント解禁）
+ *   phase2: Day 15〜   本編（スキップ解禁）
+ */
+function tutorialPhase(day) {
+  if (day <= 7)  return "phase0";
+  if (day <= 14) return "phase1";
+  return "phase2";
+}
+
+/**
+ * @spec SPEC-026 §5.5 スキップ機能は phase2 以降のみ解禁
+ */
+function isSkipUnlocked() {
+  return tutorialPhase(player.day) === "phase2";
+}
+
+/**
+ * @spec SPEC-026 §5.2 現時点のコアタイムを返す。
+ * Phase 0（初週）は保育園休業のため null を返す。
+ */
+function getActiveCoreTime() {
+  if (tutorialPhase(player.day) === "phase0") return null;
+  const stage = resolveLifeStage(player.age);
+  return stage ? stage.coreTime : null;
+}
+
+/**
+ * @spec SPEC-026 §5.2.1 チュートリアル発見（段階解禁）
+ * ある play.id を初めて完了したとき、その play をトリガーとする tutorial_phase0 イベントを
+ * 必ず 1 回発火し、対応する遊びを解禁する。
+ * @returns {Array<{icon,title,body}>} 介入モーダル用の通知リスト（空配列もあり）
+ */
+function checkTutorialDiscoveries(playId) {
+  if (tutorialPhase(player.day) !== "phase0") return [];
+  const fired = player.discoveredIds || [];
+  const results = [];
+  for (const ev of TUTORIAL_DISCOVERIES || []) {
+    if (ev.triggerPlayId !== playId) continue;
+    if (fired.includes(ev.id)) continue;
+    // 発火
+    player.discoveredIds.push(ev.id);
+    if (ev.unlockPlayId && !player.unlockedPlays.includes(ev.unlockPlayId)) {
+      player.unlockedPlays.push(ev.unlockPlayId);
+    }
+    // 効果反映（effect は軽微な exp）
+    for (const [k, v] of Object.entries(ev.gain || {})) {
+      if (k in (player.exp || {})) {
+        player.exp[k] = (player.exp[k] || 0) + v;
+      }
+    }
+    const unlocked = PLAYS.find((p) => p.id === ev.unlockPlayId);
+    results.push({
+      icon: ev.icon || "✨",
+      title: "あたらしい遊びを見つけた！",
+      body: `${ev.text}${unlocked ? `\n\n${unlocked.icon} ${unlocked.name} が遊べるようになったよ。` : ""}`,
+    });
+  }
+  return results;
 }
 
 // =========================================================================
@@ -1059,6 +1198,15 @@ function renderWakeupHeader() {
  *   isLowStamina : true なら体力不足だが遊べる（低体力プレイ SPEC-002 §5.9）
  */
 function isPlayAvailable(play) {
+  // @spec SPEC-026 §5.2 Phase 0 は段階解禁：絵本を既定で解禁、それ以外は player.unlockedPlays に含まれていなければ非表示
+  if (tutorialPhase(player.day) === "phase0") {
+    const PHASE0_INITIAL = new Set(["picturebook"]);
+    const unlocked = new Set(player.unlockedPlays || []);
+    if (!PHASE0_INITIAL.has(play.id) && !unlocked.has(play.id)) {
+      return { ok: false, reasons: ["チュートリアル：まだ解禁されていない"], isHidden: true };
+    }
+  }
+
   // 解禁条件未達 → 完全非表示
   if (play.unlockRequired && !(player.unlockedPlays || []).includes(play.id)) {
     return { ok: false, reasons: ["まだ知らない遊び"], isHidden: true };
@@ -1521,6 +1669,12 @@ function finalizePlay() {
     player.lastPlayCategory = mainCat;
   }
 
+  // @spec SPEC-026 §5.2.1 チュートリアル発見（絵本→滑り台→砂場の段階解禁）
+  const tutDiscoveredFinalize = checkTutorialDiscoveries(play.id);
+  if (tutDiscoveredFinalize && tutDiscoveredFinalize.length > 0) {
+    player._pendingTutorialInterrupts = (player._pendingTutorialInterrupts || []).concat(tutDiscoveredFinalize);
+  }
+
   pendingGain = {
     gain,
     passion: passionGain,
@@ -1546,6 +1700,13 @@ function finalizePlay() {
 
   // S4から戻ってきた場合は、S3画面を再表示
   showScreen("screen-playing");
+
+  // @spec SPEC-026 §5.2.1 チュートリアル発見があればモーダル通知（結果画面の上に出る）
+  if (player._pendingTutorialInterrupts && player._pendingTutorialInterrupts.length > 0) {
+    const q = player._pendingTutorialInterrupts.slice();
+    player._pendingTutorialInterrupts = [];
+    showInterruptQueue(q, () => {});
+  }
 }
 
 /**
@@ -1563,7 +1724,7 @@ function showResultActions() {
   byId("actions-skip").hidden = true;
 
   const stage = resolveLifeStage(player.age);
-  const coreTime = stage ? stage.coreTime : null;
+  const coreTime = getActiveCoreTime();
   const coreTimeAvailable = !!(coreTime && stage.implemented && !player.coreTimeDoneToday);
 
   // 文脈判定
@@ -1878,7 +2039,7 @@ function beginDay() {
  */
 function gotoCoreTimeFromResult() {
   const stage = resolveLifeStage(player.age);
-  const coreTime = stage ? stage.coreTime : null;
+  const coreTime = getActiveCoreTime();
   if (!coreTime || !stage.implemented) { goChooseFromToday(); return; }
   // 朝の余剰時間を 0 にクランプし、時刻をコアタイム開始まで早送り
   if (player.clockHour + player.clockMinute / 60 < coreTime.startHour) {
@@ -1938,7 +2099,7 @@ function recomputeSpareHoursAfterCoreTime(coreTime) {
  */
 function goChooseFromToday() {
   const stage = resolveLifeStage(player.age);
-  const coreTime = stage ? stage.coreTime : null;
+  const coreTime = getActiveCoreTime();
   const now = player.clockHour + player.clockMinute / 60;
 
   // 実装済みコアタイム：まだ今日未消化 & 時刻が開始に達したか 朝の余剰 0 に達したら S6
@@ -2413,7 +2574,8 @@ function nextDay(sleepMode) {
 
   const sched = getFixedSchedule(player.age);
   const stage = resolveLifeStage(player.age);
-  const coreTime = stage ? stage.coreTime : null;
+  // @spec SPEC-026 §5.2 Phase 0 は保育園休業：コアタイムを null 扱い
+  const coreTime = getActiveCoreTime();
 
   // ---- 起床時刻 ----
   let wakeH, wakeM = 0;
@@ -2439,8 +2601,14 @@ function nextDay(sleepMode) {
   // ---- 朝の余剰時間 ----
   //  SPEC-020 §5.3 朝の遊び時間 = coreTime.startHour - 起床時刻
   //  SPEC-019 §5.4.2 強制終了後の翌朝は余剰 0
+  //  SPEC-026 §5.2 Phase 0 は 1 日 8h を自由遊び（昼寝 2h 含まず）
   let morning = 0;
-  if (coreTime) {
+  const isPhase0 = (tutorialPhase(player.day) === "phase0");
+  if (isPhase0) {
+    // Phase 0：朝〜就寝まで、昼寝2h・食事1h を引いた 8h を一括で使える
+    // （朝 07:00 〜 19:00 = 12h のうち、昼寝 13:00-15:00 と 食事 18:00-19:00 を除く）
+    morning = 8;
+  } else if (coreTime) {
     morning = Math.max(0, coreTime.startHour - (wakeH + wakeM / 60));
   } else {
     // 老後：1日全部が自由時間
@@ -2456,9 +2624,14 @@ function nextDay(sleepMode) {
 
   // 1日の余剰時間ベース（ゲージ分母 SPEC-021）
   //   朝の余剰 + 夜の余剰（コアタイム終了〜就寝−1h食事）
+  //   Phase 0 は一括 8h
   const sleepHour = sched ? sched.sleepHour : 22;
   const eveningBase = coreTime ? Math.max(0, sleepHour - 1 - coreTime.endHour) : 0;
-  player.spareHoursMax = +(morning + eveningBase).toFixed(1) || 1;
+  if (isPhase0) {
+    player.spareHoursMax = 8;
+  } else {
+    player.spareHoursMax = +(morning + eveningBase).toFixed(1) || 1;
+  }
 
   player.clockHour = wakeH;
   player.clockMinute = wakeM;
@@ -2469,7 +2642,41 @@ function nextDay(sleepMode) {
 
   // @spec SPEC-002 §1.1 翌日も S2 に直行（起床ヘッダーで状態を表示）
   renderHUD();
-  goChooseFromToday();
+
+  // @spec SPEC-026 §5.3 / §5.4 チュートリアル境界日のモーダル
+  const tutorialInterrupts = collectTutorialBoundaryInterrupts();
+  if (tutorialInterrupts.length > 0) {
+    showInterruptQueue(tutorialInterrupts, () => goChooseFromToday());
+  } else {
+    goChooseFromToday();
+  }
+}
+
+/**
+ * @spec SPEC-026 §5.3 §5.4 チュートリアル境界日の介入を組み立てる。
+ * Day 8 到達時と Day 15 到達時に 1 回だけ表示する。
+ */
+function collectTutorialBoundaryInterrupts() {
+  const seen = player._tutorialBoundariesSeen || {};
+  const interrupts = [];
+  if (player.day === 8 && !seen.day8) {
+    seen.day8 = true;
+    interrupts.push({
+      icon: "🏫",
+      title: "月曜日から保育園！",
+      body: "今日から保育園が始まります。いろんな遊びや、お友達との出会いがありますよ。",
+    });
+  }
+  if (player.day === 15 && !seen.day15) {
+    seen.day15 = true;
+    interrupts.push({
+      icon: "⏩",
+      title: "スキップ機能が使えるようになった！",
+      body: "1日の終わりのサマリ画面で、週末までや明日の夜までまとめて時間を進められるようになりました。",
+    });
+  }
+  player._tutorialBoundariesSeen = seen;
+  return interrupts;
 }
 
 // =========================================================================
@@ -2694,6 +2901,12 @@ function runAutoTurn() {
       interruptQueue.push(...coreInterrupts);
     }
 
+    // @spec SPEC-026 §5.2.1 チュートリアル発見があれば介入キューに先頭で追加（必ず見せる）
+    if (player._pendingTutorialInterrupts && player._pendingTutorialInterrupts.length > 0) {
+      interruptQueue.unshift(...player._pendingTutorialInterrupts);
+      player._pendingTutorialInterrupts = [];
+    }
+
     // 介入イベントがあれば順にモーダル表示
     if (interruptQueue.length > 0) {
       showInterruptQueue(interruptQueue, () => {
@@ -2832,6 +3045,14 @@ function autoFinalizePlay(play) {
   } else {
     player.consecutiveCategoryCount = 0;
     player.lastPlayCategory = mainCat;
+  }
+
+  // @spec SPEC-026 §5.2.1 チュートリアル発見（絵本→滑り台→砂場の段階解禁）
+  const tutDiscovered = checkTutorialDiscoveries(play.id);
+  if (tutDiscovered && tutDiscovered.length > 0) {
+    // 自動モード中でも、チュートリアル発見は必ずモーダル通知したい
+    // autoFinalizePlay の呼び出し元（runAutoTurn）で介入キューに追加されるよう、バッファに積む
+    player._pendingTutorialInterrupts = (player._pendingTutorialInterrupts || []).concat(tutDiscovered);
   }
 
   renderHUD();
@@ -3145,6 +3366,119 @@ function renderDaySummary() {
   } else {
     discCard.hidden = true;
   }
+
+  // @spec SPEC-027 連絡帳セクション
+  renderRenrakuchoForToday(snap);
+
+  // @spec SPEC-026 §5.5 スキップボタンの出し分け
+  const skipUnlocked = isSkipUnlocked();
+  byId("day-summary-skip-row").hidden = !skipUnlocked;
+  byId("day-summary-skip-row2").hidden = !skipUnlocked;
+  byId("day-summary-continue-row").hidden = skipUnlocked;
+  byId("day-summary-tutorial-hint").hidden = skipUnlocked;
+  if (!skipUnlocked) {
+    // phase0/1：スキップ機能はまだ解禁されていない旨ヒント
+    const phase = tutorialPhase(player.day);
+    const remainDays = phase === "phase0" ? (15 - player.day) : (15 - player.day);
+    byId("day-summary-tutorial-hint").textContent =
+      `⏩ スキップ機能は3週目（あと ${Math.max(0, remainDays)} 日）から使えるようになります`;
+  }
+}
+
+/**
+ * @spec docs/specs/SPEC-027-renrakucho.md §5
+ * その日のスナップショットから連絡帳カードを組み立てる。
+ * 対象ライフステージ（保育園 1-4, 幼稚園 5-6）以外では非表示。
+ */
+function renderRenrakuchoForToday(snap) {
+  const card = byId("day-summary-renrakucho");
+  if (!card) return;
+  const stage = resolveLifeStage(player.age);
+  const isNursery = stage && stage.id === "nursery";
+  const isKinder  = stage && stage.id === "kindergarten";
+  if (!isNursery && !isKinder) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+
+  // タイトル
+  byId("renrakucho-title").textContent = isNursery
+    ? "🏫 保育園 れんらくちょう"
+    : "🏫 幼稚園 れんらくちょう";
+
+  // 擬似日付（ゲーム内 Day 1 = 2026-04-01）
+  byId("renrakucho-date").textContent = fakeDateLabel(player.day);
+
+  // 出席シール
+  const stickers = Object.entries(snap.playsById || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([id]) => {
+      const p = PLAYS.find((x) => x.id === id);
+      return p ? `<span class="sticker" title="${p.name}">${p.icon}</span>` : "";
+    }).join("");
+  byId("renrakucho-stickers").innerHTML = stickers || `<span class="sticker">🌙</span>`;
+
+  // 主役プレイ（最多回数のもの）
+  const topEntry = Object.entries(snap.playsById || {})
+    .sort((a, b) => b[1] - a[1])[0];
+
+  // 先生コメント
+  let teacher = "今日も元気に過ごしていました☺";
+  if (topEntry) {
+    const [topPlayId] = topEntry;
+    const p = PLAYS.find((x) => x.id === topPlayId);
+    if (p && p.renrakuchoTeacher) teacher = p.renrakuchoTeacher;
+  }
+  // 発見があれば一文追加
+  if ((snap.discoveries || []).length > 0) {
+    teacher += ` 今日は「${snap.discoveries[0]}」を見つけて目を輝かせていました。`;
+  }
+  byId("renrakucho-teacher").textContent = teacher;
+
+  // 家庭コメント（プロファイルに応じたテンプレから選択）
+  byId("renrakucho-parent").textContent = buildParentComment(snap);
+}
+
+/**
+ * @spec docs/specs/SPEC-027-renrakucho.md §5.3
+ * 家庭コメント。プレイヤーのプロファイル（SPEC-025）と、伸びたスキルから選ぶ。
+ */
+function buildParentComment(snap) {
+  // そのスナップショット期間で最も伸びたスキル（カテゴリ）を特定
+  let bestCat = null;
+  let bestDelta = 0;
+  for (const c of Object.keys(snap.skillsStart || {})) {
+    const a = player.skills[c];
+    const b = snap.skillsStart[c];
+    if (!a || !b) continue;
+    const d = a.exp - b.exp;
+    if (d > bestDelta) { bestDelta = d; bestCat = c; }
+  }
+
+  // 代表プレイの parent テンプレを使う（主役最多プレイ）
+  const topEntry = Object.entries(snap.playsById || {})
+    .sort((a, b) => b[1] - a[1])[0];
+  if (topEntry) {
+    const p = PLAYS.find((x) => x.id === topEntry[0]);
+    if (p && p.renrakuchoParent) return p.renrakuchoParent;
+  }
+
+  // フォールバック：カテゴリに応じた一般コメント
+  if (bestCat) {
+    const c = CATEGORIES[bestCat];
+    if (c) return `最近は「${c.label}」に興味があるみたいです。この調子で伸びてほしいです。`;
+  }
+  return "今日は早く寝てくれそうです。";
+}
+
+/** ゲーム内 day を擬似日付ラベルに変換 */
+function fakeDateLabel(day) {
+  const base = new Date("2026-04-01T00:00:00+09:00");
+  const d = new Date(base.getTime() + (day - 1) * 24 * 60 * 60 * 1000);
+  const week = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${week}）`;
 }
 
 // =========================================================================
@@ -3178,6 +3512,10 @@ document.addEventListener("click", (e) => {
     case "skip-to-weekend":
       // @spec SPEC-025 §7.1.3 「週末までスキップ」（プロトでは 6 日連続）
       skipToNextDaySummary(6);
+      break;
+    case "day-summary-continue":
+      // @spec SPEC-026 §5.5 チュートリアル中のサマリ→次の日へ
+      sleep("normal");
       break;
     case "switch-to-manual":
       // @spec SPEC-025 §5.5 / §7.1.3 手動に切替
@@ -3233,17 +3571,22 @@ player.staminaBaseCap = staminaBaseCapForAge(player.age);
 player.staminaCap = player.staminaBaseCap + (player.staminaBonusCap || 0);
 player.stamina = Math.min(player.stamina, player.staminaCap);
 
-// @spec SPEC-002 §1.1 起動直後は S2 に直接出現（旧 S1 起床画面を経由しない）
-// @spec SPEC-025 §5.3 情熱プロファイル未選択ならまず S8 を表示
-renderHUD();
+// @spec SPEC-028 §4 マスタデータの外部ファイル読み込み後に初期画面を立ち上げる。
+(async function boot() {
+  await loadMasters();
 
-// 介入モーダルの閉じるボタンは dom-load 後に配線
-const _btnInterruptClose = byId("btn-interrupt-close");
-if (_btnInterruptClose) _btnInterruptClose.addEventListener("click", closeInterrupt);
+  // @spec SPEC-002 §1.1 起動直後は S2 に直接出現（旧 S1 起床画面を経由しない）
+  // @spec SPEC-025 §5.3 情熱プロファイル未選択ならまず S8 を表示
+  renderHUD();
 
-if (!player.passionProfileId) {
-  renderPassionProfileScreen();
-  showScreen("screen-passion-profile");
-} else {
-  goChooseFromToday();
-}
+  // 介入モーダルの閉じるボタンは dom-load 後に配線
+  const _btnInterruptClose = byId("btn-interrupt-close");
+  if (_btnInterruptClose) _btnInterruptClose.addEventListener("click", closeInterrupt);
+
+  if (!player.passionProfileId) {
+    renderPassionProfileScreen();
+    showScreen("screen-passion-profile");
+  } else {
+    goChooseFromToday();
+  }
+})();

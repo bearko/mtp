@@ -539,6 +539,114 @@ body {
 }
 
 /*
+  @spec docs/specs/SPEC-027-renrakucho.md 連絡帳サマリ（保育園・幼稚園）
+  手書きノート風の罫線カード。先生・家庭コメントを 2 段で表示。
+*/
+.renrakucho-card {
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      #fffdf5 0,
+      #fffdf5 23px,
+      #e6e1cd 23px,
+      #e6e1cd 24px
+    );
+  border: 1px solid #d4caa9;
+  border-left: 4px solid #b09566;
+  border-radius: 10px;
+  padding: 14px 16px 16px;
+  margin: 12px 0 6px;
+  box-shadow: 0 2px 8px rgba(80, 60, 20, 0.08);
+  position: relative;
+}
+.renrakucho-card::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 8px;
+  background: rgba(176, 149, 102, 0.45);
+  border-radius: 4px;
+}
+.renrakucho-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1px dashed #b09566;
+  padding-bottom: 4px;
+}
+.renrakucho-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #5e4a1f;
+  letter-spacing: 0.04em;
+}
+.renrakucho-date {
+  font-size: 12px;
+  color: #8a7347;
+}
+.renrakucho-stickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 10px;
+}
+.renrakucho-stickers .sticker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #fff2c9;
+  border: 1px solid #d4a300;
+  font-size: 18px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.renrakucho-entry {
+  margin-top: 8px;
+}
+.renrakucho-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #5e4a1f;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.renrakucho-body {
+  font-size: 14px;
+  line-height: 1.9;
+  color: #3b3015;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* @spec SPEC-026 §5.5 / §6.1 チュートリアルヒント文言 */
+.tutorial-hint {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  margin: 4px 4px 2px;
+  font-style: italic;
+}
+.tutorial-card {
+  background: #eaf7e6;
+  border: 1px dashed #7fad8b;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #2f5437;
+}
+.tutorial-card strong { color: #20452a; }
+
+/*
   @spec docs/specs/SPEC-024-skill.md §6.1 スキル行
   結果画面で「カテゴリ名」＋「差分ハイライトゲージ」をセットで並べる
 */
