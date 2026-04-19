@@ -21,9 +21,9 @@
     -->
     <header id="hud" class="hud">
       <div class="hud-row">
-        <span id="hud-age">2歳</span>
+        <span id="hud-age">1歳</span>
         <span id="hud-stage" title="ライフステージ">🏫 保育園</span>
-        <span id="hud-date">1日目(夏)</span>
+        <span id="hud-date">2026年4月1日（水）</span>
         <!--
           @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2 時計円盤（HUD 用ミニサイズ）
           現在時刻を扇形で塗りつぶす。JS の renderClockDial() が <path> を更新する。
@@ -58,6 +58,57 @@
 
     <!-- 旧 S1 起床画面は廃止。起床ヘッダーは S2 の先頭に統合された（SPEC-002 §1.1） -->
 
+    <!--
+      @screen  S0 タイトル画面
+      @spec    docs/specs/SPEC-030-title-screen.md
+    -->
+    <section class="screen active" id="screen-title">
+      <div class="title-container">
+        <div class="title-logo-mark">🌱</div>
+        <h1 class="title-logo">りとらいふ</h1>
+        <p class="title-sub">— あそびと人生のリトライ —</p>
+        <div class="title-actions">
+          <button class="title-btn primary" id="btn-title-start" data-action="title-start">はじめから</button>
+          <button class="title-btn" id="btn-title-continue" disabled>続きから（近日対応）</button>
+        </div>
+        <p class="title-footer">© カネとジカンとジョウネツと</p>
+      </div>
+    </section>
+
+    <!--
+      @screen  S-intro 転生イントロ
+      @spec    docs/specs/SPEC-031-isekai-intro.md
+      @spec    docs/specs/SPEC-032-message-master.md
+      4 シーン紙芝居：暗闇 → 神との対話 → 転生証明書 → 誕生
+    -->
+    <section class="screen" id="screen-isekai">
+      <div class="isekai-stage" id="isekai-stage">
+        <!-- 背景レイヤー -->
+        <div class="isekai-bg" id="isekai-bg"></div>
+        <!-- 後光演出（scene2 で表示） -->
+        <div class="isekai-halo" id="isekai-halo" hidden></div>
+        <!-- 証明書カード（scene3 で表示） -->
+        <div class="isekai-certificate" id="isekai-certificate" hidden>
+          <h2 class="isekai-cert-title" id="isekai-cert-title">転生証明書</h2>
+          <dl class="isekai-cert-fields" id="isekai-cert-fields"></dl>
+          <div class="isekai-stamp" id="isekai-stamp" hidden>
+            <span id="isekai-stamp-text">神</span>
+          </div>
+        </div>
+        <!-- メッセージ表示 -->
+        <div class="isekai-message-wrap">
+          <div class="isekai-speaker" id="isekai-speaker">？？？</div>
+          <div class="isekai-message" id="isekai-message">・・・</div>
+        </div>
+        <!-- 名前入力（scene2 の input ステップで表示） -->
+        <div class="isekai-input-row" id="isekai-input-row" hidden>
+          <input type="text" id="isekai-input" maxlength="16" placeholder="お名前をどうぞ" />
+          <button class="isekai-input-btn" id="isekai-input-btn" data-action="isekai-confirm-input">決定</button>
+        </div>
+        <!-- タップ進行のヒント -->
+        <div class="isekai-hint" id="isekai-hint">タップで進む</div>
+      </div>
+    </section>
 
     <!--
       @screen S6 コアタイム（学びごと・仕事）
@@ -101,7 +152,7 @@
       下部のドックでアイコンをタップすると、上部プレビューに詳細が出る。
       「遊ぶ」ボタン or 同じアイコン再タップで確定して S3 に遷移。
     -->
-    <section class="screen active" id="screen-choose">
+    <section class="screen" id="screen-choose">
       <div class="scene">
         <!--
           @spec docs/specs/SPEC-002-play-selection.md §5.2.1
