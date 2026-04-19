@@ -2362,13 +2362,25 @@ function handleStaminaDepleted() {
 
     renderHUD();
 
-    // 結果フェーズの時計円盤を強制睡眠後の時刻に更新
-    renderClockDial(byId("result-clock-after"), {
-      clockHour: player.clockHour,
-      clockMinute: player.clockMinute,
-      showText: true,
-    });
-    byId("result-spare").textContent = `⏳ 余剰時間 ${player.spareHours}h（+仮眠2h）`;
+    // @spec SPEC-035 §8 旧「時間の流れ」カード（#result-clock-after / #result-spare）は
+    //   S3 結果画面のリデザインで削除済み。
+    //   もし旧要素が存在している（互換のため残した場合）にだけ更新する。
+    //   存在しない場合は null ガードで安全にスキップする（handleStaminaDepleted が TypeError で
+    //   止まり、その後のスキップ等の進行ボタンが反応しなくなるバグを回避）。
+    const clockAfterEl = byId("result-clock-after");
+    if (clockAfterEl && typeof renderClockDial === "function") {
+      try {
+        renderClockDial(clockAfterEl, {
+          clockHour: player.clockHour,
+          clockMinute: player.clockMinute,
+          showText: true,
+        });
+      } catch (e) { /* noop */ }
+    }
+    const spareEl = byId("result-spare");
+    if (spareEl) {
+      spareEl.textContent = `⏳ 余剰時間 ${player.spareHours}h（+仮眠2h）`;
+    }
 
     showResultActions();
     showScreen("screen-playing");
