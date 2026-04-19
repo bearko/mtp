@@ -888,11 +888,24 @@ function skillBoostMultiplier(play) {
  * @spec docs/specs/SPEC-002-play-selection.md §5.9 低体力プレイ
  * 体力不足で遊ぶ場合の経験値倍率（0〜1）。通常プレイは 1。
  */
+/**
+ * @spec SPEC-002 §5.9 低体力・低時間プレイの倍率（v2）
+ * 体力・時間それぞれの充足率を計算し、min を返す（不足している方に従う）。
+ *   fullstamina + fulltime → 1.0
+ *   体力 50%  + 時間 100% → 0.5
+ *   体力 100% + 時間 25%  → 0.25
+ *   体力 50%  + 時間 25%  → 0.25
+ */
 function lowStaminaMultiplier(play) {
-  const cost = play.staminaCost || 0;
-  if (cost <= 0) return 1.0;
-  if (player.stamina >= cost) return 1.0;
-  return Math.max(0, player.stamina / cost);
+  const staminaCost = play.staminaCost || 0;
+  const timeCost    = play.timeCost    || 0;
+  const staminaMult = staminaCost > 0
+    ? Math.min(1.0, Math.max(0, player.stamina / staminaCost))
+    : 1.0;
+  const timeMult = timeCost > 0
+    ? Math.min(1.0, Math.max(0, player.spareHours / timeCost))
+    : 1.0;
+  return Math.min(staminaMult, timeMult);
 }
 
 function fmtTime(h, m = 0) {
@@ -1731,7 +1744,9 @@ function isPlayAvailable(play) {
     return { ok: false, reasons: ["まだ知らない遊び"], isHidden: true };
   }
 
-  // v3: 体力不足以外のロック条件は isHidden=true でドック非表示
+  // v3: 体力不足・時間不足以外のロック条件は isHidden=true でドック非表示
+  // @spec SPEC-002 §5.9 低体力・低時間プレイ（v2）：
+  //   体力不足 or 時間不足でも遊べるようにする。経験値は min(体力倍率, 時間倍率) で割る。
   const hideReasons = [];
   if (play.seasons && !play.seasons.includes(player.season)) {
     hideReasons.push(`${SEASON_LABEL[player.season]}は季節外`);
@@ -1739,22 +1754,34 @@ function isPlayAvailable(play) {
   if (play.ageMin && player.age < play.ageMin) hideReasons.push(`${play.ageMin}歳以上が必要`);
   if (play.ageMax && player.age > play.ageMax) hideReasons.push(`${play.ageMax}歳まで`);
   if (play.moneyCost > player.money) hideReasons.push(`所持金不足 (¥${play.moneyCost}必要)`);
-  if (play.timeCost > player.spareHours) hideReasons.push(`時間不足`);
   if (play.minFriends && player.friends < play.minFriends) {
     hideReasons.push(`友人${play.minFriends}人以上必要`);
+  }
+  // 時間不足の特殊ケース：spareHours <= 0 なら完全に時間がないのでドックから消す
+  // （朝の遊びが終わった後、コアタイム or 就寝に進む誘導）
+  if (player.spareHours <= 0) {
+    hideReasons.push(`今日の遊びは終わった`);
   }
   if (hideReasons.length > 0) {
     return { ok: false, reasons: hideReasons, isHidden: true };
   }
 
-  // 体力不足のみ：低体力プレイとして実行可能
-  if ((play.staminaCost || 0) > player.stamina) {
-    const mult = Math.max(0, player.stamina / (play.staminaCost || 1));
+  // 体力不足 or 時間不足 → 低体力（／低時間）プレイとして実行可能
+  const staminaShort = (play.staminaCost || 0) > player.stamina;
+  const timeShort    = (play.timeCost    || 0) > player.spareHours;
+  if (staminaShort || timeShort) {
+    const staminaMult = staminaShort ? Math.max(0, player.stamina / (play.staminaCost || 1)) : 1.0;
+    const timeMult    = timeShort    ? Math.max(0, player.spareHours / (play.timeCost || 1)) : 1.0;
+    const mult = Math.min(staminaMult, timeMult);
     const pct = Math.round(mult * 100);
+    const reasons = [];
+    if (staminaShort) reasons.push(`体力不足`);
+    if (timeShort)    reasons.push(`時間不足`);
+    reasons.push(`経験値 ${pct}%`);
     return {
       ok: true,
-      reasons: [`体力不足：経験値 ${pct}%`],
-      isLowStamina: true,
+      reasons: [reasons.join(" / ")],
+      isLowStamina: true,  // フラグ名は互換維持。「低リソースプレイ」の意
     };
   }
 
