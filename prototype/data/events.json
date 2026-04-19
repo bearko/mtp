@@ -1,0 +1,129 @@
+[
+  {
+    "id": "new_friend",
+    "scope": "random_play",
+    "text": "近所の子に話しかけられて、仲良くなった！",
+    "icon": "🤝",
+    "effect": { "friends": 1, "social": 5 },
+    "weight": 10
+  },
+  {
+    "id": "coins",
+    "scope": "random_play",
+    "text": "地面で100円玉を拾った！",
+    "icon": "🪙",
+    "effect": { "money": 100 },
+    "weight": 6
+  },
+  {
+    "id": "praised",
+    "scope": "random_play",
+    "text": "先生に上手だと褒められた。自信がついた！",
+    "icon": "🌟",
+    "effect": { "passion": 5, "creative": 5 },
+    "weight": 8
+  },
+  {
+    "id": "tripped",
+    "scope": "random_play",
+    "text": "派手に転んだ。ちょっとケガ…",
+    "icon": "🩹",
+    "effect": { "stamina": -10 },
+    "weight": 6
+  },
+  {
+    "id": "weather",
+    "scope": "random_play",
+    "text": "急に天気が崩れてきた。",
+    "icon": "🌧",
+    "effect": { "stamina": -5 },
+    "weight": 5
+  },
+  {
+    "id": "flow",
+    "scope": "random_play",
+    "text": "気がつけば夢中になっていた。これが「没頭」か…",
+    "icon": "🔥",
+    "effect": { "passion": 10 },
+    "weight": 7
+  },
+
+  {
+    "id": "meet_new_friend",
+    "scope": "nursery_discovery",
+    "text": "新しいお友達と仲良くなった！",
+    "icon": "🤝",
+    "weight": 10,
+    "effect": { "friends": 1, "social": 5 }
+  },
+  {
+    "id": "learn_slide",
+    "scope": "nursery_discovery",
+    "text": "大きな滑り台の上手な滑り方を教えてもらった！",
+    "icon": "🎢",
+    "weight": 8,
+    "effect": { "physical": 3 },
+    "unlockPlayId": "big_slide"
+  },
+  {
+    "id": "learn_sandcastle",
+    "scope": "nursery_discovery",
+    "text": "砂場で先生にお城の作り方を教わった！",
+    "icon": "🏖",
+    "weight": 8,
+    "effect": { "creative": 5, "physical": 3 }
+  },
+  {
+    "id": "nap_refresh",
+    "scope": "nursery_discovery",
+    "text": "お昼寝でぐっすり眠った。夢の中で冒険した。",
+    "icon": "😴",
+    "weight": 6,
+    "effect": { "stamina": 10, "explore": 3 }
+  },
+  {
+    "id": "song_time",
+    "scope": "nursery_discovery",
+    "text": "『はらぺこあおむし』の歌を覚えた！",
+    "icon": "🎵",
+    "weight": 6,
+    "effect": { "explore": 3, "creative": 3 }
+  },
+  {
+    "id": "cry_then_smile",
+    "scope": "nursery_discovery",
+    "text": "友達とおもちゃを取り合って泣いた…最後は仲直り。",
+    "icon": "😢",
+    "weight": 4,
+    "effect": { "social": 4, "passion": 2 }
+  },
+  {
+    "id": "park_adventure",
+    "scope": "nursery_discovery",
+    "text": "公園で小さな虫を見つけて観察した！",
+    "icon": "🦗",
+    "weight": 5,
+    "effect": { "explore": 4, "physical": 2 }
+  },
+
+  {
+    "id": "tut_discover_slide",
+    "scope": "tutorial_phase0",
+    "text": "絵本のページに出てきた『すべりだい』を、公園で見つけた！",
+    "icon": "🛝",
+    "weight": 1,
+    "effect": { "explore": 5 },
+    "unlockPlayId": "slide",
+    "triggerPlayId": "picturebook"
+  },
+  {
+    "id": "tut_discover_sandbox",
+    "scope": "tutorial_phase0",
+    "text": "公園の奥に『砂場』を見つけた！さっそくスコップを握る。",
+    "icon": "🏖",
+    "weight": 1,
+    "effect": { "explore": 5 },
+    "unlockPlayId": "sandbox",
+    "triggerPlayId": "slide"
+  }
+]
