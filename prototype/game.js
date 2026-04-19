@@ -540,6 +540,10 @@ const DEFAULT_PLAYER = {
   _tutorialBoundariesSeen: { day8: false, day15: false },
   /** @spec SPEC-026 §5.2.1 チュートリアル発見の保留キュー（finalizePlay 後に通知） */
   _pendingTutorialInterrupts: [],
+  /** @spec SPEC-025 §7.2.0 週境界に到達したかどうか。S10 閉じる時に S9 へ分岐するために使う */
+  _pendingWeeklyHighlight: false,
+  /** @spec SPEC-025 §7.2.0 スキップ中に S9 経由 → 続けるで sleep に戻るフラグ */
+  _skipAfterWeekly: false,
 };
 
 const LABELS = {
@@ -1262,7 +1266,8 @@ function renderChooseScreen() {
   dock.innerHTML = "";
 
   // @spec SPEC-025 §9.3 ドック最左端に「自動/手動」モードトグル
-  if (player.passionProfileId) {
+  // @spec SPEC-026 §5.2 Phase 0 はトグル非表示（自動モード封印）
+  if (player.passionProfileId && tutorialPhase(player.day) !== "phase0") {
     const modeBtn = document.createElement("button");
     modeBtn.className = "dock-icon dock-mode" + (player.autoMode ? " auto" : "");
     modeBtn.innerHTML = player.autoMode
@@ -1667,6 +1672,11 @@ function finalizePlay() {
   } else {
     player.consecutiveCategoryCount = 0;
     player.lastPlayCategory = mainCat;
+  }
+
+  // @spec SPEC-025 §7.1 / SPEC-027 §5.1 手動モードでも日の終わりサマリに遊びを集約
+  if (player._daySnapshot && player._daySnapshot.playsById) {
+    player._daySnapshot.playsById[play.id] = (player._daySnapshot.playsById[play.id] || 0) + 1;
   }
 
   // @spec SPEC-026 §5.2.1 チュートリアル発見（絵本→滑り台→砂場の段階解禁）
@@ -2472,6 +2482,12 @@ function doNothing() {
  * 1日の成果を表示し、就寝モード選択を促す。1〜9歳はモード選択不可。
  */
 function goSleep() {
+  // @spec SPEC-025 §7.2.0 週境界判定：今日が日曜日なら、週末ハイライトを S10 の後に挿入
+  const dow = fakeDateForDay(player.day).getUTCDay(); // 0=日
+  if (dow === 0) {
+    player._pendingWeeklyHighlight = true;
+  }
+
   // @spec SPEC-025 §6.2 自動モード中は S5 就寝画面を表示せず、S10 日の終わりサマリに直行
   if (player.autoMode) {
     stopAutoLoop();
@@ -2487,6 +2503,14 @@ function goSleep() {
       return;
     }
 
+    renderDaySummary();
+    showScreen("screen-day-summary");
+    return;
+  }
+
+  // @spec SPEC-027 保育園・幼稚園期は手動モードでも日の終わりに S10 連絡帳サマリを表示
+  const stage = resolveLifeStage(player.age);
+  if (stage && (stage.id === "nursery" || stage.id === "kindergarten")) {
     renderDaySummary();
     showScreen("screen-day-summary");
     return;
@@ -2646,7 +2670,15 @@ function nextDay(sleepMode) {
   // @spec SPEC-026 §5.3 / §5.4 チュートリアル境界日のモーダル
   const tutorialInterrupts = collectTutorialBoundaryInterrupts();
   if (tutorialInterrupts.length > 0) {
-    showInterruptQueue(tutorialInterrupts, () => goChooseFromToday());
+    showInterruptQueue(tutorialInterrupts, () => {
+      // @spec SPEC-026 §5.3.1 Day 8 到達時に情熱プロファイル未選択なら選ばせる
+      if (player.day === 8 && !player.passionProfileId) {
+        renderPassionProfileScreen();
+        showScreen("screen-passion-profile");
+      } else {
+        goChooseFromToday();
+      }
+    });
   } else {
     goChooseFromToday();
   }
@@ -2765,6 +2797,11 @@ function pickAutoPlay() {
  * @spec SPEC-025 §5.5 自動／手動モードの切替
  */
 function toggleAutoMode() {
+  // @spec SPEC-026 §5.2 Phase 0 は自動モード封印
+  if (tutorialPhase(player.day) === "phase0") {
+    toast("自動モードは2週目から使えるようになります");
+    return;
+  }
   if (player.autoMode) {
     // 手動へ切替
     player.autoMode = false;
@@ -2914,9 +2951,6 @@ function runAutoTurn() {
         if (player.spareHours <= 0) {
           stopAutoLoop();
           goSleep();  // 自動モード中は goSleep→renderDaySummary に分岐
-        } else if (h.turnCount >= 5) {
-          stopAutoLoop();
-          showHighlight();
         } else {
           runAutoTurn();
         }
@@ -2930,11 +2964,7 @@ function runAutoTurn() {
       goSleep();  // 自動モード中は goSleep→renderDaySummary
       return;
     }
-    if (h.turnCount >= 5) {
-      stopAutoLoop();
-      showHighlight();
-      return;
-    }
+    // @spec SPEC-025 §7.2.0 週境界は goSleep→renderDaySummary の後で showHighlight を挟む
     // 次のターンへ
     _autoTimer = setTimeout(runAutoTurn, 350);
   }, 650);
@@ -3047,6 +3077,8 @@ function autoFinalizePlay(play) {
     player.lastPlayCategory = mainCat;
   }
 
+  // autoFinalizePlay 側の _daySnapshot 集約は呼び出し元 runAutoTurn で行うため、ここでは追加しない
+
   // @spec SPEC-026 §5.2.1 チュートリアル発見（絵本→滑り台→砂場の段階解禁）
   const tutDiscovered = checkTutorialDiscoveries(play.id);
   if (tutDiscovered && tutDiscovered.length > 0) {
@@ -3148,7 +3180,9 @@ function closeInterrupt() {
  */
 function showHighlight() {
   const h = player._autoHighlight;
-  byId("highlight-range").textContent = `${player.age}歳 / ${h.dayStart}日目〜${h.dayEnd}日目`;
+  // @spec SPEC-001 §5.7 第N週の範囲表示
+  const fw = fiscalWeekInfo(h.dayEnd);
+  byId("highlight-range").textContent = `${fw.weekNumber}週（${fw.rangeLabel}） / ${player.age}歳`;
 
   // 遊び回数
   const playsEl = byId("highlight-plays");
@@ -3253,7 +3287,14 @@ function skipToNextDaySummary(days) {
   }
   // days 日進むが、この直後の 1 回は「今から夜までのスキップ」なので days-1 を残す
   player._skipRemainingDays = Math.max(0, days - 1);
-  player._skipTarget = days >= 6 ? "weekend" : "tomorrow-night";
+  player._skipTarget = days >= 5 ? "weekend" : "tomorrow-night";
+  // @spec SPEC-025 §7.2.0 スキップ開始直後に週境界なら S9 を先に見せてから sleep
+  if (consumeWeeklyHighlightIfPending()) {
+    // S9 表示中。続ける押下時に自動で goChooseFromToday → 翌日ループに戻る
+    // ただし skip 継続中なので、continueAuto から直接 sleep を呼ぶ必要がある
+    player._skipAfterWeekly = true;
+    return;
+  }
   // 就寝 → 翌朝 → 自動ループ再開
   sleep("normal");
 }
@@ -3268,9 +3309,9 @@ function skipToNextDaySummary(days) {
  */
 function renderDaySummary() {
   const snap = player._daySnapshot || {};
-  const seasonLabel = SEASON_LABEL[player.season] || player.season;
+  // @spec SPEC-001 §5.7 日付表記
   byId("day-summary-range").textContent =
-    `${player.day}日目 / ${player.age}歳 / ${seasonLabel}`;
+    `${formatDayWithWeek(player.day)} / ${player.age}歳`;
 
   // 今日の遊び
   const playsEl = byId("day-summary-plays");
@@ -3402,13 +3443,19 @@ function renderRenrakuchoForToday(snap) {
   }
   card.hidden = false;
 
-  // タイトル
-  byId("renrakucho-title").textContent = isNursery
-    ? "🏫 保育園 れんらくちょう"
-    : "🏫 幼稚園 れんらくちょう";
+  // @spec SPEC-027 §1.1 §5.4.1 Phase 0 は「おうち日報」スタイル（先生コメントなし）
+  const phase0 = (tutorialPhase(player.day) === "phase0");
 
-  // 擬似日付（ゲーム内 Day 1 = 2026-04-01）
-  byId("renrakucho-date").textContent = fakeDateLabel(player.day);
+  // タイトル
+  byId("renrakucho-title").textContent = phase0
+    ? "🏠 おうちの 1 日"
+    : (isNursery ? "🏫 保育園 れんらくちょう" : "🏫 幼稚園 れんらくちょう");
+
+  // Phase 0 は先生セクションを隠す
+  byId("renrakucho-entry-teacher").hidden = phase0;
+
+  // @spec SPEC-001 §5.7 年月日（曜日）＋第何週（期間）
+  byId("renrakucho-date").textContent = formatDayWithWeek(player.day);
 
   // 出席シール
   const stickers = Object.entries(snap.playsById || {})
@@ -3474,11 +3521,96 @@ function buildParentComment(snap) {
 }
 
 /** ゲーム内 day を擬似日付ラベルに変換 */
+/**
+ * @spec SPEC-001 §5.7 日付表記・Fiscal Year / Fiscal Week
+ * Day を Date（UTC 固定で扱う）に変換する。Day 1 = 2026-04-01（水）
+ * タイムゾーンに依存しないよう、全ての日付計算で getUTCFullYear/Month/Date/Day を使う。
+ */
+function fakeDateForDay(day) {
+  // UTC 基準で 2026-04-01 00:00 を開始点とする
+  const base = Date.UTC(2026, 3, 1);  // month は 0-indexed（3 = April）
+  return new Date(base + (day - 1) * 24 * 60 * 60 * 1000);
+}
+const WEEK_JP = ["日", "月", "火", "水", "木", "金", "土"];
+
+/** 「2026年4月1日（水）」形式 */
+function formatFullDate(day) {
+  const d = fakeDateForDay(day);
+  return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日（${WEEK_JP[d.getUTCDay()]}）`;
+}
+
+/**
+ * Fiscal Week 情報：今の週が fiscal year 内の第何週目か、週の範囲はいつか。
+ * - fiscal year: 4/1〜翌3/31
+ * - 第1週 = fiscal year 開始日（4/1）を含む週。週は月曜起点とする
+ * - 戻り値: { weekNumber, rangeStart: Date, rangeEnd: Date, rangeLabel: string }
+ *     rangeLabel は "4/1-4/5" のような形式
+ */
+function fiscalWeekInfo(day) {
+  const d = fakeDateForDay(day);
+  // fiscal year 開始日（今日が 1-3月なら前年4月1日、4-12月なら今年4月1日）
+  const yearStart = (d.getUTCMonth() < 3)
+    ? new Date(Date.UTC(d.getUTCFullYear() - 1, 3, 1))
+    : new Date(Date.UTC(d.getUTCFullYear(), 3, 1));
+  // 月曜起点にするため、yearStart を含む週の月曜を求める（4/1 が水曜なら月曜は 3/30）
+  const ysDow = yearStart.getUTCDay(); // 0=日..6=土
+  const toMon = (ysDow === 0) ? 6 : (ysDow - 1); // 月曜までの戻り日数
+  const firstWeekMon = new Date(yearStart.getTime() - toMon * 24 * 60 * 60 * 1000);
+
+  // 今日が属する週の月曜を求める
+  const dDow = d.getUTCDay();
+  const toMonToday = (dDow === 0) ? 6 : (dDow - 1);
+  const thisMon = new Date(d.getTime() - toMonToday * 24 * 60 * 60 * 1000);
+
+  // 週番号：(thisMon - firstWeekMon) / 7 + 1
+  const weekNumber = Math.round((thisMon.getTime() - firstWeekMon.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+
+  // 週の範囲：月曜〜日曜
+  //   ただし第1週は fiscal year 開始日（4/1）から始まる短縮週にする
+  const rangeStart = (weekNumber === 1) ? yearStart : thisMon;
+  const rangeEnd = new Date(thisMon.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const mm = (dt) => `${dt.getUTCMonth() + 1}/${dt.getUTCDate()}`;
+  const rangeLabel = `${mm(rangeStart)}-${mm(rangeEnd)}`;
+
+  return { weekNumber, rangeStart, rangeEnd, rangeLabel };
+}
+
+/**
+ * 「2026年4月1日（水） / 1週（4/1-4/5）」形式のフル表記
+ */
+function formatDayWithWeek(day) {
+  const full = formatFullDate(day);
+  const fw = fiscalWeekInfo(day);
+  return `${full} / ${fw.weekNumber}週（${fw.rangeLabel}）`;
+}
+
+/**
+ * @spec SPEC-025 §7.1.4 今週の週末（日曜）まで何日あるか
+ * 今が日曜なら 7（次の日曜まで）を返す。月曜なら 6、土曜なら 1。
+ */
+function daysUntilWeekend(day) {
+  const dow = fakeDateForDay(day).getUTCDay(); // 0=日, 1=月, ..., 6=土
+  if (dow === 0) return 7; // 日曜は次の日曜まで 7 日
+  return 7 - dow;
+}
+
+/** 互換性維持：旧 fakeDateLabel はシンプルな日付のみを返す */
 function fakeDateLabel(day) {
-  const base = new Date("2026-04-01T00:00:00+09:00");
-  const d = new Date(base.getTime() + (day - 1) * 24 * 60 * 60 * 1000);
-  const week = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${week}）`;
+  return formatFullDate(day);
+}
+
+/**
+ * @spec SPEC-025 §7.2.0 週境界ハイライトが保留中なら、ここで消費して S9 を表示する。
+ * S9 表示できたら true を返し、呼び出し側はそこで処理を打ち切る。
+ */
+function consumeWeeklyHighlightIfPending() {
+  if (!player._pendingWeeklyHighlight) return false;
+  player._pendingWeeklyHighlight = false;
+  // ハイライト実行前に、バッファの dayEnd を今日に合わせる
+  const h = player._autoHighlight;
+  if (h) h.dayEnd = player.day;
+  showHighlight();
+  return true;
 }
 
 // =========================================================================
@@ -3503,19 +3635,26 @@ document.addEventListener("click", (e) => {
       break;
     case "continue-auto":
       // @spec SPEC-025 §9.4 ハイライトから続行
-      goChooseFromToday();
+      if (player._skipAfterWeekly) {
+        player._skipAfterWeekly = false;
+        sleep("normal");
+      } else {
+        goChooseFromToday();
+      }
       break;
     case "skip-to-tomorrow-night":
       // @spec SPEC-025 §7.1.3 「明日の夜までスキップ」
       skipToNextDaySummary(1);
       break;
     case "skip-to-weekend":
-      // @spec SPEC-025 §7.1.3 「週末までスキップ」（プロトでは 6 日連続）
-      skipToNextDaySummary(6);
+      // @spec SPEC-025 §7.1.3 §7.1.4 「週末までスキップ」 = 今週の日曜まで
+      skipToNextDaySummary(daysUntilWeekend(player.day));
       break;
     case "day-summary-continue":
       // @spec SPEC-026 §5.5 チュートリアル中のサマリ→次の日へ
-      sleep("normal");
+      // @spec SPEC-025 §7.2.0 週境界なら次に週末ハイライトを挟む
+      if (consumeWeeklyHighlightIfPending()) { /* S9 を表示中 */ }
+      else { sleep("normal"); }
       break;
     case "switch-to-manual":
       // @spec SPEC-025 §5.5 / §7.1.3 手動に切替
@@ -3583,10 +3722,7 @@ player.stamina = Math.min(player.stamina, player.staminaCap);
   const _btnInterruptClose = byId("btn-interrupt-close");
   if (_btnInterruptClose) _btnInterruptClose.addEventListener("click", closeInterrupt);
 
-  if (!player.passionProfileId) {
-    renderPassionProfileScreen();
-    showScreen("screen-passion-profile");
-  } else {
-    goChooseFromToday();
-  }
+  // @spec SPEC-026 §5.3.1 プロファイル選択は Phase 1 突入時（Day 8）に行う。
+  //   Day 1〜7（phase0）は手動モードで絵本→滑り台→砂場を遊ぶだけなのでプロファイル不要。
+  goChooseFromToday();
 })();
