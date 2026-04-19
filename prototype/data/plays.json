@@ -8,8 +8,15 @@
     "staminaCost": 4,
     "ageMin": 1,
     "ageMax": null,
-    "categories": ["reading", "literacy", "sensitivity"],
-    "gain": { "explore": 10, "creative": 3 },
+    "categories": [
+      "reading",
+      "literacy",
+      "sensitivity"
+    ],
+    "gain": {
+      "intellect": 10,
+      "sensitivity": 3
+    },
     "unlockRequired": false,
     "descriptions": [
       "大好きな絵本。何回読んでも面白い。",
@@ -29,8 +36,14 @@
     "staminaCost": 8,
     "ageMin": 2,
     "ageMax": 10,
-    "categories": ["outdoor_toy", "movement"],
-    "gain": { "physical": 8, "social": 3 },
+    "categories": [
+      "outdoor_toy",
+      "movement"
+    ],
+    "gain": {
+      "body": 8,
+      "social": 3
+    },
     "unlockRequired": false,
     "descriptions": [
       "何度も滑る。階段を登るのがちょっと大変。",
@@ -48,11 +61,22 @@
     "timeCost": 2,
     "moneyCost": 0,
     "staminaCost": 10,
-    "seasons": ["spring", "summer", "autumn"],
+    "seasons": [
+      "spring",
+      "summer",
+      "autumn"
+    ],
     "ageMin": 1,
     "ageMax": 10,
-    "categories": ["outdoor_toy", "crafting", "nature"],
-    "gain": { "physical": 10, "creative": 5 },
+    "categories": [
+      "outdoor_toy",
+      "crafting",
+      "nature"
+    ],
+    "gain": {
+      "body": 10,
+      "sensitivity": 5
+    },
     "unlockRequired": false,
     "descriptions": [
       "砂で大きな山を作り始めた…",
@@ -72,8 +96,13 @@
     "staminaCost": 5,
     "ageMin": 1,
     "ageMax": 12,
-    "categories": ["crafting", "imagination"],
-    "gain": { "creative": 15 },
+    "categories": [
+      "crafting",
+      "imagination"
+    ],
+    "gain": {
+      "sensitivity": 15
+    },
     "unlockRequired": false,
     "descriptions": [
       "粘土をこねて、恐竜を作ってみた。",
@@ -92,8 +121,13 @@
     "moneyCost": 0,
     "staminaCost": 15,
     "ageMin": 3,
-    "categories": ["movement", "outdoor_toy"],
-    "gain": { "physical": 12 },
+    "categories": [
+      "movement",
+      "outdoor_toy"
+    ],
+    "gain": {
+      "body": 12
+    },
     "unlockRequired": false,
     "descriptions": [
       "ぴょんぴょん飛び跳ねる。空が近い！",
@@ -111,10 +145,19 @@
     "timeCost": 2,
     "moneyCost": 0,
     "staminaCost": 20,
-    "seasons": ["winter"],
+    "seasons": [
+      "winter"
+    ],
     "ageMin": 2,
-    "categories": ["nature", "movement", "tradition"],
-    "gain": { "physical": 15, "creative": 8 },
+    "categories": [
+      "nature",
+      "movement",
+      "tradition"
+    ],
+    "gain": {
+      "body": 15,
+      "sensitivity": 8
+    },
     "unlockRequired": false,
     "descriptions": [
       "雪だるまを作り始めた。大きいぞ！",
@@ -132,10 +175,18 @@
     "timeCost": 3,
     "moneyCost": 300,
     "staminaCost": 25,
-    "seasons": ["summer"],
+    "seasons": [
+      "summer"
+    ],
     "ageMin": 2,
-    "categories": ["water", "movement"],
-    "gain": { "physical": 25, "social": 5 },
+    "categories": [
+      "water",
+      "movement"
+    ],
+    "gain": {
+      "body": 25,
+      "social": 5
+    },
     "unlockRequired": false,
     "descriptions": [
       "水しぶきを上げてジャンプ！",
@@ -156,8 +207,14 @@
     "ageMin": 3,
     "minFriends": 1,
     "friendBonusPerPerson": 3,
-    "categories": ["movement", "social_play"],
-    "gain": { "physical": 15, "social": 10 },
+    "categories": [
+      "movement",
+      "social_play"
+    ],
+    "gain": {
+      "body": 15,
+      "social": 10
+    },
     "unlockRequired": false,
     "descriptions": [
       "「もういいかい？」全力ダッシュ！",
@@ -179,8 +236,15 @@
     "ageMax": 10,
     "minFriends": 1,
     "friendBonusPerPerson": 2,
-    "categories": ["imagination", "social_play", "friendship"],
-    "gain": { "creative": 10, "social": 12 },
+    "categories": [
+      "imagination",
+      "social_play",
+      "friendship"
+    ],
+    "gain": {
+      "sensitivity": 10,
+      "social": 12
+    },
     "unlockRequired": false,
     "descriptions": [
       "今日はパン屋さんごっこ。",
@@ -198,10 +262,19 @@
     "timeCost": 2,
     "moneyCost": 0,
     "staminaCost": 10,
-    "seasons": ["summer", "autumn"],
+    "seasons": [
+      "summer",
+      "autumn"
+    ],
     "ageMin": 4,
-    "categories": ["nature", "science"],
-    "gain": { "explore": 12, "physical": 5 },
+    "categories": [
+      "nature",
+      "science"
+    ],
+    "gain": {
+      "intellect": 12,
+      "body": 5
+    },
     "unlockRequired": false,
     "descriptions": [
       "草むらにいるバッタを追いかけた。",
@@ -221,8 +294,15 @@
     "staminaCost": 12,
     "ageMin": 2,
     "ageMax": 12,
-    "categories": ["outdoor_toy", "movement", "competition"],
-    "gain": { "physical": 15, "social": 4 },
+    "categories": [
+      "outdoor_toy",
+      "movement",
+      "competition"
+    ],
+    "gain": {
+      "body": 15,
+      "social": 4
+    },
     "unlockRequired": true,
     "unlockHint": "保育園で先生に教えてもらうと解放",
     "descriptions": [
@@ -234,7 +314,6 @@
     "renrakuchoTeacher": "大きい滑り台にも挑戦できました！順番を守って並べてすごいです。",
     "renrakuchoParent": "「もっと大きいすべりだい行く！」と主張するようになりました。"
   },
-
   {
     "id": "blocks",
     "name": "ブロック",
@@ -244,8 +323,14 @@
     "staminaCost": 2,
     "ageMin": 1,
     "ageMax": 8,
-    "categories": ["crafting", "imagination"],
-    "gain": { "creative": 8, "explore": 3 },
+    "categories": [
+      "crafting",
+      "imagination"
+    ],
+    "gain": {
+      "sensitivity": 8,
+      "intellect": 3
+    },
     "unlockRequired": false,
     "descriptions": [
       "高く高く積み上げる。崩れた瞬間に笑う。",
@@ -265,8 +350,15 @@
     "staminaCost": 3,
     "ageMin": 1,
     "ageMax": 7,
-    "categories": ["music", "imagination", "sensitivity"],
-    "gain": { "creative": 8, "social": 4 },
+    "categories": [
+      "music",
+      "imagination",
+      "sensitivity"
+    ],
+    "gain": {
+      "sensitivity": 8,
+      "social": 4
+    },
     "unlockRequired": false,
     "descriptions": [
       "お気に入りの歌。振り付けも覚えた。",
@@ -286,8 +378,15 @@
     "staminaCost": 2,
     "ageMin": 1,
     "ageMax": 12,
-    "categories": ["crafting", "sensitivity", "imagination"],
-    "gain": { "creative": 12, "explore": 2 },
+    "categories": [
+      "crafting",
+      "sensitivity",
+      "imagination"
+    ],
+    "gain": {
+      "sensitivity": 12,
+      "intellect": 2
+    },
     "unlockRequired": false,
     "descriptions": [
       "クレヨンでぐるぐる線を描く。",
@@ -305,11 +404,22 @@
     "timeCost": 1,
     "moneyCost": 100,
     "staminaCost": 5,
-    "seasons": ["spring", "summer", "autumn"],
+    "seasons": [
+      "spring",
+      "summer",
+      "autumn"
+    ],
     "ageMin": 1,
     "ageMax": 8,
-    "categories": ["nature", "sensitivity", "science"],
-    "gain": { "explore": 8, "creative": 4 },
+    "categories": [
+      "nature",
+      "sensitivity",
+      "science"
+    ],
+    "gain": {
+      "intellect": 8,
+      "sensitivity": 4
+    },
     "unlockRequired": false,
     "descriptions": [
       "ふーっと吹く。うまくいかない。",
@@ -329,8 +439,14 @@
     "staminaCost": 12,
     "ageMin": 2,
     "ageMax": 6,
-    "categories": ["movement", "outdoor_toy"],
-    "gain": { "physical": 12, "social": 2 },
+    "categories": [
+      "movement",
+      "outdoor_toy"
+    ],
+    "gain": {
+      "body": 12,
+      "social": 2
+    },
     "unlockRequired": false,
     "descriptions": [
       "ペダルをこぐのに苦戦中。",
@@ -350,8 +466,14 @@
     "staminaCost": 10,
     "ageMin": 2,
     "ageMax": 12,
-    "categories": ["movement", "social_play"],
-    "gain": { "physical": 10, "social": 5 },
+    "categories": [
+      "movement",
+      "social_play"
+    ],
+    "gain": {
+      "body": 10,
+      "social": 5
+    },
     "unlockRequired": false,
     "descriptions": [
       "ころころ転がすだけで楽しい。",
@@ -369,10 +491,18 @@
     "timeCost": 1,
     "moneyCost": 100,
     "staminaCost": 10,
-    "seasons": ["summer"],
+    "seasons": [
+      "summer"
+    ],
     "ageMin": 3,
-    "categories": ["water", "movement"],
-    "gain": { "physical": 8, "creative": 4 },
+    "categories": [
+      "water",
+      "movement"
+    ],
+    "gain": {
+      "body": 8,
+      "sensitivity": 4
+    },
     "unlockRequired": false,
     "descriptions": [
       "風船がパチンと割れて大はしゃぎ。",
@@ -392,8 +522,15 @@
     "staminaCost": 2,
     "ageMin": 1,
     "ageMax": 6,
-    "categories": ["crafting", "literacy", "science"],
-    "gain": { "creative": 6, "explore": 6 },
+    "categories": [
+      "crafting",
+      "literacy",
+      "science"
+    ],
+    "gain": {
+      "sensitivity": 6,
+      "intellect": 6
+    },
     "unlockRequired": false,
     "descriptions": [
       "四角と丸、どっちだっけ？",
@@ -411,10 +548,19 @@
     "timeCost": 1,
     "moneyCost": 0,
     "staminaCost": 5,
-    "seasons": ["autumn"],
+    "seasons": [
+      "autumn"
+    ],
     "ageMin": 2,
-    "categories": ["nature", "crafting", "sensitivity"],
-    "gain": { "explore": 10, "creative": 3 },
+    "categories": [
+      "nature",
+      "crafting",
+      "sensitivity"
+    ],
+    "gain": {
+      "intellect": 10,
+      "sensitivity": 3
+    },
     "unlockRequired": false,
     "descriptions": [
       "きれいな色の葉っぱを見つけた。",
@@ -432,13 +578,26 @@
     "timeCost": 3,
     "moneyCost": 300,
     "staminaCost": 15,
-    "seasons": ["spring", "summer", "autumn"],
+    "seasons": [
+      "spring",
+      "summer",
+      "autumn"
+    ],
     "ageMin": 2,
     "ageMax": 12,
     "minFriends": 1,
     "friendBonusPerPerson": 2,
-    "categories": ["nature", "social_play", "daily_life", "sensitivity"],
-    "gain": { "physical": 8, "social": 8, "explore": 6 },
+    "categories": [
+      "nature",
+      "social_play",
+      "daily_life",
+      "sensitivity"
+    ],
+    "gain": {
+      "body": 8,
+      "social": 8,
+      "intellect": 6
+    },
     "unlockRequired": false,
     "descriptions": [
       "お弁当の蓋を開ける瞬間が楽しみ。",

@@ -4,7 +4,10 @@
     "scope": "random_play",
     "text": "近所の子に話しかけられて、仲良くなった！",
     "icon": "🤝",
-    "effect": { "friends": 1, "social": 5 },
+    "effect": {
+      "friends": 1,
+      "social": 5
+    },
     "weight": 10
   },
   {
@@ -12,7 +15,9 @@
     "scope": "random_play",
     "text": "地面で100円玉を拾った！",
     "icon": "🪙",
-    "effect": { "money": 100 },
+    "effect": {
+      "money": 100
+    },
     "weight": 6
   },
   {
@@ -20,7 +25,10 @@
     "scope": "random_play",
     "text": "先生に上手だと褒められた。自信がついた！",
     "icon": "🌟",
-    "effect": { "passion": 5, "creative": 5 },
+    "effect": {
+      "passion": 5,
+      "sensitivity": 5
+    },
     "weight": 8
   },
   {
@@ -28,7 +36,9 @@
     "scope": "random_play",
     "text": "派手に転んだ。ちょっとケガ…",
     "icon": "🩹",
-    "effect": { "stamina": -10 },
+    "effect": {
+      "stamina": -10
+    },
     "weight": 6
   },
   {
@@ -36,7 +46,9 @@
     "scope": "random_play",
     "text": "急に天気が崩れてきた。",
     "icon": "🌧",
-    "effect": { "stamina": -5 },
+    "effect": {
+      "stamina": -5
+    },
     "weight": 5
   },
   {
@@ -44,17 +56,21 @@
     "scope": "random_play",
     "text": "気がつけば夢中になっていた。これが「没頭」か…",
     "icon": "🔥",
-    "effect": { "passion": 10 },
+    "effect": {
+      "passion": 10
+    },
     "weight": 7
   },
-
   {
     "id": "meet_new_friend",
     "scope": "nursery_discovery",
     "text": "新しいお友達と仲良くなった！",
     "icon": "🤝",
     "weight": 10,
-    "effect": { "friends": 1, "social": 5 }
+    "effect": {
+      "friends": 1,
+      "social": 5
+    }
   },
   {
     "id": "learn_slide",
@@ -62,7 +78,9 @@
     "text": "大きな滑り台の上手な滑り方を教えてもらった！",
     "icon": "🎢",
     "weight": 8,
-    "effect": { "physical": 3 },
+    "effect": {
+      "body": 3
+    },
     "unlockPlayId": "big_slide"
   },
   {
@@ -71,7 +89,10 @@
     "text": "砂場で先生にお城の作り方を教わった！",
     "icon": "🏖",
     "weight": 8,
-    "effect": { "creative": 5, "physical": 3 }
+    "effect": {
+      "sensitivity": 5,
+      "body": 3
+    }
   },
   {
     "id": "nap_refresh",
@@ -79,7 +100,10 @@
     "text": "お昼寝でぐっすり眠った。夢の中で冒険した。",
     "icon": "😴",
     "weight": 6,
-    "effect": { "stamina": 10, "explore": 3 }
+    "effect": {
+      "stamina": 10,
+      "intellect": 3
+    }
   },
   {
     "id": "song_time",
@@ -87,7 +111,10 @@
     "text": "『はらぺこあおむし』の歌を覚えた！",
     "icon": "🎵",
     "weight": 6,
-    "effect": { "explore": 3, "creative": 3 }
+    "effect": {
+      "intellect": 3,
+      "sensitivity": 3
+    }
   },
   {
     "id": "cry_then_smile",
@@ -95,7 +122,10 @@
     "text": "友達とおもちゃを取り合って泣いた…最後は仲直り。",
     "icon": "😢",
     "weight": 4,
-    "effect": { "social": 4, "passion": 2 }
+    "effect": {
+      "social": 4,
+      "passion": 2
+    }
   },
   {
     "id": "park_adventure",
@@ -103,16 +133,20 @@
     "text": "公園で小さな虫を見つけて観察した！",
     "icon": "🦗",
     "weight": 5,
-    "effect": { "explore": 4, "physical": 2 }
+    "effect": {
+      "intellect": 4,
+      "body": 2
+    }
   },
-
   {
     "id": "tut_discover_slide",
     "scope": "tutorial_phase0",
     "text": "絵本に出てきた『すべりだい』を、お散歩中の公園で見つけた！",
     "icon": "🛝",
     "weight": 1,
-    "effect": { "explore": 5 },
+    "effect": {
+      "intellect": 5
+    },
     "unlockPlayId": "slide",
     "triggerPlayId": "picturebook"
   },
@@ -122,7 +156,9 @@
     "text": "いつもの公園の奥に『砂場』を見つけた！さっそくスコップを握る。",
     "icon": "🏖",
     "weight": 1,
-    "effect": { "explore": 5 },
+    "effect": {
+      "intellect": 5
+    },
     "unlockPlayId": "sandbox",
     "triggerPlayId": "slide"
   }
