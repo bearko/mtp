@@ -1,0 +1,52 @@
+{
+  "scenes": [
+    {
+      "id": "scene1",
+      "bg": "dark",
+      "messages": [
+        { "speaker": "narration", "text": "・・・" },
+        { "speaker": "mystery",   "text": "・・・次の方どうぞ" }
+      ]
+    },
+    {
+      "id": "scene2",
+      "bg": "halo",
+      "steps": [
+        { "type": "message", "speaker": "god", "text": "はい。では確認のためにお名前をお願いします" },
+        { "type": "input",   "field": "playerName", "placeholder": "お名前をどうぞ", "confirmLabel": "決定" },
+        { "type": "message", "speaker": "god", "text": "ありがとうございます。{playerName}さんですね" },
+        { "type": "message", "speaker": "god", "text": "前世はブラック企業で働きづめてボロボロになりながら、30歳で交通事故に遭い、ここにいる、と……" },
+        { "type": "message", "speaker": "god", "text": "あなたは、これから『転生』します" },
+        { "type": "message", "speaker": "god", "text": "次はもっと遊んでからまた来てくださいね。" }
+      ]
+    },
+    {
+      "id": "scene3",
+      "bg": "certificate",
+      "certificate": {
+        "title": "転生証明書",
+        "fields": [
+          { "label": "転生先",   "value": "人間" },
+          { "label": "国",       "value": "日本" },
+          { "label": "家庭",     "value": "中流家庭" },
+          { "label": "性別",     "value": "男" },
+          { "label": "寿命",     "value": "100歳" },
+          { "label": "発行日",   "value": "2026年4月1日" }
+        ],
+        "stampText": "神",
+        "prompt": "内容をご確認のうえ、タップで承認を受けてください",
+        "afterStampPrompt": "承認されました。タップで次へ"
+      }
+    },
+    {
+      "id": "scene4",
+      "bg": "dawn",
+      "messages": [
+        { "speaker": "narration", "text": "2026年4月1日　誕生" },
+        { "speaker": "narration", "text": "名前は『{avatarName}』となった" },
+        { "speaker": "narration", "text": "温かい家庭で育てられ、1歳の誕生日を迎えた" },
+        { "speaker": "narration", "text": "さて、今日は何をして遊ぼうか" }
+      ]
+    }
+  ]
+}
