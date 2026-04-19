@@ -22,7 +22,11 @@
 | [SPEC-022](./SPEC-022-play-category.md) | 遊びカテゴリ | Active（保育園のみ実装） | `prototype/game.js` (CATEGORIES, PLAYS[*].categories) | 2026-04-18 |
 | [SPEC-023](./SPEC-023-play-tree.md) | 遊びツリー（新画面 S7） | Active（保育園のみ実装） | `prototype/game.js` (renderPlayTreeScreen) / `prototype/index.html` (#screen-tree) | 2026-04-18 |
 | [SPEC-024](./SPEC-024-skill.md) | スキル（カテゴリ 1:1 のLv 1〜100） | Active（保育園のみ実装） | `prototype/game.js` (player.skills, gainSkillExp, skillLvFromExp, skillBoostMultiplier) | 2026-04-18 |
-| [SPEC-025](./SPEC-025-game-tempo.md) | ゲームテンポ設計（自動進行＋ステージ依存時間流速） | Active（Option A 実装 / Option B は別ブランチ） | `prototype/game.js` (PASSION_PROFILES, runAutoTurn, tempoDaysPerTurn) | 2026-04-18 |
+| [SPEC-025](./SPEC-025-game-tempo.md) | ゲームテンポ設計（自動進行＋ステージ依存時間流速） | Active | `prototype/game.js` (PASSION_PROFILES, runAutoTurn, tempoDaysPerTurn, renderDaySummary) | 2026-04-18 |
+| [SPEC-026](./SPEC-026-tutorial.md) | チュートリアル（初週・2週目・スキップ解禁） | Active | `prototype/game.js` (tutorialPhase, isSkipUnlocked) | 2026-04-18 |
+| [SPEC-027](./SPEC-027-renrakucho.md) | 連絡帳サマリ（保育園・幼稚園の世界観演出） | Active（保育園のみ実装） | `prototype/game.js` (buildRenrakuchoEntry) / `prototype/styles.css` (.renrakucho-*) | 2026-04-18 |
+| [SPEC-028](./SPEC-028-master-data.md) | マスタデータ管理（JSONテーブル化） | Active | `prototype/data/*.json` / `prototype/game.js` (loadMasters) | 2026-04-18 |
+| [SPEC-029](./SPEC-029-play-video.md) | 遊び中ムービー再生（`data/videos/{playId}.mp4`） | Active | `prototype/data/videos/*.mp4` / `prototype/game.js` (tryPlayIntroVideo / hidePlayVideo) / `prototype/index.html` (#play-video) | 2026-04-19 |
 
 ## ライフステージ別コアタイム
 

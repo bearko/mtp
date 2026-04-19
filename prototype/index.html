@@ -218,6 +218,13 @@
     -->
     <section class="screen" id="screen-playing">
       <div class="scene">
+        <!--
+          @spec docs/specs/SPEC-029-play-video.md
+          遊び中ムービー（5 秒程度、存在する遊びだけ）
+        -->
+        <div id="play-video" class="play-video" hidden>
+          <video id="play-video-el" muted playsinline preload="metadata"></video>
+        </div>
         <div class="scene-art large" id="playing-icon">🎮</div>
         <h2 class="scene-title" id="playing-name">砂場遊び</h2>
         <p class="scene-desc" id="playing-desc">あなたは砂場で山を作り始めた…</p>
@@ -502,14 +509,40 @@
           <div class="card-title">🎉 学んだこと</div>
           <ul class="kv-list" id="day-summary-discoveries"></ul>
         </div>
+
+        <!--
+          @spec docs/specs/SPEC-027-renrakucho.md 連絡帳サマリ
+          保育園・幼稚園期のみ表示。先生からのひと言と家庭コメントをテンプレから選出。
+        -->
+        <div class="renrakucho-card" id="day-summary-renrakucho" hidden>
+          <div class="renrakucho-header">
+            <span class="renrakucho-title" id="renrakucho-title">🏫 保育園 れんらくちょう</span>
+            <span class="renrakucho-date" id="renrakucho-date">2026年4月1日（水）</span>
+          </div>
+          <div class="renrakucho-stickers" id="renrakucho-stickers"></div>
+          <div class="renrakucho-entry" id="renrakucho-entry-teacher">
+            <div class="renrakucho-label">✏️ 先生から</div>
+            <p class="renrakucho-body" id="renrakucho-teacher">—</p>
+          </div>
+          <div class="renrakucho-entry" id="renrakucho-entry-parent">
+            <div class="renrakucho-label">🏠 家庭から</div>
+            <p class="renrakucho-body" id="renrakucho-parent">—</p>
+          </div>
+        </div>
       </div>
       <footer class="actions actions-stack">
-        <div class="actions-row">
+        <!-- @spec SPEC-026 §5.5 スキップ機能は phase2 以降のみ表示 -->
+        <div class="actions-row" id="day-summary-skip-row" hidden>
           <button class="btn btn-primary btn-wide" data-action="skip-to-weekend" id="btn-skip-to-weekend">⏩ 週末までスキップ</button>
         </div>
-        <div class="actions-row">
+        <div class="actions-row" id="day-summary-skip-row2" hidden>
           <button class="btn btn-secondary btn-wide" data-action="skip-to-tomorrow-night" id="btn-skip-to-tomorrow">⏩ 明日の夜までスキップ</button>
         </div>
+        <!-- @spec SPEC-026 §5.5 phase0/1 は「続ける」1つだけ -->
+        <div class="actions-row" id="day-summary-continue-row" hidden>
+          <button class="btn btn-primary btn-wide" data-action="day-summary-continue">続ける</button>
+        </div>
+        <p class="tutorial-hint" id="day-summary-tutorial-hint" hidden>⏩ スキップ機能は3週目から使えます</p>
         <button class="btn btn-ghost btn-wide" data-action="switch-to-manual">🎮 手動に切り替え</button>
       </footer>
     </section>

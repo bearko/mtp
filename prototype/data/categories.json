@@ -1,0 +1,20 @@
+{
+  "movement":     { "label": "運動",   "group": "身体", "description": "体を動かすこと全般" },
+  "outdoor_toy":  { "label": "遊具",   "group": "身体", "description": "公園の遊具を使った遊び" },
+  "water":        { "label": "水遊び", "group": "身体", "description": "プールや水風船など" },
+  "nature":       { "label": "自然",   "group": "身体", "description": "草花・虫・季節に触れる" },
+  "crafting":     { "label": "工作",   "group": "創作", "description": "手を動かしてつくる" },
+  "imagination":  { "label": "想像",   "group": "創作", "description": "ごっこ遊び・想像力" },
+  "music":        { "label": "音楽",   "group": "創作", "description": "歌・楽器・リズム" },
+  "reading":      { "label": "読書",   "group": "探求", "description": "絵本や本を読む" },
+  "literacy":     { "label": "文字",   "group": "探求", "description": "ひらがな・数字・学習" },
+  "science":      { "label": "観察",   "group": "探求", "description": "虫・天体・実験" },
+  "social_play":  { "label": "共遊",   "group": "交流", "description": "みんなで遊ぶ協調" },
+  "friendship":   { "label": "交友",   "group": "交流", "description": "友達づくり・会話" },
+  "daily_life":   { "label": "生活",   "group": "生活", "description": "買い物・料理・片付け" },
+  "sensitivity":  { "label": "感受性", "group": "生活", "description": "絵本・音楽・四季" },
+  "tradition":    { "label": "伝統",   "group": "文化", "description": "祭り・季節行事" },
+  "tech":         { "label": "技術",   "group": "文化", "description": "プログラミング・機械" },
+  "competition":  { "label": "競技",   "group": "文化", "description": "スポーツ・ゲーム対戦" },
+  "travel":       { "label": "旅",     "group": "文化", "description": "旅行・遠足・冒険" }
+}

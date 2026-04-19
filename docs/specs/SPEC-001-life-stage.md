@@ -81,6 +81,22 @@ flags                  任意のゲームフラグ（例 canRead） ※将来用
 - `clockHour + clockMinute/60` の値がそのまま **時計円盤UI**（SPEC-021 §5.2）の入力となる。
 - 円盤は 24時間で1周し、0:00 を真上として時計回りに現在時刻まで塗りつぶされる。
 
+### 5.7 日付表記と Fiscal Year / Fiscal Week
+- Day 1 = **2026年4月1日（水）** と定める。以降、`player.day - 1` 日を加算して擬似日付を算出
+- **Fiscal Year**：4月1日〜翌年3月31日までを 1 年とする（学校年度に合わせる）
+- **Fiscal Week**：その fiscal year 内の第 N 週目。4月1日を含む週が第 1 週で、その週の終端までを第 1 週とする
+  - Day 1 (4/1 水) 〜 Day 5 (4/5 日) が **第 1 週**（5 日間の短縮週）
+  - Day 6 (4/6 月) 〜 Day 12 (4/12 日) が **第 2 週**（7 日）
+  - 以降、7 日ずつで週が進む
+- 曜日は日本語 1 文字（月/火/水/木/金/土/日）で表示
+- **表記例**：「2026年4月1日（水） / 1週（4/1-4/5）」
+
+#### 5.7.1 ヘルパ関数
+- `fakeDateForDay(day)`：Day を Date オブジェクトに変換
+- `formatFullDate(day)`：`"2026年4月1日（水）"` を返す
+- `fiscalWeekInfo(day)`：`{ weekNumber, rangeStart, rangeEnd }` を返す
+- `daysUntilWeekend(day)`：`daysToSunday` を返す（SPEC-025 §7.1.4）
+
 ## 6. UIへの反映
 - 共通HUD（全画面共通の上部固定バー）に表示：年齢 / 日付・季節 / 時刻 / 体力 / リズム / 所持金 / 余剰時間 / 友人 / ジョウネツ。
 - 画面設計書：`docs/screens/SCREEN-DESIGN.md` §1.1

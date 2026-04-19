@@ -26,7 +26,7 @@
  * 遊びカテゴリマスタ。遊びの `categories` 配列で参照される ID と UI 表示ラベルの辞書。
  * プロト段階では保育園で使う 10 カテゴリのみ定義。
  */
-const CATEGORIES = {
+const DEFAULT_CATEGORIES = {
   movement:     { label: "運動",     group: "身体" },
   outdoor_toy:  { label: "遊具",     group: "身体" },
   water:        { label: "水遊び",   group: "身体" },
@@ -105,7 +105,7 @@ function tempoDaysPerTurn(age) {
  * @spec docs/specs/SPEC-022-play-category.md §5.2 遊びマスタへのカテゴリ付与
  * 遊びマスタ。プロト段階では未就学児〜小学生向けを中心に収録。
  */
-const PLAYS = [
+const DEFAULT_PLAYS = [
   {
     id: "sandbox",
     name: "砂場遊び",
@@ -305,7 +305,7 @@ const PLAYS = [
  * @spec docs/specs/SPEC-004-random-event.md
  * ランダムイベントマスタ。weight付きで抽選される。
  */
-const EVENTS = [
+const DEFAULT_EVENTS = [
   { id: "new_friend", text: "近所の子に話しかけられて、仲良くなった！", icon: "🤝", effect: { friends: 1, social: 5 }, weight: 10 },
   { id: "coins",      text: "地面で100円玉を拾った！",              icon: "🪙", effect: { money: 100 },                 weight: 6 },
   { id: "praised",    text: "先生に上手だと褒められた。自信がついた！", icon: "🌟", effect: { passion: 5, creative: 5 },    weight: 8 },
@@ -386,7 +386,7 @@ function getFixedSchedule(age) {
  * 保育園コアタイムで抽選される「発見」の候補。
  * `unlockPlayId` があるものは、その遊びを player.unlockedPlays に追加する。
  */
-const NURSERY_DISCOVERIES = [
+const DEFAULT_NURSERY_DISCOVERIES = [
   { id: "meet_new_friend",  text: "新しいお友達と仲良くなった！",                    weight: 10, gain: { friends: 1, social: 5 } },
   { id: "learn_slide",      text: "大きな滑り台の上手な滑り方を教えてもらった！",    weight: 8,  gain: { physical: 3 }, unlockPlayId: "big_slide" },
   { id: "learn_sandcastle", text: "砂場で先生にお城の作り方を教わった！",            weight: 8,  gain: { creative: 5, physical: 3 } },
@@ -395,6 +395,74 @@ const NURSERY_DISCOVERIES = [
   { id: "cry_then_smile",   text: "友達とおもちゃを取り合って泣いた…最後は仲直り。", weight: 4,  gain: { social: 4, passion: 2 } },
   { id: "park_adventure",   text: "公園で小さな虫を見つけて観察した！",              weight: 5,  gain: { explore: 4, physical: 2 } },
 ];
+
+/*
+ * @spec docs/specs/SPEC-028-master-data.md §4 §6
+ * マスタは let で保持して、loadMasters() が data/*.json から fetch して上書きできるようにする。
+ * 読み込み失敗時は DEFAULT_* のハードコード値をそのまま使う。
+ */
+let CATEGORIES          = DEFAULT_CATEGORIES;
+let PLAYS               = DEFAULT_PLAYS;
+let EVENTS              = DEFAULT_EVENTS;
+let NURSERY_DISCOVERIES = DEFAULT_NURSERY_DISCOVERIES;
+/** @spec SPEC-026 §5.2.1 チュートリアル専用の発見（絵本→滑り台→砂場） */
+let TUTORIAL_DISCOVERIES = [];
+
+/**
+ * @spec docs/specs/SPEC-028-master-data.md §6.1
+ * マスタデータを data/ 配下の JSON から読み込む。ファイル URL の場合は fetch に失敗するので、
+ * DEFAULT_* をそのまま使う（プロト段階の簡易運用）。
+ */
+async function loadMasters() {
+  try {
+    const [cat, plays, evs] = await Promise.all([
+      fetch("./data/categories.json").then((r) => { if (!r.ok) throw new Error("categories " + r.status); return r.json(); }),
+      fetch("./data/plays.json").then((r) => { if (!r.ok) throw new Error("plays " + r.status); return r.json(); }),
+      fetch("./data/events.json").then((r) => { if (!r.ok) throw new Error("events " + r.status); return r.json(); }),
+    ]);
+    CATEGORIES = cat;
+    PLAYS = plays;
+    EVENTS = evs.filter((e) => e.scope === "random_play");
+    NURSERY_DISCOVERIES = evs
+      .filter((e) => e.scope === "nursery_discovery")
+      .map((e) => ({
+        id: e.id,
+        text: e.text,
+        weight: e.weight || 1,
+        gain: e.effect || {},
+        unlockPlayId: e.unlockPlayId,
+      }));
+    TUTORIAL_DISCOVERIES = evs
+      .filter((e) => e.scope === "tutorial_phase0")
+      .map((e) => ({
+        id: e.id,
+        text: e.text,
+        icon: e.icon || "✨",
+        unlockPlayId: e.unlockPlayId,
+        triggerPlayId: e.triggerPlayId,
+        gain: e.effect || {},
+      }));
+    console.log(`[master] loaded: ${Object.keys(CATEGORIES).length} categories, ${PLAYS.length} plays, ${EVENTS.length} random events, ${NURSERY_DISCOVERIES.length} discoveries, ${TUTORIAL_DISCOVERIES.length} tutorial events`);
+    validateMasters();
+  } catch (err) {
+    console.warn("[master] load failed, using DEFAULT_*", err);
+  }
+}
+
+/** @spec SPEC-028 §5.4 相互参照の整合性チェック */
+function validateMasters() {
+  for (const p of PLAYS) {
+    for (const c of (p.categories || [])) {
+      if (!CATEGORIES[c]) console.warn(`[master] play '${p.id}' references unknown category '${c}'`);
+    }
+  }
+  const playIds = new Set(PLAYS.map((p) => p.id));
+  for (const e of [...EVENTS, ...NURSERY_DISCOVERIES, ...TUTORIAL_DISCOVERIES]) {
+    if (e.unlockPlayId && !playIds.has(e.unlockPlayId)) {
+      console.warn(`[master] event '${e.id}' unlocks unknown play '${e.unlockPlayId}'`);
+    }
+  }
+}
 
 /**
  * @spec docs/specs/SPEC-001-life-stage.md
@@ -411,8 +479,9 @@ const DEFAULT_PLAYER = {
   season: "summer",
   clockHour: 7,
   clockMinute: 0,
-  spareHours: 2,       // 朝の遊び時間 07:00-09:00（SPEC-020 §5.2）
-  spareHoursMax: 4,    // 1日の余剰時間ベース（朝2h + 夜2h）SPEC-021 分母用
+  // @spec SPEC-026 §5.2 Day 1 は Phase 0（保育園休業）、1 日 8h 自由遊び
+  spareHours: 8,
+  spareHoursMax: 8,    // 1日の余剰時間ベース（SPEC-021 分母用）
   stamina: 15,
   staminaCap: 15,
   staminaBaseCap: 15,
@@ -467,6 +536,14 @@ const DEFAULT_PLAYER = {
   _skipTarget: null,
   /** 目的地までのカウントダウン日数 */
   _skipRemainingDays: 0,
+  /** @spec SPEC-026 §5.3 §5.4 チュートリアル境界日のモーダル表示済みフラグ */
+  _tutorialBoundariesSeen: { day8: false, day15: false },
+  /** @spec SPEC-026 §5.2.1 チュートリアル発見の保留キュー（finalizePlay 後に通知） */
+  _pendingTutorialInterrupts: [],
+  /** @spec SPEC-025 §7.2.0 週境界に到達したかどうか。S10 閉じる時に S9 へ分岐するために使う */
+  _pendingWeeklyHighlight: false,
+  /** @spec SPEC-025 §7.2.0 スキップ中に S9 経由 → 続けるで sleep に戻るフラグ */
+  _skipAfterWeekly: false,
 };
 
 const LABELS = {
@@ -500,6 +577,63 @@ const $$ = (sel) => document.querySelectorAll(sel);
 function showScreen(id) {
   $$(".screen").forEach((el) => el.classList.remove("active"));
   byId(id).classList.add("active");
+  // @spec SPEC-029 §4.2 screen-playing 以外に遷移したら動画を停止＆解放
+  if (id !== "screen-playing") {
+    hidePlayVideo();
+  }
+}
+
+/**
+ * @spec SPEC-029 §5.2 遊び中ムービーの再生
+ * data/videos/{playId}.mp4 が存在すれば再生、無ければフォールバック。
+ */
+async function tryPlayIntroVideo(playId) {
+  const wrap = byId("play-video");
+  const vid  = byId("play-video-el");
+  const anim = byId("playing-icon");
+  if (!wrap || !vid) return false;
+  // 念のためリセット
+  wrap.hidden = true;
+  if (anim) anim.hidden = false;
+  const path = `data/videos/${playId}.mp4`;
+  try {
+    const res = await fetch(path, { method: "HEAD" });
+    if (!res.ok) return false;
+  } catch (e) {
+    return false;
+  }
+  try {
+    vid.src = path;
+    wrap.hidden = false;
+    if (anim) anim.hidden = true;
+    // autoplay。iOS 対策で muted + playsinline は属性済み
+    const p = vid.play();
+    if (p && typeof p.catch === "function") p.catch(() => { /* 無視 */ });
+    return true;
+  } catch (e) {
+    wrap.hidden = true;
+    if (anim) anim.hidden = false;
+    return false;
+  }
+}
+
+/**
+ * @spec SPEC-029 §5.2 動画を停止してリソースを解放
+ */
+function hidePlayVideo() {
+  const wrap = byId("play-video");
+  const vid  = byId("play-video-el");
+  const anim = byId("playing-icon");
+  if (!wrap) return;
+  wrap.hidden = true;
+  if (anim) anim.hidden = false;
+  if (vid) {
+    try { vid.pause(); } catch (e) {}
+    if (vid.getAttribute("src")) {
+      vid.removeAttribute("src");
+      try { vid.load(); } catch (e) {}
+    }
+  }
 }
 
 function toast(msg, ms = 1800) {
@@ -957,8 +1091,74 @@ function resolveLifeStage(age) {
  * 現在のライフステージの coreTime を返す（null の場合はコアタイム無し）。
  */
 function resolveCoreTime(age) {
+  // @spec SPEC-026 §5.2 Phase 0 は保育園コアタイムを休業（null 返し）
+  if (tutorialPhase(player.day) === "phase0") return null;
   const stage = resolveLifeStage(age);
   return stage ? stage.coreTime : null;
+}
+
+/**
+ * @spec docs/specs/SPEC-026-tutorial.md §5.1
+ * 現在のチュートリアル段階を返す。
+ *   phase0: Day 1〜7 初週（保育園休業・遊び段階解禁）
+ *   phase1: Day 8〜14 2週目（保育園再開・発見イベント解禁）
+ *   phase2: Day 15〜   本編（スキップ解禁）
+ */
+function tutorialPhase(day) {
+  if (day <= 7)  return "phase0";
+  if (day <= 14) return "phase1";
+  return "phase2";
+}
+
+/**
+ * @spec SPEC-026 §5.5 スキップ機能は phase2 以降のみ解禁
+ */
+function isSkipUnlocked() {
+  return tutorialPhase(player.day) === "phase2";
+}
+
+/**
+ * @spec SPEC-026 §5.2 現時点のコアタイムを返す。
+ * Phase 0（初週）は保育園休業のため null を返す。
+ */
+function getActiveCoreTime() {
+  if (tutorialPhase(player.day) === "phase0") return null;
+  const stage = resolveLifeStage(player.age);
+  return stage ? stage.coreTime : null;
+}
+
+/**
+ * @spec SPEC-026 §5.2.1 チュートリアル発見（段階解禁）
+ * ある play.id を初めて完了したとき、その play をトリガーとする tutorial_phase0 イベントを
+ * 必ず 1 回発火し、対応する遊びを解禁する。
+ * @returns {Array<{icon,title,body}>} 介入モーダル用の通知リスト（空配列もあり）
+ */
+function checkTutorialDiscoveries(playId) {
+  if (tutorialPhase(player.day) !== "phase0") return [];
+  const fired = player.discoveredIds || [];
+  const results = [];
+  for (const ev of TUTORIAL_DISCOVERIES || []) {
+    if (ev.triggerPlayId !== playId) continue;
+    if (fired.includes(ev.id)) continue;
+    // 発火
+    player.discoveredIds.push(ev.id);
+    if (ev.unlockPlayId && !player.unlockedPlays.includes(ev.unlockPlayId)) {
+      player.unlockedPlays.push(ev.unlockPlayId);
+    }
+    // 効果反映（effect は軽微な exp）
+    for (const [k, v] of Object.entries(ev.gain || {})) {
+      if (k in (player.exp || {})) {
+        player.exp[k] = (player.exp[k] || 0) + v;
+      }
+    }
+    const unlocked = PLAYS.find((p) => p.id === ev.unlockPlayId);
+    results.push({
+      icon: ev.icon || "✨",
+      title: "あたらしい遊びを見つけた！",
+      body: `${ev.text}${unlocked ? `\n\n${unlocked.icon} ${unlocked.name} が遊べるようになったよ。` : ""}`,
+    });
+  }
+  return results;
 }
 
 // =========================================================================
@@ -1059,6 +1259,15 @@ function renderWakeupHeader() {
  *   isLowStamina : true なら体力不足だが遊べる（低体力プレイ SPEC-002 §5.9）
  */
 function isPlayAvailable(play) {
+  // @spec SPEC-026 §5.2 Phase 0 は段階解禁：絵本を既定で解禁、それ以外は player.unlockedPlays に含まれていなければ非表示
+  if (tutorialPhase(player.day) === "phase0") {
+    const PHASE0_INITIAL = new Set(["picturebook"]);
+    const unlocked = new Set(player.unlockedPlays || []);
+    if (!PHASE0_INITIAL.has(play.id) && !unlocked.has(play.id)) {
+      return { ok: false, reasons: ["チュートリアル：まだ解禁されていない"], isHidden: true };
+    }
+  }
+
   // 解禁条件未達 → 完全非表示
   if (play.unlockRequired && !(player.unlockedPlays || []).includes(play.id)) {
     return { ok: false, reasons: ["まだ知らない遊び"], isHidden: true };
@@ -1114,7 +1323,8 @@ function renderChooseScreen() {
   dock.innerHTML = "";
 
   // @spec SPEC-025 §9.3 ドック最左端に「自動/手動」モードトグル
-  if (player.passionProfileId) {
+  // @spec SPEC-026 §5.2 Phase 0 はトグル非表示（自動モード封印）
+  if (player.passionProfileId && tutorialPhase(player.day) !== "phase0") {
     const modeBtn = document.createElement("button");
     modeBtn.className = "dock-icon dock-mode" + (player.autoMode ? " auto" : "");
     modeBtn.innerHTML = player.autoMode
@@ -1319,6 +1529,8 @@ function startPlay(play) {
   byId("actions-result-sleep").hidden = true;
 
   showScreen("screen-playing");
+  // @spec SPEC-029 遊び中ムービー（存在すれば再生、無ければ従来アニメ）
+  tryPlayIntroVideo(play.id);
 
   const duration = 2200;
   const start = performance.now();
@@ -1521,6 +1733,24 @@ function finalizePlay() {
     player.lastPlayCategory = mainCat;
   }
 
+  // @spec SPEC-025 §7.1 / SPEC-027 §5.1 手動モードでも日の終わりサマリに遊びを集約
+  if (player._daySnapshot && player._daySnapshot.playsById) {
+    player._daySnapshot.playsById[play.id] = (player._daySnapshot.playsById[play.id] || 0) + 1;
+  }
+  // @spec SPEC-025 §7.2 手動モードでも週サマリ（S9）用のハイライトバッファに集約
+  if (player._autoHighlight) {
+    const h = player._autoHighlight;
+    h.playsById[play.id] = (h.playsById[play.id] || 0) + 1;
+    h.turnCount += 1;
+    h.dayEnd = player.day;
+  }
+
+  // @spec SPEC-026 §5.2.1 チュートリアル発見（絵本→滑り台→砂場の段階解禁）
+  const tutDiscoveredFinalize = checkTutorialDiscoveries(play.id);
+  if (tutDiscoveredFinalize && tutDiscoveredFinalize.length > 0) {
+    player._pendingTutorialInterrupts = (player._pendingTutorialInterrupts || []).concat(tutDiscoveredFinalize);
+  }
+
   pendingGain = {
     gain,
     passion: passionGain,
@@ -1546,6 +1776,13 @@ function finalizePlay() {
 
   // S4から戻ってきた場合は、S3画面を再表示
   showScreen("screen-playing");
+
+  // @spec SPEC-026 §5.2.1 チュートリアル発見があればモーダル通知（結果画面の上に出る）
+  if (player._pendingTutorialInterrupts && player._pendingTutorialInterrupts.length > 0) {
+    const q = player._pendingTutorialInterrupts.slice();
+    player._pendingTutorialInterrupts = [];
+    showInterruptQueue(q, () => {});
+  }
 }
 
 /**
@@ -1563,7 +1800,7 @@ function showResultActions() {
   byId("actions-skip").hidden = true;
 
   const stage = resolveLifeStage(player.age);
-  const coreTime = stage ? stage.coreTime : null;
+  const coreTime = getActiveCoreTime();
   const coreTimeAvailable = !!(coreTime && stage.implemented && !player.coreTimeDoneToday);
 
   // 文脈判定
@@ -1878,7 +2115,7 @@ function beginDay() {
  */
 function gotoCoreTimeFromResult() {
   const stage = resolveLifeStage(player.age);
-  const coreTime = stage ? stage.coreTime : null;
+  const coreTime = getActiveCoreTime();
   if (!coreTime || !stage.implemented) { goChooseFromToday(); return; }
   // 朝の余剰時間を 0 にクランプし、時刻をコアタイム開始まで早送り
   if (player.clockHour + player.clockMinute / 60 < coreTime.startHour) {
@@ -1937,8 +2174,13 @@ function recomputeSpareHoursAfterCoreTime(coreTime) {
  * 余剰時間が 0 なら S5 就寝へ。
  */
 function goChooseFromToday() {
+  // @spec SPEC-025 §7.1 / SPEC-027 §5.1 手動モードでも日サマリ・週サマリの集計バッファを
+  //   起床時に 1 回だけ初期化する（auto モードの runAutoTurn と同じタイミング）。
+  initDaySnapshotIfNeeded();
+  initAutoHighlightIfNeeded();
+
   const stage = resolveLifeStage(player.age);
-  const coreTime = stage ? stage.coreTime : null;
+  const coreTime = getActiveCoreTime();
   const now = player.clockHour + player.clockMinute / 60;
 
   // 実装済みコアタイム：まだ今日未消化 & 時刻が開始に達したか 朝の余剰 0 に達したら S6
@@ -2311,6 +2553,12 @@ function doNothing() {
  * 1日の成果を表示し、就寝モード選択を促す。1〜9歳はモード選択不可。
  */
 function goSleep() {
+  // @spec SPEC-025 §7.2.0 週境界判定：今日が日曜日なら、週末ハイライトを S10 の後に挿入
+  const dow = fakeDateForDay(player.day).getUTCDay(); // 0=日
+  if (dow === 0) {
+    player._pendingWeeklyHighlight = true;
+  }
+
   // @spec SPEC-025 §6.2 自動モード中は S5 就寝画面を表示せず、S10 日の終わりサマリに直行
   if (player.autoMode) {
     stopAutoLoop();
@@ -2326,6 +2574,14 @@ function goSleep() {
       return;
     }
 
+    renderDaySummary();
+    showScreen("screen-day-summary");
+    return;
+  }
+
+  // @spec SPEC-027 保育園・幼稚園期は手動モードでも日の終わりに S10 連絡帳サマリを表示
+  const stage = resolveLifeStage(player.age);
+  if (stage && (stage.id === "nursery" || stage.id === "kindergarten")) {
     renderDaySummary();
     showScreen("screen-day-summary");
     return;
@@ -2413,7 +2669,8 @@ function nextDay(sleepMode) {
 
   const sched = getFixedSchedule(player.age);
   const stage = resolveLifeStage(player.age);
-  const coreTime = stage ? stage.coreTime : null;
+  // @spec SPEC-026 §5.2 Phase 0 は保育園休業：コアタイムを null 扱い
+  const coreTime = getActiveCoreTime();
 
   // ---- 起床時刻 ----
   let wakeH, wakeM = 0;
@@ -2439,8 +2696,14 @@ function nextDay(sleepMode) {
   // ---- 朝の余剰時間 ----
   //  SPEC-020 §5.3 朝の遊び時間 = coreTime.startHour - 起床時刻
   //  SPEC-019 §5.4.2 強制終了後の翌朝は余剰 0
+  //  SPEC-026 §5.2 Phase 0 は 1 日 8h を自由遊び（昼寝 2h 含まず）
   let morning = 0;
-  if (coreTime) {
+  const isPhase0 = (tutorialPhase(player.day) === "phase0");
+  if (isPhase0) {
+    // Phase 0：朝〜就寝まで、昼寝2h・食事1h を引いた 8h を一括で使える
+    // （朝 07:00 〜 19:00 = 12h のうち、昼寝 13:00-15:00 と 食事 18:00-19:00 を除く）
+    morning = 8;
+  } else if (coreTime) {
     morning = Math.max(0, coreTime.startHour - (wakeH + wakeM / 60));
   } else {
     // 老後：1日全部が自由時間
@@ -2456,9 +2719,14 @@ function nextDay(sleepMode) {
 
   // 1日の余剰時間ベース（ゲージ分母 SPEC-021）
   //   朝の余剰 + 夜の余剰（コアタイム終了〜就寝−1h食事）
+  //   Phase 0 は一括 8h
   const sleepHour = sched ? sched.sleepHour : 22;
   const eveningBase = coreTime ? Math.max(0, sleepHour - 1 - coreTime.endHour) : 0;
-  player.spareHoursMax = +(morning + eveningBase).toFixed(1) || 1;
+  if (isPhase0) {
+    player.spareHoursMax = 8;
+  } else {
+    player.spareHoursMax = +(morning + eveningBase).toFixed(1) || 1;
+  }
 
   player.clockHour = wakeH;
   player.clockMinute = wakeM;
@@ -2469,7 +2737,49 @@ function nextDay(sleepMode) {
 
   // @spec SPEC-002 §1.1 翌日も S2 に直行（起床ヘッダーで状態を表示）
   renderHUD();
-  goChooseFromToday();
+
+  // @spec SPEC-026 §5.3 / §5.4 チュートリアル境界日のモーダル
+  const tutorialInterrupts = collectTutorialBoundaryInterrupts();
+  if (tutorialInterrupts.length > 0) {
+    showInterruptQueue(tutorialInterrupts, () => {
+      // @spec SPEC-026 §5.3.1 Day 8 到達時に情熱プロファイル未選択なら選ばせる
+      if (player.day === 8 && !player.passionProfileId) {
+        renderPassionProfileScreen();
+        showScreen("screen-passion-profile");
+      } else {
+        goChooseFromToday();
+      }
+    });
+  } else {
+    goChooseFromToday();
+  }
+}
+
+/**
+ * @spec SPEC-026 §5.3 §5.4 チュートリアル境界日の介入を組み立てる。
+ * Day 8 到達時と Day 15 到達時に 1 回だけ表示する。
+ */
+function collectTutorialBoundaryInterrupts() {
+  const seen = player._tutorialBoundariesSeen || {};
+  const interrupts = [];
+  if (player.day === 8 && !seen.day8) {
+    seen.day8 = true;
+    interrupts.push({
+      icon: "🏫",
+      title: "月曜日から保育園！",
+      body: "今日から保育園が始まります。いろんな遊びや、お友達との出会いがありますよ。",
+    });
+  }
+  if (player.day === 15 && !seen.day15) {
+    seen.day15 = true;
+    interrupts.push({
+      icon: "⏩",
+      title: "スキップ機能が使えるようになった！",
+      body: "1日の終わりのサマリ画面で、週末までや明日の夜までまとめて時間を進められるようになりました。",
+    });
+  }
+  player._tutorialBoundariesSeen = seen;
+  return interrupts;
 }
 
 // =========================================================================
@@ -2558,6 +2868,11 @@ function pickAutoPlay() {
  * @spec SPEC-025 §5.5 自動／手動モードの切替
  */
 function toggleAutoMode() {
+  // @spec SPEC-026 §5.2 Phase 0 は自動モード封印
+  if (tutorialPhase(player.day) === "phase0") {
+    toast("自動モードは2週目から使えるようになります");
+    return;
+  }
   if (player.autoMode) {
     // 手動へ切替
     player.autoMode = false;
@@ -2694,6 +3009,12 @@ function runAutoTurn() {
       interruptQueue.push(...coreInterrupts);
     }
 
+    // @spec SPEC-026 §5.2.1 チュートリアル発見があれば介入キューに先頭で追加（必ず見せる）
+    if (player._pendingTutorialInterrupts && player._pendingTutorialInterrupts.length > 0) {
+      interruptQueue.unshift(...player._pendingTutorialInterrupts);
+      player._pendingTutorialInterrupts = [];
+    }
+
     // 介入イベントがあれば順にモーダル表示
     if (interruptQueue.length > 0) {
       showInterruptQueue(interruptQueue, () => {
@@ -2701,9 +3022,6 @@ function runAutoTurn() {
         if (player.spareHours <= 0) {
           stopAutoLoop();
           goSleep();  // 自動モード中は goSleep→renderDaySummary に分岐
-        } else if (h.turnCount >= 5) {
-          stopAutoLoop();
-          showHighlight();
         } else {
           runAutoTurn();
         }
@@ -2717,11 +3035,7 @@ function runAutoTurn() {
       goSleep();  // 自動モード中は goSleep→renderDaySummary
       return;
     }
-    if (h.turnCount >= 5) {
-      stopAutoLoop();
-      showHighlight();
-      return;
-    }
+    // @spec SPEC-025 §7.2.0 週境界は goSleep→renderDaySummary の後で showHighlight を挟む
     // 次のターンへ
     _autoTimer = setTimeout(runAutoTurn, 350);
   }, 650);
@@ -2834,6 +3148,16 @@ function autoFinalizePlay(play) {
     player.lastPlayCategory = mainCat;
   }
 
+  // autoFinalizePlay 側の _daySnapshot 集約は呼び出し元 runAutoTurn で行うため、ここでは追加しない
+
+  // @spec SPEC-026 §5.2.1 チュートリアル発見（絵本→滑り台→砂場の段階解禁）
+  const tutDiscovered = checkTutorialDiscoveries(play.id);
+  if (tutDiscovered && tutDiscovered.length > 0) {
+    // 自動モード中でも、チュートリアル発見は必ずモーダル通知したい
+    // autoFinalizePlay の呼び出し元（runAutoTurn）で介入キューに追加されるよう、バッファに積む
+    player._pendingTutorialInterrupts = (player._pendingTutorialInterrupts || []).concat(tutDiscovered);
+  }
+
   renderHUD();
 
   // 体力ゼロ時は共通フローに乗せる（強制睡眠／強制終了）
@@ -2927,7 +3251,9 @@ function closeInterrupt() {
  */
 function showHighlight() {
   const h = player._autoHighlight;
-  byId("highlight-range").textContent = `${player.age}歳 / ${h.dayStart}日目〜${h.dayEnd}日目`;
+  // @spec SPEC-001 §5.7 第N週の範囲表示
+  const fw = fiscalWeekInfo(h.dayEnd);
+  byId("highlight-range").textContent = `${fw.weekNumber}週（${fw.rangeLabel}） / ${player.age}歳`;
 
   // 遊び回数
   const playsEl = byId("highlight-plays");
@@ -3007,10 +3333,15 @@ function showHighlight() {
   }
 
   showScreen("screen-highlight");
-  // ハイライト表示したらバッファをリセットして次区間の開始地点を更新
+  // @spec SPEC-025 §7.2.0 ハイライト表示したらバッファをリセットして次区間の開始地点を更新
+  //   スキルも現時点の Lv/exp を保存しておく（次週の差分計算用）。
+  const skillsReset = {};
+  for (const c of Object.keys(player.skills)) {
+    skillsReset[c] = { lv: player.skills[c].lv, exp: player.skills[c].exp };
+  }
   player._autoHighlight = {
     playsById: {},
-    skillsBefore: {},
+    skillsBefore: skillsReset,
     expBefore: { ...player.exp },
     discoveries: [],
     dayStart: player.day,
@@ -3032,7 +3363,14 @@ function skipToNextDaySummary(days) {
   }
   // days 日進むが、この直後の 1 回は「今から夜までのスキップ」なので days-1 を残す
   player._skipRemainingDays = Math.max(0, days - 1);
-  player._skipTarget = days >= 6 ? "weekend" : "tomorrow-night";
+  player._skipTarget = days >= 5 ? "weekend" : "tomorrow-night";
+  // @spec SPEC-025 §7.2.0 スキップ開始直後に週境界なら S9 を先に見せてから sleep
+  if (consumeWeeklyHighlightIfPending()) {
+    // S9 表示中。続ける押下時に自動で goChooseFromToday → 翌日ループに戻る
+    // ただし skip 継続中なので、continueAuto から直接 sleep を呼ぶ必要がある
+    player._skipAfterWeekly = true;
+    return;
+  }
   // 就寝 → 翌朝 → 自動ループ再開
   sleep("normal");
 }
@@ -3047,9 +3385,9 @@ function skipToNextDaySummary(days) {
  */
 function renderDaySummary() {
   const snap = player._daySnapshot || {};
-  const seasonLabel = SEASON_LABEL[player.season] || player.season;
+  // @spec SPEC-001 §5.7 日付表記
   byId("day-summary-range").textContent =
-    `${player.day}日目 / ${player.age}歳 / ${seasonLabel}`;
+    `${formatDayWithWeek(player.day)} / ${player.age}歳`;
 
   // 今日の遊び
   const playsEl = byId("day-summary-plays");
@@ -3145,6 +3483,210 @@ function renderDaySummary() {
   } else {
     discCard.hidden = true;
   }
+
+  // @spec SPEC-027 連絡帳セクション
+  renderRenrakuchoForToday(snap);
+
+  // @spec SPEC-026 §5.5 スキップボタンの出し分け
+  const skipUnlocked = isSkipUnlocked();
+  byId("day-summary-skip-row").hidden = !skipUnlocked;
+  byId("day-summary-skip-row2").hidden = !skipUnlocked;
+  byId("day-summary-continue-row").hidden = skipUnlocked;
+  byId("day-summary-tutorial-hint").hidden = skipUnlocked;
+  if (!skipUnlocked) {
+    // phase0/1：スキップ機能はまだ解禁されていない旨ヒント
+    const phase = tutorialPhase(player.day);
+    const remainDays = phase === "phase0" ? (15 - player.day) : (15 - player.day);
+    byId("day-summary-tutorial-hint").textContent =
+      `⏩ スキップ機能は3週目（あと ${Math.max(0, remainDays)} 日）から使えるようになります`;
+  }
+}
+
+/**
+ * @spec docs/specs/SPEC-027-renrakucho.md §5
+ * その日のスナップショットから連絡帳カードを組み立てる。
+ * 対象ライフステージ（保育園 1-4, 幼稚園 5-6）以外では非表示。
+ */
+function renderRenrakuchoForToday(snap) {
+  const card = byId("day-summary-renrakucho");
+  if (!card) return;
+  const stage = resolveLifeStage(player.age);
+  const isNursery = stage && stage.id === "nursery";
+  const isKinder  = stage && stage.id === "kindergarten";
+  if (!isNursery && !isKinder) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+
+  // @spec SPEC-027 §1.1 §5.4.1 Phase 0 は「おうち日報」スタイル（先生コメントなし）
+  const phase0 = (tutorialPhase(player.day) === "phase0");
+
+  // タイトル
+  byId("renrakucho-title").textContent = phase0
+    ? "🏠 おうちの 1 日"
+    : (isNursery ? "🏫 保育園 れんらくちょう" : "🏫 幼稚園 れんらくちょう");
+
+  // Phase 0 は先生セクションを隠す
+  byId("renrakucho-entry-teacher").hidden = phase0;
+
+  // @spec SPEC-001 §5.7 年月日（曜日）＋第何週（期間）
+  byId("renrakucho-date").textContent = formatDayWithWeek(player.day);
+
+  // 出席シール
+  const stickers = Object.entries(snap.playsById || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([id]) => {
+      const p = PLAYS.find((x) => x.id === id);
+      return p ? `<span class="sticker" title="${p.name}">${p.icon}</span>` : "";
+    }).join("");
+  byId("renrakucho-stickers").innerHTML = stickers || `<span class="sticker">🌙</span>`;
+
+  // 主役プレイ（最多回数のもの）
+  const topEntry = Object.entries(snap.playsById || {})
+    .sort((a, b) => b[1] - a[1])[0];
+
+  // 先生コメント
+  let teacher = "今日も元気に過ごしていました☺";
+  if (topEntry) {
+    const [topPlayId] = topEntry;
+    const p = PLAYS.find((x) => x.id === topPlayId);
+    if (p && p.renrakuchoTeacher) teacher = p.renrakuchoTeacher;
+  }
+  // 発見があれば一文追加
+  if ((snap.discoveries || []).length > 0) {
+    teacher += ` 今日は「${snap.discoveries[0]}」を見つけて目を輝かせていました。`;
+  }
+  byId("renrakucho-teacher").textContent = teacher;
+
+  // 家庭コメント（プロファイルに応じたテンプレから選択）
+  byId("renrakucho-parent").textContent = buildParentComment(snap);
+}
+
+/**
+ * @spec docs/specs/SPEC-027-renrakucho.md §5.3
+ * 家庭コメント。プレイヤーのプロファイル（SPEC-025）と、伸びたスキルから選ぶ。
+ */
+function buildParentComment(snap) {
+  // そのスナップショット期間で最も伸びたスキル（カテゴリ）を特定
+  let bestCat = null;
+  let bestDelta = 0;
+  for (const c of Object.keys(snap.skillsStart || {})) {
+    const a = player.skills[c];
+    const b = snap.skillsStart[c];
+    if (!a || !b) continue;
+    const d = a.exp - b.exp;
+    if (d > bestDelta) { bestDelta = d; bestCat = c; }
+  }
+
+  // 代表プレイの parent テンプレを使う（主役最多プレイ）
+  const topEntry = Object.entries(snap.playsById || {})
+    .sort((a, b) => b[1] - a[1])[0];
+  if (topEntry) {
+    const p = PLAYS.find((x) => x.id === topEntry[0]);
+    if (p && p.renrakuchoParent) return p.renrakuchoParent;
+  }
+
+  // フォールバック：カテゴリに応じた一般コメント
+  if (bestCat) {
+    const c = CATEGORIES[bestCat];
+    if (c) return `最近は「${c.label}」に興味があるみたいです。この調子で伸びてほしいです。`;
+  }
+  return "今日は早く寝てくれそうです。";
+}
+
+/** ゲーム内 day を擬似日付ラベルに変換 */
+/**
+ * @spec SPEC-001 §5.7 日付表記・Fiscal Year / Fiscal Week
+ * Day を Date（UTC 固定で扱う）に変換する。Day 1 = 2026-04-01（水）
+ * タイムゾーンに依存しないよう、全ての日付計算で getUTCFullYear/Month/Date/Day を使う。
+ */
+function fakeDateForDay(day) {
+  // UTC 基準で 2026-04-01 00:00 を開始点とする
+  const base = Date.UTC(2026, 3, 1);  // month は 0-indexed（3 = April）
+  return new Date(base + (day - 1) * 24 * 60 * 60 * 1000);
+}
+const WEEK_JP = ["日", "月", "火", "水", "木", "金", "土"];
+
+/** 「2026年4月1日（水）」形式 */
+function formatFullDate(day) {
+  const d = fakeDateForDay(day);
+  return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日（${WEEK_JP[d.getUTCDay()]}）`;
+}
+
+/**
+ * Fiscal Week 情報：今の週が fiscal year 内の第何週目か、週の範囲はいつか。
+ * - fiscal year: 4/1〜翌3/31
+ * - 第1週 = fiscal year 開始日（4/1）を含む週。週は月曜起点とする
+ * - 戻り値: { weekNumber, rangeStart: Date, rangeEnd: Date, rangeLabel: string }
+ *     rangeLabel は "4/1-4/5" のような形式
+ */
+function fiscalWeekInfo(day) {
+  const d = fakeDateForDay(day);
+  // fiscal year 開始日（今日が 1-3月なら前年4月1日、4-12月なら今年4月1日）
+  const yearStart = (d.getUTCMonth() < 3)
+    ? new Date(Date.UTC(d.getUTCFullYear() - 1, 3, 1))
+    : new Date(Date.UTC(d.getUTCFullYear(), 3, 1));
+  // 月曜起点にするため、yearStart を含む週の月曜を求める（4/1 が水曜なら月曜は 3/30）
+  const ysDow = yearStart.getUTCDay(); // 0=日..6=土
+  const toMon = (ysDow === 0) ? 6 : (ysDow - 1); // 月曜までの戻り日数
+  const firstWeekMon = new Date(yearStart.getTime() - toMon * 24 * 60 * 60 * 1000);
+
+  // 今日が属する週の月曜を求める
+  const dDow = d.getUTCDay();
+  const toMonToday = (dDow === 0) ? 6 : (dDow - 1);
+  const thisMon = new Date(d.getTime() - toMonToday * 24 * 60 * 60 * 1000);
+
+  // 週番号：(thisMon - firstWeekMon) / 7 + 1
+  const weekNumber = Math.round((thisMon.getTime() - firstWeekMon.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+
+  // 週の範囲：月曜〜日曜
+  //   ただし第1週は fiscal year 開始日（4/1）から始まる短縮週にする
+  const rangeStart = (weekNumber === 1) ? yearStart : thisMon;
+  const rangeEnd = new Date(thisMon.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const mm = (dt) => `${dt.getUTCMonth() + 1}/${dt.getUTCDate()}`;
+  const rangeLabel = `${mm(rangeStart)}-${mm(rangeEnd)}`;
+
+  return { weekNumber, rangeStart, rangeEnd, rangeLabel };
+}
+
+/**
+ * 「2026年4月1日（水） / 1週（4/1-4/5）」形式のフル表記
+ */
+function formatDayWithWeek(day) {
+  const full = formatFullDate(day);
+  const fw = fiscalWeekInfo(day);
+  return `${full} / ${fw.weekNumber}週（${fw.rangeLabel}）`;
+}
+
+/**
+ * @spec SPEC-025 §7.1.4 今週の週末（日曜）まで何日あるか
+ * 今が日曜なら 7（次の日曜まで）を返す。月曜なら 6、土曜なら 1。
+ */
+function daysUntilWeekend(day) {
+  const dow = fakeDateForDay(day).getUTCDay(); // 0=日, 1=月, ..., 6=土
+  if (dow === 0) return 7; // 日曜は次の日曜まで 7 日
+  return 7 - dow;
+}
+
+/** 互換性維持：旧 fakeDateLabel はシンプルな日付のみを返す */
+function fakeDateLabel(day) {
+  return formatFullDate(day);
+}
+
+/**
+ * @spec SPEC-025 §7.2.0 週境界ハイライトが保留中なら、ここで消費して S9 を表示する。
+ * S9 表示できたら true を返し、呼び出し側はそこで処理を打ち切る。
+ */
+function consumeWeeklyHighlightIfPending() {
+  if (!player._pendingWeeklyHighlight) return false;
+  player._pendingWeeklyHighlight = false;
+  // ハイライト実行前に、バッファの dayEnd を今日に合わせる
+  const h = player._autoHighlight;
+  if (h) h.dayEnd = player.day;
+  showHighlight();
+  return true;
 }
 
 // =========================================================================
@@ -3169,15 +3711,26 @@ document.addEventListener("click", (e) => {
       break;
     case "continue-auto":
       // @spec SPEC-025 §9.4 ハイライトから続行
-      goChooseFromToday();
+      if (player._skipAfterWeekly) {
+        player._skipAfterWeekly = false;
+        sleep("normal");
+      } else {
+        goChooseFromToday();
+      }
       break;
     case "skip-to-tomorrow-night":
       // @spec SPEC-025 §7.1.3 「明日の夜までスキップ」
       skipToNextDaySummary(1);
       break;
     case "skip-to-weekend":
-      // @spec SPEC-025 §7.1.3 「週末までスキップ」（プロトでは 6 日連続）
-      skipToNextDaySummary(6);
+      // @spec SPEC-025 §7.1.3 §7.1.4 「週末までスキップ」 = 今週の日曜まで
+      skipToNextDaySummary(daysUntilWeekend(player.day));
+      break;
+    case "day-summary-continue":
+      // @spec SPEC-026 §5.5 チュートリアル中のサマリ→次の日へ
+      // @spec SPEC-025 §7.2.0 週境界なら次に週末ハイライトを挟む
+      if (consumeWeeklyHighlightIfPending()) { /* S9 を表示中 */ }
+      else { sleep("normal"); }
       break;
     case "switch-to-manual":
       // @spec SPEC-025 §5.5 / §7.1.3 手動に切替
@@ -3233,17 +3786,19 @@ player.staminaBaseCap = staminaBaseCapForAge(player.age);
 player.staminaCap = player.staminaBaseCap + (player.staminaBonusCap || 0);
 player.stamina = Math.min(player.stamina, player.staminaCap);
 
-// @spec SPEC-002 §1.1 起動直後は S2 に直接出現（旧 S1 起床画面を経由しない）
-// @spec SPEC-025 §5.3 情熱プロファイル未選択ならまず S8 を表示
-renderHUD();
+// @spec SPEC-028 §4 マスタデータの外部ファイル読み込み後に初期画面を立ち上げる。
+(async function boot() {
+  await loadMasters();
 
-// 介入モーダルの閉じるボタンは dom-load 後に配線
-const _btnInterruptClose = byId("btn-interrupt-close");
-if (_btnInterruptClose) _btnInterruptClose.addEventListener("click", closeInterrupt);
+  // @spec SPEC-002 §1.1 起動直後は S2 に直接出現（旧 S1 起床画面を経由しない）
+  // @spec SPEC-025 §5.3 情熱プロファイル未選択ならまず S8 を表示
+  renderHUD();
 
-if (!player.passionProfileId) {
-  renderPassionProfileScreen();
-  showScreen("screen-passion-profile");
-} else {
+  // 介入モーダルの閉じるボタンは dom-load 後に配線
+  const _btnInterruptClose = byId("btn-interrupt-close");
+  if (_btnInterruptClose) _btnInterruptClose.addEventListener("click", closeInterrupt);
+
+  // @spec SPEC-026 §5.3.1 プロファイル選択は Phase 1 突入時（Day 8）に行う。
+  //   Day 1〜7（phase0）は手動モードで絵本→滑り台→砂場を遊ぶだけなのでプロファイル不要。
   goChooseFromToday();
-}
+})();
