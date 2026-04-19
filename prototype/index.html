@@ -319,12 +319,15 @@
         actions-result-core    朝の遊び終了 → 保育園へ
         actions-result-sleep   余剰時間 0 → おやすみ
       -->
+      <!--
+        @spec docs/specs/SPEC-034 §6 S3 結果画面から「今日おわる」を廃止（誤タップ防止）
+        余剰時間が尽きた場合は actions-result-sleep が代わりに表示される。
+      -->
       <footer class="actions actions-stack" id="actions-result-normal" hidden>
         <div class="actions-row">
           <button class="btn btn-primary" data-action="replay-play" id="btn-replay-play">🔁 もう一度遊ぶ (-1h)</button>
           <button class="btn btn-secondary" data-action="choose-next" id="btn-next-play">次の遊びを選ぶ</button>
         </div>
-        <button class="btn btn-ghost btn-wide" data-action="go-sleep" id="btn-go-sleep-from-play">今日おわる</button>
       </footer>
       <footer class="actions" id="actions-result-core" hidden>
         <button class="btn btn-primary" data-action="goto-coretime" id="btn-goto-coretime">🏫 保育園に行く</button>
@@ -469,7 +472,11 @@
         <div class="actions-row">
           <button class="btn btn-primary btn-wide" data-action="continue-auto" id="btn-continue-auto">続ける</button>
         </div>
-        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual">手動に切り替え</button>
+        <!--
+          @spec docs/specs/SPEC-034 §6 自動モード解禁前（phase0/phase1）は「手動に切り替え」を非表示
+          renderHighlight()（S9）で JS 側から hidden を動的設定する。
+        -->
+        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual" id="btn-highlight-switch-manual" hidden>手動に切り替え</button>
       </footer>
     </section>
 
@@ -543,7 +550,11 @@
           <button class="btn btn-primary btn-wide" data-action="day-summary-continue">続ける</button>
         </div>
         <p class="tutorial-hint" id="day-summary-tutorial-hint" hidden>⏩ スキップ機能は3週目から使えます</p>
-        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual">🎮 手動に切り替え</button>
+        <!--
+          @spec docs/specs/SPEC-034 §6 自動モード解禁前（phase0/phase1）は「手動に切り替え」を非表示
+          renderDaySummary() で JS 側から hidden を動的設定する。
+        -->
+        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual" id="btn-day-summary-switch-manual" hidden>🎮 手動に切り替え</button>
       </footer>
     </section>
 
