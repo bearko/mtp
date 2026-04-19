@@ -147,3 +147,7 @@ function it(name, fn) { /* ... */ }
 
 ## 11. 改訂履歴
 - 2026-04-19: 初版
+- 2026-04-19 v2: 低リソースプレイ（SPEC-002 §5.9 v4）のテスト追加
+  - `tests/unit/low-resource.test.js`（9 ケース）：lowStaminaMultiplier の境界値
+  - `tests/integration/low-stamina-dock.test.js`（12 ケース）：ドック表示のシナリオ 6 種類
+  - バグ回帰テスト：「体力 1 で遊べなくなる」が旧 isHidden 時間不足扱いの副作用だったことを記録
