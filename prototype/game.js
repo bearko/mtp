@@ -1033,12 +1033,16 @@ function renderSoyouList(preview) {
     row.className = "soyou-row"
       + (deltaRaw > 0 ? " has-delta" : "")
       + (gradeUp ? " grade-up" : "");
+    const valueHtml = deltaRaw > 0
+      ? `${value}<span class="soyou-value-arrow">→</span><span class="soyou-value-after">${afterValue}</span>`
+      : `${value}`;
+    const deltaHtml = deltaRaw > 0 ? `<span class="soyou-delta">+${deltaRaw}</span>` : `<span class="soyou-delta"></span>`;
     row.innerHTML = `
       <div class="soyou-icon">${meta.icon}</div>
       <div class="soyou-label">${meta.label}</div>
       <div class="soyou-grade grade-${gradeUp ? afterGrade : grade}">${gradeUp ? (grade + "→" + afterGrade) : grade}</div>
-      <div class="soyou-value">${value}${deltaRaw > 0 ? ` → ${afterValue}` : ""}</div>
-      ${deltaRaw > 0 ? `<span class="soyou-delta">+${deltaRaw}</span>` : ""}
+      ${deltaHtml}
+      <div class="soyou-value">${valueHtml}</div>
     `;
     host.appendChild(row);
   }
@@ -3541,6 +3545,11 @@ function closeInterrupt() {
  */
 function showHighlight() {
   const h = player._autoHighlight;
+  // @spec SPEC-034 §6 自動モード解禁前は「手動に切り替え」ボタンを隠す
+  const switchBtn = byId("btn-highlight-switch-manual");
+  if (switchBtn) {
+    switchBtn.hidden = !(player.autoMode && tutorialPhase(player.day) !== "phase0");
+  }
   // @spec SPEC-001 §5.7 第N週の範囲表示
   const fw = fiscalWeekInfo(h.dayEnd);
   byId("highlight-range").textContent = `${fw.weekNumber}週（${fw.rangeLabel}） / ${player.age}歳`;
@@ -3675,6 +3684,11 @@ function skipToNextDaySummary(days) {
  */
 function renderDaySummary() {
   const snap = player._daySnapshot || {};
+  // @spec SPEC-034 §6 自動モード解禁前（phase0）は「手動に切り替え」を隠す
+  const switchBtn = byId("btn-day-summary-switch-manual");
+  if (switchBtn) {
+    switchBtn.hidden = !(player.autoMode && tutorialPhase(player.day) !== "phase0");
+  }
   // @spec SPEC-001 §5.7 日付表記
   byId("day-summary-range").textContent =
     `${formatDayWithWeek(player.day)} / ${player.age}歳`;
@@ -4000,13 +4014,14 @@ document.addEventListener("click", (e) => {
       confirmPassionProfile();
       break;
     case "continue-auto":
-      // @spec SPEC-025 §9.4 ハイライトから続行
+      // @spec SPEC-025 §9.4 / §7.2.0 §7.2.3 ハイライト後は必ず「翌朝」へ進む。
+      //   S9 は週境界（日曜の夜）に表示されるため、続ける押下＝翌日（月曜）へ進む。
+      //   以前は goChooseFromToday() を直接呼んでいたが、player.day が進まずに
+      //   S2 が描画され、そこで「今日おわる」を押すとまた S10 → S9 のループに陥っていた。
       if (player._skipAfterWeekly) {
         player._skipAfterWeekly = false;
-        sleep("normal");
-      } else {
-        goChooseFromToday();
       }
+      sleep("normal");
       break;
     case "skip-to-tomorrow-night":
       // @spec SPEC-025 §7.1.3 「明日の夜までスキップ」
