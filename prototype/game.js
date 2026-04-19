@@ -581,7 +581,10 @@ const DEFAULT_PLAYER = {
   money: 0,
   friends: 2,
   passion: 0,
-  exp: { physical: 0, creative: 0, explore: 0, social: 0, competitive: 0 },
+  // @spec SPEC-033 素養（旧称: 原体験）。5 カテゴリ。
+  //   body(身体) / intellect(知性) / sensitivity(感性) / social(社交) / passion(情熱)
+  //   旧ジョウネツは passion に統合。互換のため exp エイリアスで同じオブジェクトを参照する。
+  soyou: { body: 0, intellect: 0, sensitivity: 0, social: 0, passion: 0 },
   // @spec SPEC-024 §5.7 スキル（カテゴリ 1:1、Lv 1 - 100）。遅延初期化。
   skills: {},
   dailyPlays: 0,
@@ -637,12 +640,17 @@ const DEFAULT_PLAYER = {
   _skipAfterWeekly: false,
 };
 
+/**
+ * @spec SPEC-033 §3 素養の日本語ラベル（S3 結果・S9 ハイライト等で使う）。
+ *   旧 LABELS（physical/creative/explore/social/competitive）は廃止し、
+ *   5 素養（body/intellect/sensitivity/social/passion）に統一。
+ */
 const LABELS = {
-  physical: "身体系",
-  creative: "創作系",
-  explore: "探求系",
-  social: "交流系",
-  competitive: "競技系",
+  body:        "身体",
+  intellect:   "知性",
+  sensitivity: "感性",
+  social:      "社交",
+  passion:     "情熱",
 };
 
 const SEASON_LABEL = { spring: "春", summer: "夏", autumn: "秋", winter: "冬" };
@@ -651,6 +659,98 @@ const SEASON_LABEL = { spring: "春", summer: "夏", autumn: "秋", winter: "冬
 // 状態
 // =========================================================================
 let player = structuredClone(DEFAULT_PLAYER);
+
+/**
+ * @spec SPEC-033 §5 §6 素養モデルの互換層
+ * - player.exp は player.soyou を指すエイリアス（同オブジェクト参照）
+ * - player.passion は player.soyou.passion に対する getter/setter
+ * 既存コードが `player.exp.body += n` や `player.passion += m` をやっても、
+ * 実体は `player.soyou` に一本化される。
+ */
+/**
+ * @spec SPEC-033 §3 5 素養のキーとラベル
+ */
+const SOYOU_KEYS = ["body", "intellect", "sensitivity", "social", "passion"];
+const SOYOU_META = {
+  body:        { label: "身体", icon: "💪" },
+  intellect:   { label: "知性", icon: "🧠" },
+  sensitivity: { label: "感性", icon: "🎨" },
+  social:      { label: "社交", icon: "👥" },
+  passion:     { label: "情熱", icon: "🔥" },
+};
+
+/**
+ * @spec SPEC-033 §5 旧キーを新キーに変換（互換用）
+ */
+const LEGACY_EXP_TO_SOYOU = {
+  physical:    "body",
+  explore:     "intellect",
+  creative:    "sensitivity",
+  social:      "social",
+  competitive: null, // 廃止
+};
+function toSoyouKey(key) {
+  if (SOYOU_KEYS.includes(key)) return key;
+  const mapped = LEGACY_EXP_TO_SOYOU[key];
+  if (mapped === undefined) return key;  // 未知のキーはそのまま
+  return mapped; // null 含む
+}
+
+/** gain オブジェクト {legacyKey: n, ...} を {soyouKey: n, ...} に変換。旧キー混在に強い。 */
+function normalizeGainToSoyou(gain) {
+  if (!gain) return {};
+  const out = {};
+  for (const [k, v] of Object.entries(gain)) {
+    const nk = toSoyouKey(k);
+    if (nk == null) continue; // 廃止キー
+    if (!SOYOU_KEYS.includes(nk)) {
+      // soyou 以外の値（friends, stamina, passion は別枠）はそのまま保持する
+      out[k] = (out[k] || 0) + v;
+      continue;
+    }
+    out[nk] = (out[nk] || 0) + v;
+  }
+  return out;
+}
+
+/**
+ * @spec SPEC-033 §4 実数値をグレード文字に変換
+ */
+function soyouGrade(value) {
+  const v = Math.floor(Number(value) || 0);
+  if (v >= 140) return "A";
+  if (v >= 110) return "B";
+  if (v >=  80) return "C";
+  if (v >=  66) return "D";
+  if (v >=  40) return "E";
+  if (v >=  20) return "F";
+  return "G";
+}
+
+function installSoyouAliases(p) {
+  if (!p.soyou) {
+    p.soyou = { body: 0, intellect: 0, sensitivity: 0, social: 0, passion: 0 };
+  }
+  // SOYOU_KEYS 各キーが欠けていたら 0 で埋める
+  for (const k of ["body", "intellect", "sensitivity", "social", "passion"]) {
+    if (typeof p.soyou[k] !== "number") p.soyou[k] = 0;
+  }
+  // exp は soyou の別名。プロパティアクセサで同じオブジェクトを返す
+  Object.defineProperty(p, "exp", {
+    configurable: true, enumerable: false,
+    get() { return p.soyou; },
+    set(v) { p.soyou = v || p.soyou; },
+  });
+  // passion は soyou.passion への getter/setter
+  Object.defineProperty(p, "passion", {
+    configurable: true, enumerable: false,
+    get() { return p.soyou.passion || 0; },
+    set(v) { p.soyou.passion = Math.max(0, Number(v) || 0); },
+  });
+  return p;
+}
+installSoyouAliases(player);
+
 let pendingPlay = null;     // 進行中の遊び
 let pendingGain = null;     // 予定している獲得値
 let pendingEvent = null;    // 発火したイベント
@@ -833,32 +933,150 @@ function majorGainCategory(gain) {
  * @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2 時計円盤で現在時刻を表示
  * 共通HUDの描画。全画面共通。
  */
+/**
+ * @spec SPEC-034 §4.3 リズム 5 段階の判定
+ * @spec SPEC-001 §4 幼少期（age ≤ 6）は「絶好調」固定
+ */
+function resolveRhythm() {
+  if ((player.age || 0) <= 6) {
+    return { icon: "🤩", label: "絶好調", key: "best" };
+  }
+  const r = Math.max(0, Math.min(100, player.bioRhythm || 0));
+  if (r <= 20) return { icon: "😵", label: "絶不調", key: "worst" };
+  if (r <= 40) return { icon: "😞", label: "不調",   key: "bad"   };
+  if (r <= 60) return { icon: "😐", label: "普通",   key: "mid"   };
+  if (r <= 80) return { icon: "😊", label: "好調",   key: "good"  };
+  return              { icon: "🤩", label: "絶好調", key: "best"  };
+}
+
+/**
+ * @spec SPEC-034 §4.2 ライフステージ表示用のラベル（N 年目）
+ *   保育園: age-1（1歳で1年目、4歳で4年目）
+ *   以降、小学校以降はライフステージ内の最小年齢からのオフセット
+ */
+function stageProgressLabel(stage) {
+  if (!stage) return "";
+  const y = Math.max(1, (player.age || stage.ageMin || 1) - (stage.ageMin || 1) + 1);
+  return `${stage.label}${y}年目`;
+}
+
+/**
+ * @spec SPEC-034 §4 新 HUD（3 エリア）
+ */
 function renderHUD() {
-  byId("hud-age").textContent = `${player.age}歳`;
-  // @spec SPEC-001 §5.7 HUD の日付は「YYYY年M月D日（曜日）」に統一
-  byId("hud-date").textContent = formatFullDate(player.day);
-  byId("hud-stamina").textContent = Math.max(0, Math.floor(player.stamina));
-  byId("hud-stamina-cap").textContent = Math.floor(player.staminaCap || 0);
-  byId("hud-money").textContent = player.money;
-  byId("hud-hours").textContent = Math.max(0, player.spareHours).toFixed(1).replace(".0", "");
-  byId("hud-friends").textContent = player.friends;
-  byId("hud-passion").textContent = player.passion;
-
-  // HUD 体力ミニゲージ（staminaCap を分母に、起動時は 100% 満タン）
-  applyGaugePercent(byId("hud-stamina-bar"), player.stamina, player.staminaCap);
-
-  // HUD 時計円盤（余剰時間ゲージを置換）
-  renderClockDial(byId("hud-clock"), {
-    clockHour: player.clockHour,
-    clockMinute: player.clockMinute,
-    spareHours: player.spareHours,
-    showText: false,
-  });
-
+  // 左：ライフステージ
   const stage = resolveLifeStage(player.age);
-  const stageEl = byId("hud-stage");
-  if (stage) stageEl.textContent = `${stage.icon} ${stage.label}`;
-  else stageEl.textContent = "";
+  const stageNameEl = byId("hud-stage-name");
+  if (stageNameEl) stageNameEl.textContent = stageProgressLabel(stage);
+  const ageChip = byId("hud-age-chip");
+  if (ageChip) ageChip.textContent = `${player.age}歳`;
+
+  // 中央：日付・リズム・体力
+  byId("hud-date").textContent = formatFullDate(player.day);
+  const rhythm = resolveRhythm();
+  const rIconEl = byId("hud-rhythm-icon");
+  const rLabelEl = byId("hud-rhythm-label");
+  if (rIconEl)  rIconEl.textContent  = rhythm.icon;
+  if (rLabelEl) rLabelEl.textContent = rhythm.label;
+
+  const staminaEl = byId("hud-stamina");
+  const staminaCapEl = byId("hud-stamina-cap");
+  if (staminaEl)    staminaEl.textContent    = Math.max(0, Math.floor(player.stamina));
+  if (staminaCapEl) staminaCapEl.textContent = Math.floor(player.staminaCap || 0);
+
+  const cap = Math.max(1, player.staminaCap || 1);
+  const curPct = Math.max(0, Math.min(100, (player.stamina / cap) * 100));
+  const fillEl = byId("hud-stamina-bar-fill");
+  if (fillEl) fillEl.style.width = curPct + "%";
+  // ゴーストプレビューは selectPlay で上書き。ここではクリア
+  const ghostEl = byId("hud-stamina-bar-ghost");
+  if (ghostEl) ghostEl.style.width = "0%";
+
+  // 右：所持金・友人・情熱
+  const moneyRow = byId("hud-money-row");
+  const hideMoney = (player.age || 0) <= 6;
+  if (moneyRow) moneyRow.classList.toggle("is-hidden", hideMoney);
+  const moneyEl = byId("hud-money");
+  if (moneyEl) moneyEl.textContent = player.money;
+  const hoursEl = byId("hud-hours");
+  if (hoursEl) hoursEl.textContent = Math.max(0, player.spareHours).toFixed(1).replace(".0", "");
+  const friendsEl = byId("hud-friends");
+  if (friendsEl) friendsEl.textContent = player.friends;
+  const passionEl = byId("hud-passion");
+  if (passionEl) passionEl.textContent = Math.floor(player.soyou.passion || 0);
+  const passionGradeEl = byId("hud-passion-grade");
+  if (passionGradeEl) {
+    const g = soyouGrade(player.soyou.passion);
+    passionGradeEl.textContent = g;
+    passionGradeEl.className = "grade-" + g;
+  }
+}
+
+/**
+ * @spec SPEC-034 §5.2 素養カード 5 枚を描画
+ * preview（プレビュー中の加算量）が渡されたら (+N) とグレードアップを重ねて表示する。
+ */
+function renderSoyouList(preview) {
+  const host = byId("soyou-list");
+  if (!host) return;
+  const cur = player.soyou || {};
+  host.innerHTML = "";
+  for (const key of SOYOU_KEYS) {
+    const meta = SOYOU_META[key];
+    const value = Math.floor(cur[key] || 0);
+    const grade = soyouGrade(value);
+    const deltaRaw = preview && preview[key] ? Math.max(0, Math.round(preview[key])) : 0;
+    const afterValue = value + deltaRaw;
+    const afterGrade = soyouGrade(afterValue);
+    const gradeUp = deltaRaw > 0 && afterGrade !== grade;
+    const row = document.createElement("div");
+    row.className = "soyou-row"
+      + (deltaRaw > 0 ? " has-delta" : "")
+      + (gradeUp ? " grade-up" : "");
+    const valueHtml = deltaRaw > 0
+      ? `${value}<span class="soyou-value-arrow">→</span><span class="soyou-value-after">${afterValue}</span>`
+      : `${value}`;
+    const deltaHtml = deltaRaw > 0 ? `<span class="soyou-delta">+${deltaRaw}</span>` : `<span class="soyou-delta"></span>`;
+    row.innerHTML = `
+      <div class="soyou-icon">${meta.icon}</div>
+      <div class="soyou-label">${meta.label}</div>
+      <div class="soyou-grade grade-${gradeUp ? afterGrade : grade}">${gradeUp ? (grade + "→" + afterGrade) : grade}</div>
+      ${deltaHtml}
+      <div class="soyou-value">${valueHtml}</div>
+    `;
+    host.appendChild(row);
+  }
+}
+
+/**
+ * @spec SPEC-034 §5.3 ヘッダー体力ゲージのゴーストプレビュー
+ * cost が 0 以上のときに右から半透明の赤を重ねる。
+ */
+function setStaminaGhostPreview(cost) {
+  const ghost = byId("hud-stamina-bar-ghost");
+  if (!ghost) return;
+  const cap = Math.max(1, player.staminaCap || 1);
+  const c = Math.max(0, Math.min(player.stamina, Number(cost) || 0));
+  const pct = Math.max(0, Math.min(100, (c / cap) * 100));
+  ghost.style.width = pct + "%";
+}
+
+/**
+ * @spec SPEC-034 §5.3 残り時間プレビュー
+ *   選択中の遊びの timeCost を反映して「あと (spare - timeCost) 時間」を予告表示する。
+ */
+function setHoursGhostPreview(costHours) {
+  const el = byId("hud-hours");
+  if (!el) return;
+  const base = Math.max(0, player.spareHours);
+  if (!costHours) {
+    el.textContent = base.toFixed(1).replace(".0", "");
+    el.classList.remove("ghost-decrease");
+    return;
+  }
+  const after = Math.max(0, base - costHours);
+  el.textContent = `${base.toFixed(1).replace(".0","")}→${after.toFixed(1).replace(".0","")}`;
+  el.classList.add("ghost-decrease");
 }
 
 /**
@@ -1242,10 +1460,10 @@ function checkTutorialDiscoveries(playId) {
     if (ev.unlockPlayId && !player.unlockedPlays.includes(ev.unlockPlayId)) {
       player.unlockedPlays.push(ev.unlockPlayId);
     }
-    // 効果反映（effect は軽微な exp）
-    for (const [k, v] of Object.entries(ev.gain || {})) {
-      if (k in (player.exp || {})) {
-        player.exp[k] = (player.exp[k] || 0) + v;
+    // 効果反映（effect は軽微な exp）。SPEC-033 §5 旧キー自動変換
+    for (const [k, v] of Object.entries(normalizeGainToSoyou(ev.gain || {}))) {
+      if (SOYOU_KEYS.includes(k)) {
+        player.soyou[k] = (player.soyou[k] || 0) + v;
       }
     }
     const unlocked = PLAYS.find((p) => p.id === ev.unlockPlayId);
@@ -1410,11 +1628,12 @@ let selectedPlayId = null;
  * 実行可能な遊びを左、ロック中を右に配置。`unlockRequired` で未解禁は非表示。
  */
 function renderChooseScreen() {
-  // @spec SPEC-002 §5.2.1 S2 上部の起床ヘッダーを常に更新
-  renderWakeupHeader();
-
-  byId("choose-hours").textContent = player.spareHours.toFixed(1).replace(".0", "");
+  // @spec SPEC-034 §5.1 起床ヘッダーは削除。情報はすべて HUD と素養カードに集約。
   selectedPlayId = null;
+  // 素養カード初期描画（プレビューなし）
+  renderSoyouList(null);
+  const skillTagsEl = byId("soyou-skill-tags");
+  if (skillTagsEl) skillTagsEl.hidden = true;
 
   const dock = byId("play-dock");
   dock.innerHTML = "";
@@ -1469,13 +1688,14 @@ function renderChooseScreen() {
   });
   dock.appendChild(treeBtn);
 
-  // @spec SPEC-002 §5.3.1 初期状態：起床ヘッダー表示 + プレビュー非表示
-  byId("wakeup-header").hidden = false;
-  byId("choose-prompt").hidden = false;
+  // @spec SPEC-034 §5.1 §5.3 初期状態：プレビューは非表示、ヘッダーゴーストもクリア
+  const wh = byId("wakeup-header"); if (wh) wh.hidden = true;
+  const cp = byId("choose-prompt"); if (cp) cp.hidden = true;
   byId("preview").hidden = true;
-  // 起床ヘッダーがある状態ではプレースホルダーは不要なので一緒に隠す
   byId("preview-placeholder").hidden = true;
   byId("btn-confirm-play").disabled = true;
+  setStaminaGhostPreview(0);
+  setHoursGhostPreview(0);
   // @spec SPEC-025 自動進行バナーは手動モード初期ではリセット
   const autoProg = byId("auto-progress");
   if (autoProg) autoProg.hidden = true;
@@ -1508,72 +1728,46 @@ function selectPlay(id) {
     el.classList.toggle("selected", el.dataset.playId === id);
   }
 
-  // @spec SPEC-002 §5.3.1 プレビュー表示時は起床ヘッダーを非表示にして置換する
-  // （「遊ぶ」ボタンまでスクロール無しで到達させるため）
-  byId("wakeup-header").hidden = true;
-  byId("choose-prompt").hidden = true;
-  byId("preview-placeholder").hidden = true;
-  byId("preview").hidden = false;
-  byId("preview-icon").textContent = play.icon;
-  byId("preview-name").textContent = play.name;
-  byId("preview-desc").textContent = play.descriptions[0];
-  byId("preview-time").textContent = `${play.timeCost}h`;
-  byId("preview-money").textContent = `¥${play.moneyCost}`;
-  byId("preview-stamina").textContent = `-${play.staminaCost || 0}`;
+  // @spec SPEC-034 §5.3 プレビュー：ヘッダーのゴースト + 素養カードの (+N) + スキルタグ
+  const gainNorm = normalizeGainToSoyou(play.gain || {});
+  renderSoyouList(gainNorm);
+  setStaminaGhostPreview(play.staminaCost || 0);
+  setHoursGhostPreview(play.timeCost || 0);
 
-  byId("preview-gain").innerHTML = Object.entries(play.gain)
-    .map(([k, v]) => `<li><span>${LABELS[k]}</span><b class="up">+${v}</b></li>`)
-    .join("");
-
-  // @spec SPEC-022 §6 / SPEC-024 §6 カテゴリチップと関連スキルLv
-  const cats = play.categories || [];
-  if (cats.length > 0) {
-    byId("preview-category-card").hidden = false;
-    byId("preview-category-chips").innerHTML = cats
-      .map((c) => {
-        const label = (CATEGORIES[c] && CATEGORIES[c].label) || c;
-        return `<span class="chip">${label}</span>`;
-      })
-      .join("");
-    byId("preview-skills").innerHTML = cats
-      .map((c) => {
+  // スキルタグ表示
+  const skillTagsEl = byId("soyou-skill-tags");
+  if (skillTagsEl) {
+    const cats = play.categories || [];
+    if (cats.length > 0) {
+      skillTagsEl.hidden = false;
+      skillTagsEl.innerHTML = cats.map((c) => {
         const label = (CATEGORIES[c] && CATEGORIES[c].label) || c;
         const s = player.skills[c];
-        const lv = s ? s.lv : 1;
-        return `<li><span>${label}</span><b>Lv${lv}</b></li>`;
-      })
-      .join("");
-  } else {
-    byId("preview-category-card").hidden = true;
+        const isNew = !s;
+        return `<span class="soyou-skill-tag ${isNew ? "is-new" : ""}">#${label}${s ? ` Lv${s.lv}` : ""}</span>`;
+      }).join("");
+    } else {
+      skillTagsEl.hidden = true;
+    }
   }
 
-  if (play.minFriends) {
-    byId("preview-friend-card").hidden = false;
-    byId("preview-friend").textContent = `要友人 ${play.minFriends}人以上${
-      play.friendBonusPerPerson ? `（1人ごと経験値+${play.friendBonusPerPerson}）` : ""
-    }`;
-  } else {
-    byId("preview-friend-card").hidden = true;
-  }
+  // 旧プレビュー要素は非表示のまま（DOM は残してあるがコスト系カードは新UIでは表示しない）
+  const oldPrev = byId("preview");
+  if (oldPrev) oldPrev.hidden = true;
+  byId("preview-placeholder").hidden = true;
 
-  // @spec SPEC-002 §5.9 低体力プレイ警告
-  const lowWarn = byId("preview-low-stamina");
+  // 友人条件・低体力・ロック警告は互換として text で別ガイドを出す
   if (avail.isLowStamina) {
-    lowWarn.hidden = false;
-    byId("preview-low-stamina-text").textContent =
-      `⚠ ${avail.reasons[0]}（遊べるけど全力では楽しめない）`;
-  } else {
-    lowWarn.hidden = true;
+    toast(`⚠ ${avail.reasons[0]}`);
   }
 
-  // ロック理由表示と「遊ぶ」ボタンの enable/disable（v3：isHidden ルートは呼ばれない）
+  // 「遊ぶ」ボタンの enable/disable
   const confirmBtn = byId("btn-confirm-play");
-  byId("preview-lock").hidden = true;
   if (avail.ok) {
     confirmBtn.disabled = false;
     confirmBtn.textContent = avail.isLowStamina
-      ? `⚠ 無理して遊ぶ（-${play.timeCost}h）`
-      : `🎮 遊ぶ（-${play.timeCost}h）`;
+      ? `⚠ 無理して ${play.icon} ${play.name}`
+      : `🎮 ${play.icon} ${play.name}`;
   } else {
     confirmBtn.disabled = true;
     confirmBtn.textContent = "できない";
@@ -1729,9 +1923,9 @@ function finalizePlay() {
   // 2 つを合成して経験値系に掛ける基本倍率
   const gainBoost    = skillBoost * lowStamMul;
 
-  // ---- ① 獲得経験値の計算 ----
+  // ---- ① 獲得経験値の計算（SPEC-033 §5 旧キー自動変換）----
   const gain = {};
-  for (const [k, v] of Object.entries(play.gain)) {
+  for (const [k, v] of Object.entries(normalizeGainToSoyou(play.gain))) {
     gain[k] = Math.round(v * gainBoost);
   }
 
@@ -1817,8 +2011,11 @@ function finalizePlay() {
     if (e.stamina) player.stamina = Math.max(0, Math.min(player.staminaCap, player.stamina + e.stamina));
     if (e.passion) player.passion = Math.max(0, player.passion + e.passion);
     if (e.bioRhythm) player.bioRhythm = Math.max(0, Math.min(100, player.bioRhythm + e.bioRhythm));
-    for (const cat of Object.keys(LABELS)) {
-      if (e[cat]) player.exp[cat] = (player.exp[cat] || 0) + e[cat];
+    // SPEC-033 §5 素養の加算（旧キー自動変換）
+    for (const [k, v] of Object.entries(normalizeGainToSoyou(e))) {
+      if (SOYOU_KEYS.includes(k)) {
+        player.soyou[k] = (player.soyou[k] || 0) + v;
+      }
     }
   }
 
@@ -2991,20 +3188,27 @@ let _autoTimer = null;
 function startAutoLoop() {
   stopAutoLoop();
   // 表示切替
-  byId("wakeup-header").hidden = true;
-  byId("preview").hidden = true;
-  byId("preview-placeholder").hidden = true;
-  byId("choose-prompt").hidden = true;
-  byId("auto-progress").hidden = false;
-  byId("btn-confirm-play").disabled = true;
-  byId("btn-confirm-play").textContent = "自動進行中…";
+  // @spec SPEC-034 §5.1 起床ヘッダー・choose-prompt は v2 で廃止済みのため、
+  //   存在する要素だけ null ガード付きで hidden に切り替える（存在しない要素で
+  //   TypeError にならないようにする）。
+  const wh = byId("wakeup-header"); if (wh) wh.hidden = true;
+  const pv = byId("preview");       if (pv) pv.hidden = true;
+  const pp = byId("preview-placeholder"); if (pp) pp.hidden = true;
+  const cp = byId("choose-prompt"); if (cp) cp.hidden = true;
+  const ap = byId("auto-progress"); if (ap) ap.hidden = false;
+  const cb = byId("btn-confirm-play");
+  if (cb) {
+    cb.disabled = true;
+    cb.textContent = "自動進行中…";
+  }
 
   // まず即座に 1 ターン目
   runAutoTurn();
 }
 function stopAutoLoop() {
   if (_autoTimer) { clearTimeout(_autoTimer); _autoTimer = null; }
-  byId("auto-progress").hidden = true;
+  const ap = byId("auto-progress");
+  if (ap) ap.hidden = true;
 }
 
 /**
@@ -3190,9 +3394,9 @@ function autoFinalizePlay(play) {
   const lowStamMul = lowStaminaMultiplier(play);
   const gainBoost  = skillBoost * lowStamMul;
 
-  // 経験値計算
+  // 経験値計算（SPEC-033 §5 旧キー自動変換）
   const gain = {};
-  for (const [k, v] of Object.entries(play.gain)) gain[k] = Math.round(v * gainBoost);
+  for (const [k, v] of Object.entries(normalizeGainToSoyou(play.gain))) gain[k] = Math.round(v * gainBoost);
   if (play.friendBonusPerPerson) {
     const mainKey = majorGainCategory(play.gain) || "social";
     const bonus = Math.round(play.friendBonusPerPerson * player.friends * gainBoost);
@@ -3348,6 +3552,11 @@ function closeInterrupt() {
  */
 function showHighlight() {
   const h = player._autoHighlight;
+  // @spec SPEC-034 §6 自動モード解禁前は「手動に切り替え」ボタンを隠す
+  const switchBtn = byId("btn-highlight-switch-manual");
+  if (switchBtn) {
+    switchBtn.hidden = !(player.autoMode && tutorialPhase(player.day) !== "phase0");
+  }
   // @spec SPEC-001 §5.7 第N週の範囲表示
   const fw = fiscalWeekInfo(h.dayEnd);
   byId("highlight-range").textContent = `${fw.weekNumber}週（${fw.rangeLabel}） / ${player.age}歳`;
@@ -3482,6 +3691,11 @@ function skipToNextDaySummary(days) {
  */
 function renderDaySummary() {
   const snap = player._daySnapshot || {};
+  // @spec SPEC-034 §6 自動モード解禁前（phase0）は「手動に切り替え」を隠す
+  const switchBtn = byId("btn-day-summary-switch-manual");
+  if (switchBtn) {
+    switchBtn.hidden = !(player.autoMode && tutorialPhase(player.day) !== "phase0");
+  }
   // @spec SPEC-001 §5.7 日付表記
   byId("day-summary-range").textContent =
     `${formatDayWithWeek(player.day)} / ${player.age}歳`;
@@ -3807,13 +4021,14 @@ document.addEventListener("click", (e) => {
       confirmPassionProfile();
       break;
     case "continue-auto":
-      // @spec SPEC-025 §9.4 ハイライトから続行
+      // @spec SPEC-025 §9.4 / §7.2.0 §7.2.3 ハイライト後は必ず「翌朝」へ進む。
+      //   S9 は週境界（日曜の夜）に表示されるため、続ける押下＝翌日（月曜）へ進む。
+      //   以前は goChooseFromToday() を直接呼んでいたが、player.day が進まずに
+      //   S2 が描画され、そこで「今日おわる」を押すとまた S10 → S9 のループに陥っていた。
       if (player._skipAfterWeekly) {
         player._skipAfterWeekly = false;
-        sleep("normal");
-      } else {
-        goChooseFromToday();
       }
+      sleep("normal");
       break;
     case "skip-to-tomorrow-night":
       // @spec SPEC-025 §7.1.3 「明日の夜までスキップ」
@@ -3893,6 +4108,8 @@ player.stamina = Math.min(player.stamina, player.staminaCap);
 function startNewGame() {
   // プレイヤーを deep clone で初期化
   player = JSON.parse(JSON.stringify(DEFAULT_PLAYER));
+  // @spec SPEC-033 §6 エイリアス（exp, passion）を再設定
+  installSoyouAliases(player);
   player.stamina = Math.min(player.stamina, player.staminaCap);
   startIsekaiIntro();
 }

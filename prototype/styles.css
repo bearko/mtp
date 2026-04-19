@@ -1583,3 +1583,252 @@ body {
 #screen-isekai[data-scene="scene4"] .isekai-message {
   color: #2c2008;
 }
+
+/* ==========================================================================
+   @spec SPEC-034 新 HUD（3 エリア構成）
+   ========================================================================== */
+.hud.hud-v2 {
+  display: grid;
+  grid-template-columns: minmax(92px, 4fr) minmax(120px, 5fr) minmax(72px, 3fr);
+  gap: 6px;
+  padding: 8px 10px;
+  align-items: stretch;
+  background: linear-gradient(180deg, #1c2325 0%, #16191b 100%);
+  color: #e9efe9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.hud-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+.hud-col-left { align-items: flex-start; }
+.hud-col-center { align-items: stretch; }
+.hud-col-right { align-items: flex-end; }
+
+/* 左エリア */
+.hud-stage-name {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #cfd7cc;
+}
+.hud-age-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  background: #3a4b44;
+  color: #fff;
+  border-radius: 10px;
+  margin-top: 1px;
+}
+.hud-time-left {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #a7b2ad;
+}
+.hud-time-left strong {
+  font-size: 15px;
+  color: #ffd78a;
+  margin: 0 2px;
+}
+
+/* 中央エリア */
+.hud-date {
+  text-align: center;
+  font-size: 11px;
+  color: #c9d1cc;
+  letter-spacing: 0.02em;
+}
+.hud-rhythm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.hud-rhythm-icon { font-size: 16px; }
+.hud-rhythm-label { color: #f1cf6a; font-weight: 600; }
+
+.hud-stamina-wrap {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.hud-stamina-icon { font-size: 14px; text-align: center; }
+.hud-stamina-bar {
+  position: relative;
+  height: 12px;
+  border-radius: 7px;
+  background: #2e3835;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hud-stamina-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e34d4d 0%, #e9b84a 35%, #6fd070 70%, #3aa8ff 100%);
+  background-size: 100% 100%;
+  transition: width 0.28s ease;
+}
+.hud-stamina-bar-ghost {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(220, 60, 60, 0.55) 0 4px,
+    rgba(220, 60, 60, 0.15) 4px 8px
+  );
+  transition: width 0.24s ease;
+}
+.hud-stamina-num {
+  font-size: 11px;
+  min-width: 46px;
+  text-align: right;
+  color: #cfd5d0;
+}
+.hud-stamina-num #hud-stamina { font-weight: 700; color: #fff; }
+
+/* 右エリア */
+.hud-money-row,
+.hud-friends-row,
+.hud-passion-row {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.hud-money-row { color: #f2c44a; }
+.hud-passion-row small { color: #b4bcb6; margin-left: 2px; }
+.hud-money-row.is-hidden { visibility: hidden; pointer-events: none; height: 0; }
+
+@media (max-width: 360px) {
+  .hud-stage-name,
+  .hud-time-left { display: none; }
+  .hud-date       { font-size: 10px; }
+}
+
+/* ==========================================================================
+   @spec SPEC-034 §5 メインエリア 素養カード
+   ========================================================================== */
+.choose-scene-v2 {
+  padding: 12px 12px 0;
+  gap: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.turn-hint {
+  display: inline-block;
+  align-self: flex-start;
+  background: #2f5cff;
+  color: #fff;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.soyou-list {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 14px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 6px 14px -12px rgba(0,0,0,0.4);
+}
+.soyou-row {
+  display: grid;
+  /* icon | label | grade | delta-badge | value */
+  grid-template-columns: 26px 1fr 46px 54px 78px;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 4px;
+  border-bottom: 1px dashed rgba(0,0,0,0.06);
+  position: relative;
+}
+.soyou-row:last-child { border-bottom: none; }
+.soyou-row .soyou-icon { font-size: 18px; text-align: center; }
+.soyou-row .soyou-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c2c2c;
+  letter-spacing: 0.04em;
+}
+.soyou-row .soyou-grade {
+  font-size: 22px;
+  font-weight: 800;
+  font-family: "Hiragino Sans", "Helvetica Neue", sans-serif;
+  text-align: center;
+}
+.soyou-row .soyou-value {
+  text-align: right;
+  font-size: 12px;
+  color: #7a7a7a;
+  white-space: nowrap;
+}
+.soyou-row .soyou-value .soyou-value-arrow {
+  margin: 0 3px;
+  color: #3aa85b;
+}
+.soyou-row .soyou-value .soyou-value-after {
+  color: #1e2a22;
+  font-weight: 700;
+}
+/*
+ * @spec SPEC-034 §5.3 プレビュー時の (+N) バッジは value 列の左側に独立配置。
+ * 旧実装では absolute 重ね表示で実数値と重なっていたため、grid に専用列を追加して並列表示にした。
+ */
+.soyou-row .soyou-delta {
+  justify-self: end;
+  color: #1f8f4a;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(46, 165, 93, 0.15);
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+.soyou-row.has-delta .soyou-delta { opacity: 1; }
+.soyou-row.has-delta .soyou-value { color: #2a2a2a; opacity: 1; }
+.soyou-row.grade-up { box-shadow: inset 0 0 0 2px rgba(255, 200, 60, 0.4); }
+.soyou-row.grade-up .soyou-grade { text-shadow: 0 0 10px rgba(255,200,60,0.6); }
+
+/* グレード色 */
+.grade-A { color: #d3a233; }
+.grade-B { color: #3177d0; }
+.grade-C { color: #2fa65c; }
+.grade-D { color: #e0842d; }
+.grade-E { color: #b07a42; }
+.grade-F { color: #9a9a9a; }
+.grade-G { color: #bcbcbc; }
+
+.soyou-skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #5a5a5a;
+}
+.soyou-skill-tag {
+  background: rgba(0,0,0,0.05);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.soyou-skill-tag.is-new {
+  background: rgba(255, 200, 60, 0.2);
+  color: #a06a12;
+  font-weight: 700;
+}

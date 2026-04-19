@@ -17,42 +17,40 @@
     <!--
       @spec docs/specs/SPEC-001-life-stage.md  共通HUDに表示するプレイヤー状態
       @spec docs/specs/SPEC-009-ui-layout.md   固定HUD（常にスクロール非依存）
-      @spec docs/specs/SPEC-021-parameter-gauge-ui.md  パラメーターをゲージ表示
+      @spec docs/specs/SPEC-034-s2-hud-redesign.md §4 ウマ娘風 3 エリア HUD
     -->
-    <header id="hud" class="hud">
-      <div class="hud-row">
-        <span id="hud-age">1歳</span>
-        <span id="hud-stage" title="ライフステージ">🏫 保育園</span>
-        <span id="hud-date">2026年4月1日（水）</span>
-        <!--
-          @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2 時計円盤（HUD 用ミニサイズ）
-          現在時刻を扇形で塗りつぶす。JS の renderClockDial() が <path> を更新する。
-        -->
-        <!--
-          @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2.5 3 レイヤー構造
-          帯レイヤー（Free 全体背景 → Sleep → Core）→ 経過塗り（Elapsed Fill）の順で描画
-        -->
-        <span class="clock-dial clock-dial-mini" id="hud-clock" title="現在時刻 / 残り余剰時間">
-          <svg viewBox="0 0 100 100" class="dial-svg" aria-label="時計円盤">
-            <circle cx="50" cy="50" r="46" class="dial-ring"/>
-            <path class="dial-band dial-band-free" d="" fill-rule="evenodd"/>
-            <g class="dial-bands-sleep"></g>
-            <g class="dial-bands-core"></g>
-            <path class="dial-fill" d="" fill-rule="evenodd"/>
-            <text x="50" y="56" class="dial-time" text-anchor="middle">07:00</text>
-          </svg>
-        </span>
+    <header id="hud" class="hud hud-v2">
+      <!-- 左エリア：ライフステージ情報 -->
+      <div class="hud-col hud-col-left">
+        <div class="hud-stage-name" id="hud-stage-name">保育園1年目</div>
+        <div class="hud-age-chip" id="hud-age-chip">1歳</div>
+        <div class="hud-time-left"><span>あと</span><strong id="hud-hours">8</strong><span>時間</span></div>
       </div>
-      <div class="hud-row hud-stats">
-        <span class="hud-gauge" title="体力">
-          <!-- @spec SPEC-021 §5.1.2 起動時に "currentValue/cap" の値が一致して満タン表示になること -->
-          <span class="hud-gauge-label">❤️ <span id="hud-stamina">15</span>/<span id="hud-stamina-cap">15</span></span>
-          <span class="gauge-mini"><span class="gauge-mini-bar" id="hud-stamina-bar" style="width:100%"></span></span>
-        </span>
-        <span title="余剰時間">⏳ <span id="hud-hours">2</span>h</span>
-        <span title="友人数">👥 <span id="hud-friends">2</span></span>
-        <span title="ジョウネツ">🔥 <span id="hud-passion">0</span></span>
-        <span title="所持金">💰 ¥<span id="hud-money">0</span></span>
+      <!-- 中央エリア：日付・リズム・体力ゲージ -->
+      <div class="hud-col hud-col-center">
+        <div class="hud-date" id="hud-date">2026年4月1日（水）</div>
+        <div class="hud-rhythm" id="hud-rhythm" title="生活リズム">
+          <span class="hud-rhythm-icon" id="hud-rhythm-icon">🤩</span>
+          <span class="hud-rhythm-label" id="hud-rhythm-label">絶好調</span>
+        </div>
+        <div class="hud-stamina-wrap" id="hud-stamina-wrap" title="体力">
+          <div class="hud-stamina-icon">❤️</div>
+          <div class="hud-stamina-bar">
+            <!-- ベース緑・黄・赤の 3 段グラデの背景 -->
+            <div class="hud-stamina-bar-fill" id="hud-stamina-bar-fill" style="width:100%"></div>
+            <!-- ゴーストプレビュー：遊び選択時に staminaCost 分を右から重ねる -->
+            <div class="hud-stamina-bar-ghost" id="hud-stamina-bar-ghost" style="width:0%"></div>
+          </div>
+          <div class="hud-stamina-num">
+            <span id="hud-stamina">15</span>/<span id="hud-stamina-cap">15</span>
+          </div>
+        </div>
+      </div>
+      <!-- 右エリア：所持金・友人・情熱 -->
+      <div class="hud-col hud-col-right">
+        <div class="hud-money-row" id="hud-money-row">💰 <span id="hud-money">0</span></div>
+        <div class="hud-friends-row" title="友人数">👥 <span id="hud-friends">2</span></div>
+        <div class="hud-passion-row" title="情熱（旧ジョウネツ）">🔥 <span id="hud-passion-grade">G</span><small>(<span id="hud-passion">0</span>)</small></div>
       </div>
     </header>
 
@@ -153,49 +151,26 @@
       「遊ぶ」ボタン or 同じアイコン再タップで確定して S3 に遷移。
     -->
     <section class="screen" id="screen-choose">
-      <div class="scene">
+      <!--
+        @spec SPEC-034 §5.1 §5.2  画面中央は素養カード 5 枚と turn-hint のみ
+        起床ヘッダー・残り余剰時間・見出し「何して遊ぶ？」などは全て HUD に統合（削除）。
+      -->
+      <div class="scene choose-scene-v2">
+        <!-- 将来拡張用ターンヒント（SPEC-034 §5.5） -->
+        <div class="turn-hint" id="turn-hint" data-turn-hint="" hidden></div>
+
         <!--
-          @spec docs/specs/SPEC-002-play-selection.md §5.2.1
-          起床ヘッダー：1日の最初の S2 表示時のみ full モード、以降は compact モード。
-          display の切替は renderWakeupHeader() が行う。
+          @spec SPEC-033 §3 / SPEC-034 §5.2 素養カード 5 枚（固定表示）
         -->
-        <div id="wakeup-header" class="wakeup-header">
-          <div id="wu-full" class="wakeup-full">
-            <div class="scene-art" id="wu-art">🌅</div>
-            <h2 class="scene-title" id="wu-greet">おはよう！</h2>
-            <p class="scene-sub" id="wu-subtitle">あなたは 2歳 / 夏の朝 07:00</p>
-            <div class="gauge-group" id="wu-gauges"></div>
-            <div class="msg-box" id="wu-msg">よく眠れた。今日も元気だ！</div>
-          </div>
-          <div id="wu-compact" class="wakeup-compact" hidden>
-            <div class="wu-compact-clock">
-              <span class="clock-dial clock-dial-sm" id="wu-compact-dial">
-                <svg viewBox="0 0 100 100" class="dial-svg">
-                  <circle cx="50" cy="50" r="46" class="dial-ring"/>
-                  <path class="dial-band dial-band-free" d="" fill-rule="evenodd"/>
-                  <g class="dial-bands-sleep"></g>
-                  <g class="dial-bands-core"></g>
-                  <path class="dial-fill" d="" fill-rule="evenodd"/>
-                  <text x="50" y="56" class="dial-time" text-anchor="middle">--</text>
-                </svg>
-              </span>
-            </div>
-            <div class="wu-compact-msg" id="wu-compact-msg">おかえり！夜の遊びを選ぼう</div>
-          </div>
+        <div class="soyou-list" id="soyou-list">
+          <!-- renderSoyouList() で動的描画 -->
         </div>
 
-        <h2 class="scene-title small" id="choose-prompt">何して遊ぶ？</h2>
-        <p class="scene-sub">残り余剰時間：<b id="choose-hours">4</b>h</p>
-
-        <!-- プレビュー：初期はプレースホルダー -->
-        <div id="preview-placeholder" class="preview-placeholder">
-          <div class="placeholder-icon">🎮</div>
-          <p>下のアイコンから<br/>今日やりたい遊びを選んでね</p>
-        </div>
+        <!-- プレビュー時のみ：スキルタグ行（SPEC-034 §5.4） -->
+        <div class="soyou-skill-tags" id="soyou-skill-tags" hidden></div>
 
         <!--
-          @spec docs/specs/SPEC-025-game-tempo.md §9.2 自動進行モード中の演出
-          自動モードではプレビュー位置に「自動で遊んでいる…」の演出 + プログレスバーを出す。
+          @spec SPEC-025 §9.2 自動進行モード中の演出
         -->
         <div id="auto-progress" class="auto-progress" hidden>
           <div class="auto-progress-icon" id="auto-progress-icon">⏩</div>
@@ -206,49 +181,23 @@
           </div>
         </div>
 
+        <!-- プレビュー用の隠し構造（互換のため残す）-->
         <div id="preview" class="play-preview" hidden>
-          <div class="preview-art" id="preview-icon">🏖</div>
-          <h3 class="preview-title" id="preview-name">砂場遊び</h3>
-          <p class="preview-desc" id="preview-desc">砂で大きな山を作り始めた…</p>
-
-          <div class="card">
-            <div class="card-title">コスト</div>
-            <ul class="kv-list">
-              <li><span>⏳ 時間</span><b id="preview-time">1h</b></li>
-              <li><span>💰 所持金</span><b id="preview-money">¥0</b></li>
-              <li><span>❤️ 体力</span><b id="preview-stamina">-10</b></li>
-            </ul>
+          <h3 class="preview-title" id="preview-name"></h3>
+          <p class="preview-desc" id="preview-desc"></p>
+          <div class="card warn" id="preview-low-stamina" hidden>
+            <p class="preview-note" id="preview-low-stamina-text"></p>
           </div>
-
-          <div class="card">
-            <div class="card-title">獲得予測</div>
-            <ul class="kv-list" id="preview-gain"></ul>
+          <div class="card warn" id="preview-lock" hidden>
+            <p class="preview-note" id="preview-lock-text"></p>
           </div>
-
-          <!--
-            @spec docs/specs/SPEC-022-play-category.md §6 タグ表示
-            @spec docs/specs/SPEC-024-skill.md §6 関連スキルLv
-          -->
-          <div class="card" id="preview-category-card" hidden>
-            <div class="card-title">🏷 カテゴリ & スキル</div>
-            <div class="category-chips" id="preview-category-chips"></div>
-            <ul class="kv-list" id="preview-skills" style="margin-top:6px;"></ul>
-          </div>
-
           <div class="card" id="preview-friend-card" hidden>
             <div class="card-title">👥 友人条件</div>
             <p class="preview-note" id="preview-friend"></p>
           </div>
-
-          <!-- @spec docs/specs/SPEC-002-play-selection.md §5.9 低体力プレイ警告 -->
-          <div class="card warn" id="preview-low-stamina" hidden>
-            <p class="preview-note" id="preview-low-stamina-text"></p>
-          </div>
-
-          <div class="card warn" id="preview-lock" hidden>
-            <p class="preview-note" id="preview-lock-text"></p>
-          </div>
         </div>
+        <!-- 旧プレースホルダ（display:none） -->
+        <div id="preview-placeholder" class="preview-placeholder" hidden></div>
       </div>
 
       <!-- ドック（アイコン行） -->
@@ -290,7 +239,7 @@
         <!-- 結果フェーズ：描写フェーズ完了後に display:block に切り替える -->
         <div id="result-panel" class="result-panel" hidden>
           <div class="card">
-            <div class="card-title">獲得した原体験</div>
+            <div class="card-title">獲得した素養</div>
             <div class="gauge-group" id="result-exp-gauges"></div>
           </div>
           <div class="card" id="result-status-card">
@@ -370,12 +319,15 @@
         actions-result-core    朝の遊び終了 → 保育園へ
         actions-result-sleep   余剰時間 0 → おやすみ
       -->
+      <!--
+        @spec docs/specs/SPEC-034 §6 S3 結果画面から「今日おわる」を廃止（誤タップ防止）
+        余剰時間が尽きた場合は actions-result-sleep が代わりに表示される。
+      -->
       <footer class="actions actions-stack" id="actions-result-normal" hidden>
         <div class="actions-row">
           <button class="btn btn-primary" data-action="replay-play" id="btn-replay-play">🔁 もう一度遊ぶ (-1h)</button>
           <button class="btn btn-secondary" data-action="choose-next" id="btn-next-play">次の遊びを選ぶ</button>
         </div>
-        <button class="btn btn-ghost btn-wide" data-action="go-sleep" id="btn-go-sleep-from-play">今日おわる</button>
       </footer>
       <footer class="actions" id="actions-result-core" hidden>
         <button class="btn btn-primary" data-action="goto-coretime" id="btn-goto-coretime">🏫 保育園に行く</button>
@@ -502,7 +454,7 @@
           原体験ゲージ（差分ハイライト付き）
         -->
         <div class="card" id="highlight-exp-card" hidden>
-          <div class="card-title">原体験</div>
+          <div class="card-title">素養</div>
           <div class="gauge-group" id="highlight-exp-gauges"></div>
         </div>
 
@@ -520,7 +472,11 @@
         <div class="actions-row">
           <button class="btn btn-primary btn-wide" data-action="continue-auto" id="btn-continue-auto">続ける</button>
         </div>
-        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual">手動に切り替え</button>
+        <!--
+          @spec docs/specs/SPEC-034 §6 自動モード解禁前（phase0/phase1）は「手動に切り替え」を非表示
+          renderHighlight()（S9）で JS 側から hidden を動的設定する。
+        -->
+        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual" id="btn-highlight-switch-manual" hidden>手動に切り替え</button>
       </footer>
     </section>
 
@@ -542,7 +498,7 @@
         </div>
 
         <div class="card" id="day-summary-exp-card" hidden>
-          <div class="card-title">原体験</div>
+          <div class="card-title">素養</div>
           <div class="gauge-group" id="day-summary-exp-gauges"></div>
         </div>
 
@@ -594,7 +550,11 @@
           <button class="btn btn-primary btn-wide" data-action="day-summary-continue">続ける</button>
         </div>
         <p class="tutorial-hint" id="day-summary-tutorial-hint" hidden>⏩ スキップ機能は3週目から使えます</p>
-        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual">🎮 手動に切り替え</button>
+        <!--
+          @spec docs/specs/SPEC-034 §6 自動モード解禁前（phase0/phase1）は「手動に切り替え」を非表示
+          renderDaySummary() で JS 側から hidden を動的設定する。
+        -->
+        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual" id="btn-day-summary-switch-manual" hidden>🎮 手動に切り替え</button>
       </footer>
     </section>
 
