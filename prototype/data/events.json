@@ -109,7 +109,7 @@
   {
     "id": "tut_discover_slide",
     "scope": "tutorial_phase0",
-    "text": "絵本のページに出てきた『すべりだい』を、公園で見つけた！",
+    "text": "絵本に出てきた『すべりだい』を、お散歩中の公園で見つけた！",
     "icon": "🛝",
     "weight": 1,
     "effect": { "explore": 5 },
@@ -119,7 +119,7 @@
   {
     "id": "tut_discover_sandbox",
     "scope": "tutorial_phase0",
-    "text": "公園の奥に『砂場』を見つけた！さっそくスコップを握る。",
+    "text": "いつもの公園の奥に『砂場』を見つけた！さっそくスコップを握る。",
     "icon": "🏖",
     "weight": 1,
     "effect": { "explore": 5 },
