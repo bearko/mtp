@@ -1049,6 +1049,149 @@ function renderSoyouList(preview) {
 }
 
 /**
+ * @spec SPEC-035 §5.4 素養グレードの進捗帯（次グレードまでの % と閾値）
+ */
+const GRADE_THRESHOLDS = [0, 20, 40, 66, 80, 110, 140, Infinity];
+function progressToNextGrade(value) {
+  const v = Math.max(0, Math.floor(value || 0));
+  for (let i = 1; i < GRADE_THRESHOLDS.length; i++) {
+    if (v < GRADE_THRESHOLDS[i]) {
+      const prev = GRADE_THRESHOLDS[i - 1];
+      const span = GRADE_THRESHOLDS[i] - prev;
+      if (!isFinite(span)) return { pct: 100, nextAt: null };
+      return { pct: Math.min(100, ((v - prev) / span) * 100), nextAt: GRADE_THRESHOLDS[i] };
+    }
+  }
+  return { pct: 100, nextAt: null };
+}
+
+/**
+ * @spec SPEC-035 §5 結果画面用の素養リスト描画
+ * host: 描画先 DOM
+ * before: 前の素養値（{key: num}）
+ * after:  現在の素養値（省略時は player.soyou）
+ *   差分ありの素養のみ表示。グレードアップ時はカード全体を金色発光。
+ */
+function renderSoyouResultList(host, before, after) {
+  if (!host) return;
+  const b = before || {};
+  const a = after  || (player.soyou || {});
+  host.innerHTML = "";
+  let anyShown = false;
+  for (const key of SOYOU_KEYS) {
+    const bv = Math.floor(b[key] || 0);
+    const av = Math.floor(a[key] || 0);
+    const delta = av - bv;
+    if (delta <= 0) continue;  // 差分のない素養は出さない
+    anyShown = true;
+    const meta = SOYOU_META[key];
+    const beforeGrade = soyouGrade(bv);
+    const afterGrade  = soyouGrade(av);
+    const gradeUp = beforeGrade !== afterGrade;
+    const prog = progressToNextGrade(av);
+    const row = document.createElement("div");
+    row.className = "soyou-row has-delta" + (gradeUp ? " grade-up" : "");
+    row.innerHTML = `
+      <div class="soyou-icon">${meta.icon}</div>
+      <div class="soyou-label">${meta.label}</div>
+      <div class="soyou-grade grade-${gradeUp ? afterGrade : beforeGrade}">${gradeUp ? (beforeGrade + "→" + afterGrade) : afterGrade}</div>
+      <span class="soyou-delta">+${delta}</span>
+      <div class="soyou-value">${bv}<span class="soyou-value-arrow">→</span><span class="soyou-value-after">${av}</span></div>
+      <div class="grade-progress"><div class="grade-progress-fill" style="width:0%"></div></div>
+    `;
+    host.appendChild(row);
+    // 進捗帯アニメ：次フレームで 0% → prog.pct% に
+    const fill = row.querySelector(".grade-progress-fill");
+    if (fill) {
+      requestAnimationFrame(() => {
+        fill.style.width = prog.pct + "%";
+      });
+    }
+  }
+  // 表示対象ゼロのときはカード自体を隠すため、上位で制御
+  host.dataset.hasAny = anyShown ? "1" : "0";
+}
+
+/**
+ * @spec SPEC-035 §6 スキル 1 行描画
+ * cats: この遊びに紐づくカテゴリ配列。skillBefore: {catId: {lv, exp}} 前スナップショット
+ * host: ul 要素
+ * 戻り値: 描画した行数（0 なら呼び出し側でカードを隠す）
+ */
+function renderSkillLines(host, cats, skillBefore) {
+  if (!host) return 0;
+  host.innerHTML = "";
+  let rows = 0;
+  for (const c of (cats || [])) {
+    const sAfter = player.skills[c];
+    const sBefore = skillBefore && skillBefore[c];
+    if (!sAfter) continue;
+    const afterLv = sAfter.lv || 1;
+    const beforeLv = sBefore ? sBefore.lv || 1 : (sBefore === undefined ? null : 1);
+    const afterExp = sAfter.exp || 0;
+    const beforeExp = sBefore ? sBefore.exp || 0 : 0;
+    // 差分が無ければスキップ
+    if (sBefore && sBefore.exp === afterExp && sBefore.lv === afterLv) continue;
+    rows += 1;
+    const isNew = !sBefore;  // before に無かった＝新規獲得
+    const label = (CATEGORIES[c] && CATEGORIES[c].label) || c;
+    const afterPct = boostPctFromLv(afterLv);
+    const beforePct = beforeLv ? boostPctFromLv(beforeLv) : 0;
+    const lvUp = beforeLv && afterLv > beforeLv;
+    const li = document.createElement("li");
+    li.className = "skill-line" + (isNew ? " is-new" : "");
+    const lvHtml = isNew
+      ? `Lv.<b>${afterLv}</b>`
+      : (lvUp ? `Lv.<b>${beforeLv}</b><span class="lv-arrow">→</span><b>${afterLv}</b>` : `Lv.<b>${afterLv}</b>`);
+    const pctHtml = lvUp
+      ? `<b>${beforePct}%</b><span class="pct-arrow">→</span><b>${afterPct}%</b>`
+      : `<b>${afterPct}%</b>`;
+    li.innerHTML = `
+      <span class="skill-line-name">${label}</span>
+      <span class="skill-line-lv">${lvHtml}</span>
+      <span class="skill-line-effect">「${label}」で遊ぶ時の経験値を ${pctHtml} UP</span>
+    `;
+    host.appendChild(li);
+  }
+  return rows;
+}
+
+/**
+ * @spec SPEC-035 §6.1 スキル Lv から単体ブースト % を算出
+ *   skillBoostMultiplier はプレイのカテゴリ配列の avg Lv から倍率を返すが、
+ *   ここではスキル 1 個の寄与の目安として Lv-1 の 2% として表示する（100% キャップ）。
+ */
+function boostPctFromLv(lv) {
+  const n = Math.max(1, Math.floor(lv || 1));
+  return Math.min(100, (n - 1) * 2);
+}
+
+/**
+ * @spec SPEC-035 §7.2 §7.3 遊びピル列描画
+ * playsById: {playId: count}
+ */
+function renderPlayPills(host, playsById) {
+  if (!host) return;
+  host.innerHTML = "";
+  const entries = Object.entries(playsById || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
+  if (entries.length === 0) {
+    host.innerHTML = `<span class="play-pill empty">（何もしなかった）</span>`;
+    return;
+  }
+  for (const [id, count] of entries) {
+    const p = PLAYS.find((x) => x.id === id);
+    if (!p) continue;
+    const pill = document.createElement("span");
+    pill.className = "play-pill";
+    pill.title = p.name;
+    pill.innerHTML = `<span class="play-pill-icon">${p.icon}</span><span>${p.name}</span><span class="play-pill-count">×${count}</span>`;
+    host.appendChild(pill);
+  }
+}
+
+/**
  * @spec SPEC-034 §5.3 ヘッダー体力ゲージのゴーストプレビュー
  * cost が 0 以上のときに右から半透明の赤を重ねる。
  */
@@ -2251,96 +2394,24 @@ function handleStaminaDepleted() {
 function renderResultPanel(before) {
   byId("result-panel").hidden = false;
 
-  // ---- 原体験（差分ハイライト付きLvゲージ SPEC-021 §5.4a）----
-  const expRoot = byId("result-exp-gauges");
-  const expChangedKeys = [];
-  Object.keys(LABELS).forEach((k) => {
-    const b = before.exp[k] || 0;
-    const a = player.exp[k] || 0;
-    if (a === b) return;
-    expChangedKeys.push({ k, b, a });
-  });
-  if (expChangedKeys.length === 0) {
-    expRoot.innerHTML = `<p style="color:var(--muted);font-size:13px;">（経験値の変化なし）</p>`;
-  } else {
-    expRoot.innerHTML = expChangedKeys.map(({ k }) => `<div id="result-exp-${k}"></div>`).join("");
-    for (const { k, b, a } of expChangedKeys) {
-      const bLv = levelFromExp(b);
-      const aLv = levelFromExp(a);
-      renderGaugeWithDelta(byId(`result-exp-${k}`), {
-        label: LABELS[k],
-        beforeExp: b,
-        afterExp: a,
-        lv: aLv,
-        lvUp: aLv > bLv,
-        kind: "exp",
-        lvBaseExp: (l) => l * l * 10, // SPEC-005 曲線
-      });
-    }
-  }
+  // @spec SPEC-035 §7.1 素養カード形式で描画（差分ありのみ表示、グレードアップ演出）
+  renderSoyouResultList(byId("result-soyou-list"), before.exp || {}, player.soyou || {});
 
-  // ---- ステータスゲージ（体力）----
-  const statusGaugeRoot = byId("result-status-gauges");
-  statusGaugeRoot.innerHTML = `<div class="gauge" id="result-stamina-g"></div>`;
-  renderGauge(byId("result-stamina-g"), {
-    current: player.stamina,
-    max: player.staminaCap,
-    label: "❤️ 体力",
-    kind: "stamina",
-    delta: Math.floor(player.stamina) - Math.floor(before.stamina),
-  });
-
-  // ---- ステータス差分（数値表示）----
-  const statusRows = [];
-  if (before.money !== player.money) {
-    statusRows.push(`<li><span>所持金</span><b class="${player.money >= before.money ? "up" : "down"}">¥${before.money} → ¥${player.money}</b></li>`);
-  }
-  if (before.friends !== player.friends) {
-    statusRows.push(`<li><span>友人数</span><b class="${player.friends >= before.friends ? "up" : "down"}">${before.friends} → ${player.friends}</b></li>`);
-  }
-  if (before.passion !== player.passion) {
-    statusRows.push(`<li><span>🔥 ジョウネツ</span><b class="up">${before.passion} → ${player.passion}</b></li>`);
-  }
-  byId("result-status").innerHTML = statusRows.join("");
-
-  // ---- 獲得スキル（差分ハイライト付きLvゲージ SPEC-024 §6.1 / SPEC-021 §5.4a）----
-  const skillsCard  = byId("result-skills-card");
-  const skillsEl    = byId("result-skills");
-  const boostNoteEl = byId("result-boost-note");
+  // @spec SPEC-035 §6 スキル行（1 行 × N）
   const cats = (before.skillBefore && Object.keys(before.skillBefore)) || [];
-  if (cats.length > 0) {
-    skillsCard.hidden = false;
-    // コンテナを用意
-    skillsEl.innerHTML = cats.map((c) => `
-      <div class="skill-entry">
-        <div class="skill-label">🏷 ${(CATEGORIES[c] && CATEGORIES[c].label) || c}</div>
-        <div id="result-skill-${c}"></div>
-      </div>
-    `).join("");
-    // @spec SPEC-024 §5.2 スキル曲線: skillLvFromExp(exp) = floor(sqrt(exp/10)) + 1
-    //   これを逆算：Lv L の「下限 exp」= (L-1)^2 * 10
-    const skillLvBaseExp = (lv) => (lv - 1) * (lv - 1) * 10;
-    for (const c of cats) {
-      const sb = before.skillBefore[c];
-      const sa = player.skills[c];
-      renderGaugeWithDelta(byId(`result-skill-${c}`), {
-        label: "",  // 外側の .skill-label を使うので空文字
-        beforeExp: sb.exp,
-        afterExp: sa.exp,
-        lv: sa.lv,
-        lvUp: sa.lv > sb.lv,
-        kind: "exp",
-        lvBaseExp: skillLvBaseExp,
-      });
-    }
-    const parts = [];
+  const skillHost = byId("result-skill-lines");
+  const skillRows = renderSkillLines(skillHost, cats, before.skillBefore);
+  const skillCard = byId("result-skill-lines-card");
+  if (skillCard) skillCard.hidden = skillRows === 0;
+  const boostNoteEl = byId("result-boost-note");
+  if (boostNoteEl) {
     if (before.skillBoost && before.skillBoost > 1.001) {
-      parts.push(`熟練ブースト × ${before.skillBoost.toFixed(2)}`);
+      boostNoteEl.textContent = `熟練ブースト × ${before.skillBoost.toFixed(2)}`;
+      boostNoteEl.style.display = "";
+    } else {
+      boostNoteEl.textContent = "";
+      boostNoteEl.style.display = "none";
     }
-    boostNoteEl.textContent = parts.join(" / ");
-    boostNoteEl.style.display = parts.length ? "" : "none";
-  } else {
-    skillsCard.hidden = true;
   }
 
   // ---- 低体力プレイの警告（SPEC-002 §5.9）----
@@ -2353,25 +2424,7 @@ function renderResultPanel(before) {
     warnCard.hidden = true;
   }
 
-  // ---- 時間経過：before/after の時計円盤 ----
-  // @spec SPEC-021 §5.2.7 S3 の「時間の流れ」カードで before / after を並べる
-  renderClockDial(byId("result-clock-before"), {
-    clockHour: before.clockHour,
-    clockMinute: before.clockMinute,
-    showText: true,
-  });
-  renderClockDial(byId("result-clock-after"), {
-    clockHour: player.clockHour,
-    clockMinute: player.clockMinute,
-    showText: true,
-  });
-  byId("result-spare").textContent = `⏳ 余剰時間 ${before.spareHours}h → ${player.spareHours}h`;
-
-  // ---- 没頭ボーナス表示 ----
-  const passionMsg = pendingGain && pendingGain.passion
-    ? `🔥 ジョウネツ +${pendingGain.passion}${player.consecutiveCategoryCount > 0 ? `（同カテゴリ ${player.consecutiveCategoryCount + 1}連続の没頭ボーナス）` : ""}`
-    : "";
-  byId("result-passion").textContent = passionMsg;
+  // @spec SPEC-035 §4.1 ステータス・時間・ジョウネツ単独カードはカット。ヘッダーで表現。
 
   // 描写フェーズの UI を縮小
   byId("playing-progress-wrap").hidden = true;
@@ -3561,74 +3614,27 @@ function showHighlight() {
   const fw = fiscalWeekInfo(h.dayEnd);
   byId("highlight-range").textContent = `${fw.weekNumber}週（${fw.rangeLabel}） / ${player.age}歳`;
 
-  // 遊び回数
-  const playsEl = byId("highlight-plays");
-  const playRows = Object.entries(h.playsById)
-    .sort((a, b) => b[1] - a[1])
-    .map(([id, n]) => {
-      const p = PLAYS.find((x) => x.id === id);
-      if (!p) return "";
-      return `<li><span>${p.icon} ${p.name}</span><b>×${n}</b></li>`;
-    }).join("");
-  playsEl.innerHTML = playRows || `<li><span>（なし）</span><b>-</b></li>`;
+  // @spec SPEC-035 §7.3 遊んだ回数をピル形式で
+  renderPlayPills(byId("highlight-play-pills"), h.playsById || {});
 
-  // 原体験ゲージ
-  const expCard   = byId("highlight-exp-card");
-  const expGroup  = byId("highlight-exp-gauges");
-  const expKeys = Object.keys(LABELS).filter((k) => (player.exp[k] || 0) !== (h.expBefore[k] || 0));
-  if (expKeys.length > 0) {
-    expCard.hidden = false;
-    expGroup.innerHTML = expKeys.map((k) => `<div id="hl-exp-${k}"></div>`).join("");
-    for (const k of expKeys) {
-      const b = h.expBefore[k] || 0;
-      const a = player.exp[k] || 0;
-      renderGaugeWithDelta(byId(`hl-exp-${k}`), {
-        label: LABELS[k],
-        beforeExp: b,
-        afterExp: a,
-        lv: levelFromExp(a),
-        lvUp: levelFromExp(a) > levelFromExp(b),
-        kind: "exp",
-        lvBaseExp: (l) => l * l * 10,
-      });
-    }
-  } else {
-    expCard.hidden = true;
+  // @spec SPEC-035 §7.3 素養カード
+  renderSoyouResultList(byId("highlight-soyou-list"), h.expBefore || {}, player.soyou || {});
+  const hlSoyouCard = byId("highlight-soyou-card");
+  if (hlSoyouCard) {
+    const host = byId("highlight-soyou-list");
+    hlSoyouCard.hidden = !(host && host.dataset.hasAny === "1");
   }
 
-  // スキルゲージ（スナップショット未登録のスキルも対象）
-  const skillsCard  = byId("highlight-skills-card");
-  const skillsGroup = byId("highlight-skills");
+  // @spec SPEC-035 §6 スキル行（1 行 × N）
   const skillsBeforeMap = h.skillsBefore || {};
   const changedCats = Object.keys(player.skills).filter((c) => {
     const a = player.skills[c];
-    const b = skillsBeforeMap[c] || { lv: 1, exp: 0 };
-    return a && (a.exp > b.exp);
+    const b = skillsBeforeMap[c];
+    return a && (!b || a.exp > (b.exp || 0));
   });
-  if (changedCats.length > 0) {
-    skillsCard.hidden = false;
-    skillsGroup.innerHTML = changedCats.map((c) => `
-      <div class="skill-entry">
-        <div class="skill-label">🏷 ${CATEGORIES[c]?.label || c}</div>
-        <div id="hl-skill-${c}"></div>
-      </div>
-    `).join("");
-    for (const c of changedCats) {
-      const b = skillsBeforeMap[c] || { lv: 1, exp: 0 };
-      const a = player.skills[c];
-      renderGaugeWithDelta(byId(`hl-skill-${c}`), {
-        label: "",
-        beforeExp: b.exp,
-        afterExp: a.exp,
-        lv: a.lv,
-        lvUp: a.lv > b.lv,
-        kind: "exp",
-        lvBaseExp: (lv) => (lv - 1) * (lv - 1) * 10,
-      });
-    }
-  } else {
-    skillsCard.hidden = true;
-  }
+  const hlSkillRows = renderSkillLines(byId("highlight-skill-lines"), changedCats, skillsBeforeMap);
+  const hlSkillCard = byId("highlight-skill-lines-card");
+  if (hlSkillCard) hlSkillCard.hidden = hlSkillRows === 0;
 
   const discCard = byId("highlight-discoveries-card");
   if (h.discoveries.length > 0) {
@@ -3700,90 +3706,30 @@ function renderDaySummary() {
   byId("day-summary-range").textContent =
     `${formatDayWithWeek(player.day)} / ${player.age}歳`;
 
-  // 今日の遊び
-  const playsEl = byId("day-summary-plays");
-  const playRows = Object.entries(snap.playsById || {})
-    .sort((a, b) => b[1] - a[1])
-    .map(([id, n]) => {
-      const p = PLAYS.find((x) => x.id === id);
-      if (!p) return "";
-      return `<li><span>${p.icon} ${p.name}</span><b>×${n}</b></li>`;
-    }).join("");
-  playsEl.innerHTML = playRows || `<li><span>（何もしなかった）</span><b>-</b></li>`;
+  // @spec SPEC-035 §7.2 今日の遊びをピル形式で簡素に
+  renderPlayPills(byId("day-summary-play-pills"), snap.playsById || {});
 
-  // 原体験ゲージ
-  const expCard  = byId("day-summary-exp-card");
-  const expGroup = byId("day-summary-exp-gauges");
-  const expKeys = Object.keys(LABELS).filter((k) => {
-    const b = (snap.expStart || {})[k] || 0;
-    const a = player.exp[k] || 0;
-    return a !== b;
-  });
-  if (expKeys.length > 0) {
-    expCard.hidden = false;
-    expGroup.innerHTML = expKeys.map((k) => `<div id="ds-exp-${k}"></div>`).join("");
-    for (const k of expKeys) {
-      const b = (snap.expStart || {})[k] || 0;
-      const a = player.exp[k] || 0;
-      renderGaugeWithDelta(byId(`ds-exp-${k}`), {
-        label: LABELS[k],
-        beforeExp: b,
-        afterExp: a,
-        lv: levelFromExp(a),
-        lvUp: levelFromExp(a) > levelFromExp(b),
-        kind: "exp",
-        lvBaseExp: (l) => l * l * 10,
-      });
-    }
-  } else {
-    expCard.hidden = true;
+  // @spec SPEC-035 §7.2 素養カード（差分のあるものだけ）
+  const beforeSoyou = snap.expStart || {};
+  renderSoyouResultList(byId("day-summary-soyou-list"), beforeSoyou, player.soyou || {});
+  const soyouCard = byId("day-summary-soyou-card");
+  if (soyouCard) {
+    const host = byId("day-summary-soyou-list");
+    soyouCard.hidden = !(host && host.dataset.hasAny === "1");
   }
 
-  // スキルゲージ（スナップショット未登録＝当日初のスキルも対象にする）
-  const skillsCard  = byId("day-summary-skills-card");
-  const skillsGroup = byId("day-summary-skill-gauges");
+  // @spec SPEC-035 §6 スキル行（差分のあるスキルだけ 1 行ずつ）
   const skillsStart = snap.skillsStart || {};
   const changedCats = Object.keys(player.skills).filter((c) => {
     const a = player.skills[c];
-    const b = skillsStart[c] || { lv: 1, exp: 0 };
-    return a && (a.exp > b.exp);
+    const b = skillsStart[c];
+    return a && (!b || a.exp > (b.exp || 0));
   });
-  if (changedCats.length > 0) {
-    skillsCard.hidden = false;
-    skillsGroup.innerHTML = changedCats.map((c) => `
-      <div class="skill-entry">
-        <div class="skill-label">🏷 ${CATEGORIES[c]?.label || c}</div>
-        <div id="ds-skill-${c}"></div>
-      </div>
-    `).join("");
-    for (const c of changedCats) {
-      const b = skillsStart[c] || { lv: 1, exp: 0 };
-      const a = player.skills[c];
-      renderGaugeWithDelta(byId(`ds-skill-${c}`), {
-        label: "",
-        beforeExp: b.exp,
-        afterExp: a.exp,
-        lv: a.lv,
-        lvUp: a.lv > b.lv,
-        kind: "exp",
-        lvBaseExp: (lv) => (lv - 1) * (lv - 1) * 10,
-      });
-    }
-  } else {
-    skillsCard.hidden = true;
-  }
+  const dsSkillRows = renderSkillLines(byId("day-summary-skill-lines"), changedCats, skillsStart);
+  const dsSkillCard = byId("day-summary-skill-lines-card");
+  if (dsSkillCard) dsSkillCard.hidden = dsSkillRows === 0;
 
-  // ステータス差分
-  const staminaB = snap.staminaStart ?? player.stamina;
-  const staminaA = player.stamina;
-  const statusRows = [
-    `<li><span>❤️ 体力</span><b>${Math.floor(staminaB)} / ${Math.floor(player.staminaCap)} → ${Math.floor(staminaA)} / ${Math.floor(player.staminaCap)}</b></li>`,
-    `<li><span>🔥 ジョウネツ</span><b class="up">${snap.passionStart ?? player.passion} → ${player.passion}</b></li>`,
-  ];
-  if ((snap.friendsStart ?? player.friends) !== player.friends) {
-    statusRows.push(`<li><span>👥 友人数</span><b class="up">${snap.friendsStart} → ${player.friends}</b></li>`);
-  }
-  byId("day-summary-status").innerHTML = statusRows.join("");
+  // @spec SPEC-035 §4.1 ステータスカード・時間カードは削除。ヘッダーで表現。
 
   // 学んだこと
   const discCard = byId("day-summary-discoveries-card");
