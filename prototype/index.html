@@ -438,9 +438,19 @@
           <ul class="kv-list" id="highlight-plays"></ul>
         </div>
 
+        <!--
+          @spec docs/specs/SPEC-025-game-tempo.md §7.2 §9.4
+          @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.4a
+          原体験ゲージ（差分ハイライト付き）
+        -->
+        <div class="card" id="highlight-exp-card" hidden>
+          <div class="card-title">原体験</div>
+          <div class="gauge-group" id="highlight-exp-gauges"></div>
+        </div>
+
         <div class="card" id="highlight-skills-card" hidden>
           <div class="card-title">🏷 伸びたスキル</div>
-          <ul class="kv-list" id="highlight-skills"></ul>
+          <div class="gauge-group" id="highlight-skills"></div>
         </div>
 
         <div class="card warn" id="highlight-discoveries-card" hidden>
@@ -452,7 +462,55 @@
         <div class="actions-row">
           <button class="btn btn-primary btn-wide" data-action="continue-auto" id="btn-continue-auto">続ける</button>
         </div>
-        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual">自分で選ぶに切替</button>
+        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual">手動に切り替え</button>
+      </footer>
+    </section>
+
+    <!--
+      @screen  S10 日の終わりサマリ
+      @spec    docs/specs/SPEC-025-game-tempo.md §7.1, §9.5
+      自動モード中に 1 日の終わりに表示される。原体験・スキルをゲージで表示し、
+      フッターで「週末までスキップ / 明日の夜までスキップ / 手動に切り替え」の 3 択。
+    -->
+    <section class="screen" id="screen-day-summary">
+      <div class="scene">
+        <div class="scene-art">🌙</div>
+        <h2 class="scene-title">1日おわり</h2>
+        <p class="scene-sub" id="day-summary-range">1日目 / 2歳 / 夏</p>
+
+        <div class="card">
+          <div class="card-title">今日の遊び</div>
+          <ul class="kv-list" id="day-summary-plays"></ul>
+        </div>
+
+        <div class="card" id="day-summary-exp-card" hidden>
+          <div class="card-title">原体験</div>
+          <div class="gauge-group" id="day-summary-exp-gauges"></div>
+        </div>
+
+        <div class="card" id="day-summary-skills-card" hidden>
+          <div class="card-title">🏷 スキル</div>
+          <div class="gauge-group" id="day-summary-skill-gauges"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">ステータス</div>
+          <ul class="kv-list" id="day-summary-status"></ul>
+        </div>
+
+        <div class="card warn" id="day-summary-discoveries-card" hidden>
+          <div class="card-title">🎉 学んだこと</div>
+          <ul class="kv-list" id="day-summary-discoveries"></ul>
+        </div>
+      </div>
+      <footer class="actions actions-stack">
+        <div class="actions-row">
+          <button class="btn btn-primary btn-wide" data-action="skip-to-weekend" id="btn-skip-to-weekend">⏩ 週末までスキップ</button>
+        </div>
+        <div class="actions-row">
+          <button class="btn btn-secondary btn-wide" data-action="skip-to-tomorrow-night" id="btn-skip-to-tomorrow">⏩ 明日の夜までスキップ</button>
+        </div>
+        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual">🎮 手動に切り替え</button>
       </footer>
     </section>
 

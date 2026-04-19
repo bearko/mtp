@@ -445,11 +445,28 @@ const DEFAULT_PLAYER = {
   _autoHighlight: {
     playsById: {},           // playId → 回数
     skillsBefore: {},        // catId → {lv, exp}（開始時点）
+    expBefore: {},           // 原体験5カテゴリの開始値
     discoveries: [],         // 新規解禁 or 発見イベントのテキスト
     dayStart: 0,
     dayEnd: 0,
     turnCount: 0,
   },
+  /** @spec SPEC-025 §7.1 1 日の終わりサマリ用バッファ（起床時にスナップショット取得） */
+  _daySnapshot: {
+    dayAtStart: 0,
+    expStart: {},
+    skillsStart: {},
+    playsById: {},
+    discoveries: [],
+    staminaStart: 0,
+    friendsStart: 0,
+    moneyStart: 0,
+    passionStart: 0,
+  },
+  /** @spec SPEC-025 §7.1 スキップ目的地（"tomorrow-night" or "weekend"） */
+  _skipTarget: null,
+  /** 目的地までのカウントダウン日数 */
+  _skipRemainingDays: 0,
 };
 
 const LABELS = {
@@ -2294,6 +2311,26 @@ function doNothing() {
  * 1日の成果を表示し、就寝モード選択を促す。1〜9歳はモード選択不可。
  */
 function goSleep() {
+  // @spec SPEC-025 §6.2 自動モード中は S5 就寝画面を表示せず、S10 日の終わりサマリに直行
+  if (player.autoMode) {
+    stopAutoLoop();
+
+    // @spec SPEC-025 §7.1.3 スキップ継続中なら、サマリを飛ばしてすぐに翌日へ
+    if (player._skipRemainingDays > 0) {
+      player._skipRemainingDays -= 1;
+      // 就寝 → 翌朝の処理
+      sleep("normal");
+      // まだ残りがあるか、最後の 1 日だったか
+      // sleep() は nextDay を呼び、goChooseFromToday まで行く。
+      // goChooseFromToday は autoMode=true なので startAutoLoop で再開する。
+      return;
+    }
+
+    renderDaySummary();
+    showScreen("screen-day-summary");
+    return;
+  }
+
   byId("sleep-summary").innerHTML = `
     <li><span>遊んだ回数</span><b>${player.dailyPlays} 回</b></li>
     <li><span>現在のジョウネツ</span><b>${player.passion}</b></li>
@@ -2568,6 +2605,8 @@ function runAutoTurn() {
 
   // ハイライトバッファの初期化
   initAutoHighlightIfNeeded();
+  // @spec SPEC-025 §7.1 日の終わりサマリ用スナップショット（起床時に 1 回）
+  initDaySnapshotIfNeeded();
 
   const play = pickAutoPlay();
   if (!play) {
@@ -2608,11 +2647,15 @@ function runAutoTurn() {
     // finalize は描写フェーズ無しで実行するための軽量版
     autoFinalizePlay(play);
 
-    // ハイライト集約
+    // ハイライト集約（週単位）
     const h = player._autoHighlight;
     h.playsById[play.id] = (h.playsById[play.id] || 0) + 1;
     h.turnCount += 1;
     h.dayEnd = player.day;
+
+    // @spec SPEC-025 §7.1 日の終わりサマリへも集約
+    const ds = player._daySnapshot;
+    ds.playsById[play.id] = (ds.playsById[play.id] || 0) + 1;
 
     // 介入イベント判定
     const interruptQueue = [];
@@ -2627,6 +2670,7 @@ function runAutoTurn() {
         body: `${p.name} が遊びツリーに追加されたよ。`,
       });
       h.discoveries.push(`${p.icon} ${p.name}`);
+      ds.discoveries.push(`${p.icon} ${p.name}`);
     }
     // ライフステージ切替
     const stageAfter = resolveLifeStage(player.age);
@@ -2644,12 +2688,19 @@ function runAutoTurn() {
     const spentAll = player.spareHours <= 0;
     // 体力ゼロ（強制睡眠・終了）は finalize 内で遷移するのでここでは触らない
 
+    // @spec SPEC-025 §6.2 自動モード中は S6 コアタイム画面を出さず、裏で処理して介入イベントだけ収集
+    if (reachedCore) {
+      const coreInterrupts = autoAdvanceCoreTime();  // S6 を裏で消化し、発見イベントを返す
+      interruptQueue.push(...coreInterrupts);
+    }
+
     // 介入イベントがあれば順にモーダル表示
     if (interruptQueue.length > 0) {
       showInterruptQueue(interruptQueue, () => {
-        if (reachedCore || spentAll) {
+        // 介入終了後の分岐：余剰なしなら日の終わりサマリへ、余剰ありなら次ターンへ
+        if (player.spareHours <= 0) {
           stopAutoLoop();
-          goChooseFromToday();
+          goSleep();  // 自動モード中は goSleep→renderDaySummary に分岐
         } else if (h.turnCount >= 5) {
           stopAutoLoop();
           showHighlight();
@@ -2661,9 +2712,9 @@ function runAutoTurn() {
     }
 
     // 区切り判定
-    if (reachedCore || spentAll) {
+    if (player.spareHours <= 0) {
       stopAutoLoop();
-      goChooseFromToday();
+      goSleep();  // 自動モード中は goSleep→renderDaySummary
       return;
     }
     if (h.turnCount >= 5) {
@@ -2674,6 +2725,44 @@ function runAutoTurn() {
     // 次のターンへ
     _autoTimer = setTimeout(runAutoTurn, 350);
   }, 650);
+}
+
+/**
+ * @spec SPEC-025 §6.2 自動モード中の S6 保育園を裏で消化する。
+ * renderCoreTime() は副作用で経験値や解禁を反映するが、画面遷移せずに実行する。
+ * @returns {Array} 発生した介入イベント（新解禁など）
+ */
+function autoAdvanceCoreTime() {
+  const stage = resolveLifeStage(player.age);
+  const coreTime = stage ? stage.coreTime : null;
+  if (!coreTime || !stage.implemented) return [];
+
+  const unlockedBefore = [...player.unlockedPlays];
+  // 時刻を startHour に揃えておく
+  if (player.clockHour + player.clockMinute / 60 < coreTime.startHour) {
+    player.clockHour = Math.floor(coreTime.startHour);
+    player.clockMinute = Math.round((coreTime.startHour % 1) * 60);
+  }
+  // renderCoreTime() は裏で呼び、画面には showScreen しない
+  renderCoreTime(stage);
+  // ハイライトバッファに発見を追記
+  const h = player._autoHighlight;
+  const ds = player._daySnapshot;
+  const interrupts = [];
+  const newUnlocks = player.unlockedPlays.filter((id) => !unlockedBefore.includes(id));
+  for (const id of newUnlocks) {
+    const p = PLAYS.find((x) => x.id === id);
+    if (!p) continue;
+    h.discoveries.push(`${p.icon} ${p.name}（${stage.label}）`);
+    if (ds) ds.discoveries.push(`${p.icon} ${p.name}（${stage.label}）`);
+    interrupts.push({
+      icon: p.icon,
+      title: `${stage.label}で発見！`,
+      body: `${p.name} を覚えたよ。遊びツリーに追加されました。`,
+    });
+  }
+  h.dayEnd = player.day;
+  return interrupts;
 }
 
 /**
@@ -2757,13 +2846,45 @@ function autoFinalizePlay(play) {
 function initAutoHighlightIfNeeded() {
   const h = player._autoHighlight;
   if (!h || h.turnCount === 0) {
+    // @spec SPEC-025 §7.2 既知スキル全体のスナップショット
+    const skillsSnapshot = {};
+    for (const c of Object.keys(player.skills)) {
+      skillsSnapshot[c] = { lv: player.skills[c].lv, exp: player.skills[c].exp };
+    }
     player._autoHighlight = {
       playsById: {},
-      skillsBefore: {},
+      skillsBefore: skillsSnapshot,
+      expBefore: { ...player.exp },
       discoveries: [],
       dayStart: player.day,
       dayEnd: player.day,
       turnCount: 0,
+    };
+  }
+}
+
+/**
+ * @spec SPEC-025 §7.1 日の終わりサマリ用スナップショット
+ * その日の起床時点（dailyPlays===0）で 1 回だけ撮る。
+ */
+function initDaySnapshotIfNeeded() {
+  const s = player._daySnapshot;
+  if (!s || s.dayAtStart !== player.day) {
+    // スキル全体のスナップショット
+    const skillsStart = {};
+    for (const c of Object.keys(player.skills)) {
+      skillsStart[c] = { lv: player.skills[c].lv, exp: player.skills[c].exp };
+    }
+    player._daySnapshot = {
+      dayAtStart: player.day,
+      expStart: { ...player.exp },
+      skillsStart,
+      playsById: {},
+      discoveries: [],
+      staminaStart: player.stamina,
+      friendsStart: player.friends,
+      moneyStart: player.money,
+      passionStart: player.passion,
     };
   }
 }
@@ -2799,10 +2920,16 @@ function closeInterrupt() {
 /**
  * @spec SPEC-025 §7, §9.4 ハイライト集約画面
  */
+/**
+ * @screen S9 ウィークリーハイライト
+ * @spec SPEC-025 §7.2, §9.4
+ * 原体験・スキルを差分ハイライト付きゲージで描画。
+ */
 function showHighlight() {
   const h = player._autoHighlight;
   byId("highlight-range").textContent = `${player.age}歳 / ${h.dayStart}日目〜${h.dayEnd}日目`;
 
+  // 遊び回数
   const playsEl = byId("highlight-plays");
   const playRows = Object.entries(h.playsById)
     .sort((a, b) => b[1] - a[1])
@@ -2811,24 +2938,62 @@ function showHighlight() {
       if (!p) return "";
       return `<li><span>${p.icon} ${p.name}</span><b>×${n}</b></li>`;
     }).join("");
-  playsEl.innerHTML = playRows;
+  playsEl.innerHTML = playRows || `<li><span>（なし）</span><b>-</b></li>`;
 
-  // スキル差分
-  const skillsRows = [];
-  for (const c of Object.keys(h.skillsBefore)) {
-    const before = h.skillsBefore[c];
-    const after = player.skills[c];
-    if (!after) continue;
-    if (after.lv > before.lv) {
-      skillsRows.push(`<li><span>🏷 ${CATEGORIES[c]?.label || c}</span><b class="up">Lv${before.lv} → Lv${after.lv}</b></li>`);
-    } else if (after.exp > before.exp) {
-      skillsRows.push(`<li><span>🏷 ${CATEGORIES[c]?.label || c}</span><b>+${after.exp - before.exp}exp</b></li>`);
+  // 原体験ゲージ
+  const expCard   = byId("highlight-exp-card");
+  const expGroup  = byId("highlight-exp-gauges");
+  const expKeys = Object.keys(LABELS).filter((k) => (player.exp[k] || 0) !== (h.expBefore[k] || 0));
+  if (expKeys.length > 0) {
+    expCard.hidden = false;
+    expGroup.innerHTML = expKeys.map((k) => `<div id="hl-exp-${k}"></div>`).join("");
+    for (const k of expKeys) {
+      const b = h.expBefore[k] || 0;
+      const a = player.exp[k] || 0;
+      renderGaugeWithDelta(byId(`hl-exp-${k}`), {
+        label: LABELS[k],
+        beforeExp: b,
+        afterExp: a,
+        lv: levelFromExp(a),
+        lvUp: levelFromExp(a) > levelFromExp(b),
+        kind: "exp",
+        lvBaseExp: (l) => l * l * 10,
+      });
     }
+  } else {
+    expCard.hidden = true;
   }
-  const skillsCard = byId("highlight-skills-card");
-  if (skillsRows.length > 0) {
+
+  // スキルゲージ（スナップショット未登録のスキルも対象）
+  const skillsCard  = byId("highlight-skills-card");
+  const skillsGroup = byId("highlight-skills");
+  const skillsBeforeMap = h.skillsBefore || {};
+  const changedCats = Object.keys(player.skills).filter((c) => {
+    const a = player.skills[c];
+    const b = skillsBeforeMap[c] || { lv: 1, exp: 0 };
+    return a && (a.exp > b.exp);
+  });
+  if (changedCats.length > 0) {
     skillsCard.hidden = false;
-    byId("highlight-skills").innerHTML = skillsRows.join("");
+    skillsGroup.innerHTML = changedCats.map((c) => `
+      <div class="skill-entry">
+        <div class="skill-label">🏷 ${CATEGORIES[c]?.label || c}</div>
+        <div id="hl-skill-${c}"></div>
+      </div>
+    `).join("");
+    for (const c of changedCats) {
+      const b = skillsBeforeMap[c] || { lv: 1, exp: 0 };
+      const a = player.skills[c];
+      renderGaugeWithDelta(byId(`hl-skill-${c}`), {
+        label: "",
+        beforeExp: b.exp,
+        afterExp: a.exp,
+        lv: a.lv,
+        lvUp: a.lv > b.lv,
+        kind: "exp",
+        lvBaseExp: (lv) => (lv - 1) * (lv - 1) * 10,
+      });
+    }
   } else {
     skillsCard.hidden = true;
   }
@@ -2846,11 +3011,140 @@ function showHighlight() {
   player._autoHighlight = {
     playsById: {},
     skillsBefore: {},
+    expBefore: { ...player.exp },
     discoveries: [],
     dayStart: player.day,
     dayEnd: player.day,
     turnCount: 0,
   };
+}
+
+/**
+ * @spec SPEC-025 §7.1.3 スキップ継続
+ * S10 画面から「週末まで」「明日の夜まで」を押したときの共通処理。
+ *  - _skipRemainingDays に残り日数をセット（0 以上）
+ *  - 直ちに sleep("normal") を呼んで翌朝へ進む。そこから自動ループが回る
+ *  - goSleep 側で _skipRemainingDays をデクリメントし、0 の時に S10 を見せる
+ */
+function skipToNextDaySummary(days) {
+  if (!player.autoMode) {
+    player.autoMode = true;  // 切替保険
+  }
+  // days 日進むが、この直後の 1 回は「今から夜までのスキップ」なので days-1 を残す
+  player._skipRemainingDays = Math.max(0, days - 1);
+  player._skipTarget = days >= 6 ? "weekend" : "tomorrow-night";
+  // 就寝 → 翌朝 → 自動ループ再開
+  sleep("normal");
+}
+
+/**
+ * @screen S10 日の終わりサマリ
+ * @spec SPEC-025 §7.1, §9.5
+ *
+ * 前日の起床時点のスナップショット（_daySnapshot）と現在値を比較して、
+ * 1 日の成長を差分ハイライト付きゲージで表示する。
+ * フッターは「週末までスキップ」「明日の夜までスキップ」「手動に切り替え」の 3 択。
+ */
+function renderDaySummary() {
+  const snap = player._daySnapshot || {};
+  const seasonLabel = SEASON_LABEL[player.season] || player.season;
+  byId("day-summary-range").textContent =
+    `${player.day}日目 / ${player.age}歳 / ${seasonLabel}`;
+
+  // 今日の遊び
+  const playsEl = byId("day-summary-plays");
+  const playRows = Object.entries(snap.playsById || {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, n]) => {
+      const p = PLAYS.find((x) => x.id === id);
+      if (!p) return "";
+      return `<li><span>${p.icon} ${p.name}</span><b>×${n}</b></li>`;
+    }).join("");
+  playsEl.innerHTML = playRows || `<li><span>（何もしなかった）</span><b>-</b></li>`;
+
+  // 原体験ゲージ
+  const expCard  = byId("day-summary-exp-card");
+  const expGroup = byId("day-summary-exp-gauges");
+  const expKeys = Object.keys(LABELS).filter((k) => {
+    const b = (snap.expStart || {})[k] || 0;
+    const a = player.exp[k] || 0;
+    return a !== b;
+  });
+  if (expKeys.length > 0) {
+    expCard.hidden = false;
+    expGroup.innerHTML = expKeys.map((k) => `<div id="ds-exp-${k}"></div>`).join("");
+    for (const k of expKeys) {
+      const b = (snap.expStart || {})[k] || 0;
+      const a = player.exp[k] || 0;
+      renderGaugeWithDelta(byId(`ds-exp-${k}`), {
+        label: LABELS[k],
+        beforeExp: b,
+        afterExp: a,
+        lv: levelFromExp(a),
+        lvUp: levelFromExp(a) > levelFromExp(b),
+        kind: "exp",
+        lvBaseExp: (l) => l * l * 10,
+      });
+    }
+  } else {
+    expCard.hidden = true;
+  }
+
+  // スキルゲージ（スナップショット未登録＝当日初のスキルも対象にする）
+  const skillsCard  = byId("day-summary-skills-card");
+  const skillsGroup = byId("day-summary-skill-gauges");
+  const skillsStart = snap.skillsStart || {};
+  const changedCats = Object.keys(player.skills).filter((c) => {
+    const a = player.skills[c];
+    const b = skillsStart[c] || { lv: 1, exp: 0 };
+    return a && (a.exp > b.exp);
+  });
+  if (changedCats.length > 0) {
+    skillsCard.hidden = false;
+    skillsGroup.innerHTML = changedCats.map((c) => `
+      <div class="skill-entry">
+        <div class="skill-label">🏷 ${CATEGORIES[c]?.label || c}</div>
+        <div id="ds-skill-${c}"></div>
+      </div>
+    `).join("");
+    for (const c of changedCats) {
+      const b = skillsStart[c] || { lv: 1, exp: 0 };
+      const a = player.skills[c];
+      renderGaugeWithDelta(byId(`ds-skill-${c}`), {
+        label: "",
+        beforeExp: b.exp,
+        afterExp: a.exp,
+        lv: a.lv,
+        lvUp: a.lv > b.lv,
+        kind: "exp",
+        lvBaseExp: (lv) => (lv - 1) * (lv - 1) * 10,
+      });
+    }
+  } else {
+    skillsCard.hidden = true;
+  }
+
+  // ステータス差分
+  const staminaB = snap.staminaStart ?? player.stamina;
+  const staminaA = player.stamina;
+  const statusRows = [
+    `<li><span>❤️ 体力</span><b>${Math.floor(staminaB)} / ${Math.floor(player.staminaCap)} → ${Math.floor(staminaA)} / ${Math.floor(player.staminaCap)}</b></li>`,
+    `<li><span>🔥 ジョウネツ</span><b class="up">${snap.passionStart ?? player.passion} → ${player.passion}</b></li>`,
+  ];
+  if ((snap.friendsStart ?? player.friends) !== player.friends) {
+    statusRows.push(`<li><span>👥 友人数</span><b class="up">${snap.friendsStart} → ${player.friends}</b></li>`);
+  }
+  byId("day-summary-status").innerHTML = statusRows.join("");
+
+  // 学んだこと
+  const discCard = byId("day-summary-discoveries-card");
+  const discoveries = (snap.discoveries || []);
+  if (discoveries.length > 0) {
+    discCard.hidden = false;
+    byId("day-summary-discoveries").innerHTML = discoveries.map((d) => `<li><span>${d}</span><b>覚えた！</b></li>`).join("");
+  } else {
+    discCard.hidden = true;
+  }
 }
 
 // =========================================================================
@@ -2877,9 +3171,19 @@ document.addEventListener("click", (e) => {
       // @spec SPEC-025 §9.4 ハイライトから続行
       goChooseFromToday();
       break;
+    case "skip-to-tomorrow-night":
+      // @spec SPEC-025 §7.1.3 「明日の夜までスキップ」
+      skipToNextDaySummary(1);
+      break;
+    case "skip-to-weekend":
+      // @spec SPEC-025 §7.1.3 「週末までスキップ」（プロトでは 6 日連続）
+      skipToNextDaySummary(6);
+      break;
     case "switch-to-manual":
-      // @spec SPEC-025 §5.5 ハイライトから手動に切替
+      // @spec SPEC-025 §5.5 / §7.1.3 手動に切替
       player.autoMode = false;
+      player._skipRemainingDays = 0;
+      player._skipTarget = null;
       toast("手動モードに切り替えました");
       goChooseFromToday();
       break;
