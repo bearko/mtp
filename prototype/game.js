@@ -577,6 +577,63 @@ const $$ = (sel) => document.querySelectorAll(sel);
 function showScreen(id) {
   $$(".screen").forEach((el) => el.classList.remove("active"));
   byId(id).classList.add("active");
+  // @spec SPEC-029 §4.2 screen-playing 以外に遷移したら動画を停止＆解放
+  if (id !== "screen-playing") {
+    hidePlayVideo();
+  }
+}
+
+/**
+ * @spec SPEC-029 §5.2 遊び中ムービーの再生
+ * data/videos/{playId}.mp4 が存在すれば再生、無ければフォールバック。
+ */
+async function tryPlayIntroVideo(playId) {
+  const wrap = byId("play-video");
+  const vid  = byId("play-video-el");
+  const anim = byId("playing-icon");
+  if (!wrap || !vid) return false;
+  // 念のためリセット
+  wrap.hidden = true;
+  if (anim) anim.hidden = false;
+  const path = `data/videos/${playId}.mp4`;
+  try {
+    const res = await fetch(path, { method: "HEAD" });
+    if (!res.ok) return false;
+  } catch (e) {
+    return false;
+  }
+  try {
+    vid.src = path;
+    wrap.hidden = false;
+    if (anim) anim.hidden = true;
+    // autoplay。iOS 対策で muted + playsinline は属性済み
+    const p = vid.play();
+    if (p && typeof p.catch === "function") p.catch(() => { /* 無視 */ });
+    return true;
+  } catch (e) {
+    wrap.hidden = true;
+    if (anim) anim.hidden = false;
+    return false;
+  }
+}
+
+/**
+ * @spec SPEC-029 §5.2 動画を停止してリソースを解放
+ */
+function hidePlayVideo() {
+  const wrap = byId("play-video");
+  const vid  = byId("play-video-el");
+  const anim = byId("playing-icon");
+  if (!wrap) return;
+  wrap.hidden = true;
+  if (anim) anim.hidden = false;
+  if (vid) {
+    try { vid.pause(); } catch (e) {}
+    if (vid.getAttribute("src")) {
+      vid.removeAttribute("src");
+      try { vid.load(); } catch (e) {}
+    }
+  }
 }
 
 function toast(msg, ms = 1800) {
@@ -1472,6 +1529,8 @@ function startPlay(play) {
   byId("actions-result-sleep").hidden = true;
 
   showScreen("screen-playing");
+  // @spec SPEC-029 遊び中ムービー（存在すれば再生、無ければ従来アニメ）
+  tryPlayIntroVideo(play.id);
 
   const duration = 2200;
   const start = performance.now();
@@ -1677,6 +1736,13 @@ function finalizePlay() {
   // @spec SPEC-025 §7.1 / SPEC-027 §5.1 手動モードでも日の終わりサマリに遊びを集約
   if (player._daySnapshot && player._daySnapshot.playsById) {
     player._daySnapshot.playsById[play.id] = (player._daySnapshot.playsById[play.id] || 0) + 1;
+  }
+  // @spec SPEC-025 §7.2 手動モードでも週サマリ（S9）用のハイライトバッファに集約
+  if (player._autoHighlight) {
+    const h = player._autoHighlight;
+    h.playsById[play.id] = (h.playsById[play.id] || 0) + 1;
+    h.turnCount += 1;
+    h.dayEnd = player.day;
   }
 
   // @spec SPEC-026 §5.2.1 チュートリアル発見（絵本→滑り台→砂場の段階解禁）
@@ -2108,6 +2174,11 @@ function recomputeSpareHoursAfterCoreTime(coreTime) {
  * 余剰時間が 0 なら S5 就寝へ。
  */
 function goChooseFromToday() {
+  // @spec SPEC-025 §7.1 / SPEC-027 §5.1 手動モードでも日サマリ・週サマリの集計バッファを
+  //   起床時に 1 回だけ初期化する（auto モードの runAutoTurn と同じタイミング）。
+  initDaySnapshotIfNeeded();
+  initAutoHighlightIfNeeded();
+
   const stage = resolveLifeStage(player.age);
   const coreTime = getActiveCoreTime();
   const now = player.clockHour + player.clockMinute / 60;
@@ -3262,10 +3333,15 @@ function showHighlight() {
   }
 
   showScreen("screen-highlight");
-  // ハイライト表示したらバッファをリセットして次区間の開始地点を更新
+  // @spec SPEC-025 §7.2.0 ハイライト表示したらバッファをリセットして次区間の開始地点を更新
+  //   スキルも現時点の Lv/exp を保存しておく（次週の差分計算用）。
+  const skillsReset = {};
+  for (const c of Object.keys(player.skills)) {
+    skillsReset[c] = { lv: player.skills[c].lv, exp: player.skills[c].exp };
+  }
   player._autoHighlight = {
     playsById: {},
-    skillsBefore: {},
+    skillsBefore: skillsReset,
     expBefore: { ...player.exp },
     discoveries: [],
     dayStart: player.day,

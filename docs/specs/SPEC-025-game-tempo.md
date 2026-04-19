@@ -207,6 +207,20 @@ v2（PR #9 レビュー反映）では、従来プレイヤータップを要求
 - Fiscal week 定義は SPEC-001 §5.7 を参照（Day 1 = 2026-04-01 水曜、その週は Day 1-5 で締まる短縮週）
 - スナップショットは週の最初の朝で取得し、週境界到達時に差分を表示
 
+#### 7.2.1 v4：ハイライトバッファ（`_autoHighlight`）の更新タイミング
+バグ報告「週末サマリの『今日の遊び』が『無し』になっていた」への対応として、以下を明文化する。
+- `_autoHighlight.playsById` は **手動・自動のどちらのモードでもプレイ完了時に `+1`** すること
+  - 手動：`finalizePlay()` 末尾で更新
+  - 自動：`runAutoTurn()` 側で更新（従来どおり）
+- `_autoHighlight` は **週ハイライト表示（S9）後にリセット**（`playsById = {}` / `turnCount = 0` / `dayStart = player.day` / `skillsBefore` と `expBefore` を現時点で取り直す）
+- 起床時（`goChooseFromToday()`）に `initAutoHighlightIfNeeded()` を呼び、初回のみ `skillsBefore/expBefore/dayStart` を当日で初期化する
+
+#### 7.2.2 v4：日サマリバッファ（`_daySnapshot`）の更新タイミング
+バグ報告「1 日の終わりサマリの『今日の遊び』がその週の累計になっている」への対応。
+- `_daySnapshot.playsById` は **その日の遊びのみ**を集計する。日付（`player.day`）が変わったタイミングで必ず `{}` に再初期化する。
+- 手動モードでも **起床時に `initDaySnapshotIfNeeded()` を呼ぶ**。これは `dayAtStart !== player.day` の場合にのみ中身を作り直す（朝の複数回呼び出しは no-op）。
+- `goChooseFromToday()` の冒頭で呼ぶことで、S4/S6 → S2 の遷移ごとに毎回発火しないが、日をまたいだ最初の到達時には必ず発火する。
+
 #### 7.2.1 表示項目
 | セクション | 内容 |
 |---|---|
