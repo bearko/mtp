@@ -3188,20 +3188,27 @@ let _autoTimer = null;
 function startAutoLoop() {
   stopAutoLoop();
   // 表示切替
-  byId("wakeup-header").hidden = true;
-  byId("preview").hidden = true;
-  byId("preview-placeholder").hidden = true;
-  byId("choose-prompt").hidden = true;
-  byId("auto-progress").hidden = false;
-  byId("btn-confirm-play").disabled = true;
-  byId("btn-confirm-play").textContent = "自動進行中…";
+  // @spec SPEC-034 §5.1 起床ヘッダー・choose-prompt は v2 で廃止済みのため、
+  //   存在する要素だけ null ガード付きで hidden に切り替える（存在しない要素で
+  //   TypeError にならないようにする）。
+  const wh = byId("wakeup-header"); if (wh) wh.hidden = true;
+  const pv = byId("preview");       if (pv) pv.hidden = true;
+  const pp = byId("preview-placeholder"); if (pp) pp.hidden = true;
+  const cp = byId("choose-prompt"); if (cp) cp.hidden = true;
+  const ap = byId("auto-progress"); if (ap) ap.hidden = false;
+  const cb = byId("btn-confirm-play");
+  if (cb) {
+    cb.disabled = true;
+    cb.textContent = "自動進行中…";
+  }
 
   // まず即座に 1 ターン目
   runAutoTurn();
 }
 function stopAutoLoop() {
   if (_autoTimer) { clearTimeout(_autoTimer); _autoTimer = null; }
-  byId("auto-progress").hidden = true;
+  const ap = byId("auto-progress");
+  if (ap) ap.hidden = true;
 }
 
 /**
