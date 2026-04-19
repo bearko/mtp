@@ -236,73 +236,36 @@
           <div class="progress-label" id="playing-timer">遊び進行中… 0%</div>
         </div>
 
-        <!-- 結果フェーズ：描写フェーズ完了後に display:block に切り替える -->
-        <div id="result-panel" class="result-panel" hidden>
-          <div class="card">
-            <div class="card-title">獲得した素養</div>
-            <div class="gauge-group" id="result-exp-gauges"></div>
+        <!--
+          @spec SPEC-035 §7.1 結果パネルは S2 の素養カードに合わせたグレード表示 +
+          スキル行に統一。ステータス・時間・ジョウネツ・ゲージカードは削除。
+        -->
+        <div id="result-panel" class="result-panel result-panel-v2" hidden>
+          <!-- 獲得した素養（グレードベース / +N / 旧→新 / Lv発光） -->
+          <div class="card card-tight">
+            <div class="card-title">🌱 獲得した素養</div>
+            <div class="soyou-result-list" id="result-soyou-list"></div>
           </div>
-          <div class="card" id="result-status-card">
-            <div class="card-title">ステータス</div>
-            <div class="gauge-group" id="result-status-gauges"></div>
-            <ul class="kv-list" id="result-status"></ul>
-          </div>
-          <!--
-            @spec docs/specs/SPEC-024-skill.md §5.3 §5.4
-            @spec docs/specs/SPEC-022-play-category.md §6
-            獲得スキル・熟練ブースト・低体力倍率を表示
-          -->
-          <!--
-            @spec docs/specs/SPEC-024-skill.md §6 §6.1
-            @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.4a
-            スキルにも差分ハイライト付き Lv ゲージを表示
-          -->
-          <div class="card" id="result-skills-card" hidden>
+          <!-- 獲得スキル（1 行 × N） -->
+          <div class="card card-tight" id="result-skill-lines-card" hidden>
             <div class="card-title">🏷 獲得スキル</div>
-            <div class="gauge-group" id="result-skills"></div>
+            <ul class="skill-lines" id="result-skill-lines"></ul>
             <p class="preview-note" id="result-boost-note"></p>
           </div>
           <div class="card warn" id="result-low-stamina-warn" hidden>
             <p class="preview-note" id="result-low-stamina-text"></p>
           </div>
-          <!--
-            @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.2.5 3 レイヤー / §5.2.7
-            before / after の 2 つ並べで時刻経過を視覚化（帯は両方に表示）
-          -->
-          <div class="card">
-            <div class="card-title">時間の流れ</div>
-            <div class="clock-compare">
-              <div class="clock-compare-item">
-                <div class="clock-compare-label">前</div>
-                <span class="clock-dial clock-dial-sm" id="result-clock-before">
-                  <svg viewBox="0 0 100 100" class="dial-svg">
-                    <circle cx="50" cy="50" r="46" class="dial-ring"/>
-                    <path class="dial-band dial-band-free" d="" fill-rule="evenodd"/>
-                    <g class="dial-bands-sleep"></g>
-                    <g class="dial-bands-core"></g>
-                    <path class="dial-fill" d="" fill-rule="evenodd"/>
-                    <text x="50" y="56" class="dial-time" text-anchor="middle">--</text>
-                  </svg>
-                </span>
-              </div>
-              <div class="clock-compare-arrow">→</div>
-              <div class="clock-compare-item">
-                <div class="clock-compare-label">後</div>
-                <span class="clock-dial clock-dial-sm" id="result-clock-after">
-                  <svg viewBox="0 0 100 100" class="dial-svg">
-                    <circle cx="50" cy="50" r="46" class="dial-ring"/>
-                    <path class="dial-band dial-band-free" d="" fill-rule="evenodd"/>
-                    <g class="dial-bands-sleep"></g>
-                    <g class="dial-bands-core"></g>
-                    <path class="dial-fill" d="" fill-rule="evenodd"/>
-                    <text x="50" y="56" class="dial-time" text-anchor="middle">--</text>
-                  </svg>
-                </span>
-              </div>
-            </div>
-            <p class="scene-sub" id="result-spare" style="margin: 8px 0 0;">⏳ 余剰時間 4h → 3h</p>
+
+          <!-- 以下は SPEC-035 §8 で互換のため DOM だけ残す（常に hidden） -->
+          <div class="gauge-group" id="result-exp-gauges" hidden></div>
+          <div id="result-status-card" hidden>
+            <div class="gauge-group" id="result-status-gauges"></div>
+            <ul class="kv-list" id="result-status"></ul>
           </div>
-          <div class="msg-box" id="result-passion">ジョウネツ +3</div>
+          <div id="result-skills-card" hidden>
+            <div class="gauge-group" id="result-skills"></div>
+          </div>
+          <div id="result-passion" hidden></div>
         </div>
       </div>
 
@@ -438,35 +401,41 @@
       @spec    docs/specs/SPEC-025-game-tempo.md §7, §9.4
     -->
     <section class="screen" id="screen-highlight">
+      <!--
+        @spec SPEC-035 §7.3 週末サマリ：S2 と同じ素養カード + スキル行に統一
+      -->
       <div class="scene">
-        <div class="scene-art">✨</div>
+        <div class="scene-art small">✨</div>
         <h2 class="scene-title">今週のハイライト</h2>
         <p class="scene-sub" id="highlight-range">2歳 / 5日目〜9日目</p>
 
-        <div class="card">
+        <!-- 遊んだ回数（ピル形式） -->
+        <div class="card card-tight">
           <div class="card-title">遊んだ回数</div>
-          <ul class="kv-list" id="highlight-plays"></ul>
+          <div class="play-pill-row" id="highlight-play-pills"></div>
         </div>
 
-        <!--
-          @spec docs/specs/SPEC-025-game-tempo.md §7.2 §9.4
-          @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.4a
-          原体験ゲージ（差分ハイライト付き）
-        -->
-        <div class="card" id="highlight-exp-card" hidden>
-          <div class="card-title">素養</div>
-          <div class="gauge-group" id="highlight-exp-gauges"></div>
+        <!-- 獲得した素養（S2 と同じカード） -->
+        <div class="card card-tight" id="highlight-soyou-card" hidden>
+          <div class="card-title">🌱 獲得した素養</div>
+          <div class="soyou-result-list" id="highlight-soyou-list"></div>
         </div>
 
-        <div class="card" id="highlight-skills-card" hidden>
+        <!-- 獲得スキル（1 行 × N） -->
+        <div class="card card-tight" id="highlight-skill-lines-card" hidden>
           <div class="card-title">🏷 伸びたスキル</div>
-          <div class="gauge-group" id="highlight-skills"></div>
+          <ul class="skill-lines" id="highlight-skill-lines"></ul>
         </div>
 
         <div class="card warn" id="highlight-discoveries-card" hidden>
           <div class="card-title">🎉 発見</div>
           <ul class="kv-list" id="highlight-discoveries"></ul>
         </div>
+
+        <!-- 旧構造（互換：常に hidden） -->
+        <ul class="kv-list" id="highlight-plays" hidden></ul>
+        <div id="highlight-exp-card" hidden><div class="gauge-group" id="highlight-exp-gauges"></div></div>
+        <div id="highlight-skills-card" hidden><div class="gauge-group" id="highlight-skills"></div></div>
       </div>
       <footer class="actions actions-stack">
         <div class="actions-row">
@@ -487,39 +456,19 @@
       フッターで「週末までスキップ / 明日の夜までスキップ / 手動に切り替え」の 3 択。
     -->
     <section class="screen" id="screen-day-summary">
+      <!--
+        @spec SPEC-035 §7.2 連絡帳をファーストビューに配置し、ステータス・ゲージカードを削除。
+        順序: タイトル → 連絡帳 → 今日の遊び（簡素） → 素養カード → スキル行 → 学んだこと。
+      -->
       <div class="scene">
-        <div class="scene-art">🌙</div>
+        <div class="scene-art small">🌙</div>
         <h2 class="scene-title">1日おわり</h2>
         <p class="scene-sub" id="day-summary-range">1日目 / 2歳 / 夏</p>
-
-        <div class="card">
-          <div class="card-title">今日の遊び</div>
-          <ul class="kv-list" id="day-summary-plays"></ul>
-        </div>
-
-        <div class="card" id="day-summary-exp-card" hidden>
-          <div class="card-title">素養</div>
-          <div class="gauge-group" id="day-summary-exp-gauges"></div>
-        </div>
-
-        <div class="card" id="day-summary-skills-card" hidden>
-          <div class="card-title">🏷 スキル</div>
-          <div class="gauge-group" id="day-summary-skill-gauges"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">ステータス</div>
-          <ul class="kv-list" id="day-summary-status"></ul>
-        </div>
-
-        <div class="card warn" id="day-summary-discoveries-card" hidden>
-          <div class="card-title">🎉 学んだこと</div>
-          <ul class="kv-list" id="day-summary-discoveries"></ul>
-        </div>
 
         <!--
           @spec docs/specs/SPEC-027-renrakucho.md 連絡帳サマリ
           保育園・幼稚園期のみ表示。先生からのひと言と家庭コメントをテンプレから選出。
+          SPEC-035 §7.2 連絡帳をファーストビューに配置
         -->
         <div class="renrakucho-card" id="day-summary-renrakucho" hidden>
           <div class="renrakucho-header">
@@ -536,6 +485,35 @@
             <p class="renrakucho-body" id="renrakucho-parent">—</p>
           </div>
         </div>
+
+        <!-- 今日の遊び：絵文字のピルで簡素に -->
+        <div class="card card-tight" id="day-summary-plays-card">
+          <div class="card-title">今日の遊び</div>
+          <div class="play-pill-row" id="day-summary-play-pills"></div>
+        </div>
+
+        <!-- 獲得した素養（S2 と同じビジュアル） -->
+        <div class="card card-tight" id="day-summary-soyou-card" hidden>
+          <div class="card-title">🌱 獲得した素養</div>
+          <div class="soyou-result-list" id="day-summary-soyou-list"></div>
+        </div>
+
+        <!-- 獲得スキル（1 行 × N） -->
+        <div class="card card-tight" id="day-summary-skill-lines-card" hidden>
+          <div class="card-title">🏷 獲得スキル</div>
+          <ul class="skill-lines" id="day-summary-skill-lines"></ul>
+        </div>
+
+        <div class="card warn" id="day-summary-discoveries-card" hidden>
+          <div class="card-title">🎉 学んだこと</div>
+          <ul class="kv-list" id="day-summary-discoveries"></ul>
+        </div>
+
+        <!-- 旧構造（互換のため DOM だけ残す / 常に hidden） -->
+        <ul class="kv-list" id="day-summary-plays" hidden></ul>
+        <div id="day-summary-exp-card" hidden><div class="gauge-group" id="day-summary-exp-gauges"></div></div>
+        <div id="day-summary-skills-card" hidden><div class="gauge-group" id="day-summary-skill-gauges"></div></div>
+        <ul class="kv-list" id="day-summary-status" hidden></ul>
       </div>
       <footer class="actions actions-stack">
         <!-- @spec SPEC-026 §5.5 スキップ機能は phase2 以降のみ表示 -->
