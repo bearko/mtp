@@ -26,6 +26,7 @@
 | [SPEC-026](./SPEC-026-tutorial.md) | チュートリアル（初週・2週目・スキップ解禁） | Active | `prototype/game.js` (tutorialPhase, isSkipUnlocked) | 2026-04-18 |
 | [SPEC-027](./SPEC-027-renrakucho.md) | 連絡帳サマリ（保育園・幼稚園の世界観演出） | Active（保育園のみ実装） | `prototype/game.js` (buildRenrakuchoEntry) / `prototype/styles.css` (.renrakucho-*) | 2026-04-18 |
 | [SPEC-028](./SPEC-028-master-data.md) | マスタデータ管理（JSONテーブル化） | Active | `prototype/data/*.json` / `prototype/game.js` (loadMasters) | 2026-04-18 |
+| [SPEC-029](./SPEC-029-play-video.md) | 遊び中ムービー再生（`data/videos/{playId}.mp4`） | Active | `prototype/data/videos/*.mp4` / `prototype/game.js` (tryPlayIntroVideo / hidePlayVideo) / `prototype/index.html` (#play-video) | 2026-04-19 |
 
 ## ライフステージ別コアタイム
 

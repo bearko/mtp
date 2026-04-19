@@ -1255,3 +1255,21 @@ body {
   font-size: 15px;
   line-height: 1.8;
 }
+
+/* @spec SPEC-029 遊び中ムービー再生領域 */
+.play-video {
+  width: 100%;
+  max-width: 560px;
+  margin: 4px auto 10px;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  position: relative;
+}
+.play-video video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}

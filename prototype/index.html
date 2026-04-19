@@ -218,6 +218,13 @@
     -->
     <section class="screen" id="screen-playing">
       <div class="scene">
+        <!--
+          @spec docs/specs/SPEC-029-play-video.md
+          遊び中ムービー（5 秒程度、存在する遊びだけ）
+        -->
+        <div id="play-video" class="play-video" hidden>
+          <video id="play-video-el" muted playsinline preload="metadata"></video>
+        </div>
         <div class="scene-art large" id="playing-icon">🎮</div>
         <h2 class="scene-title" id="playing-name">砂場遊び</h2>
         <p class="scene-desc" id="playing-desc">あなたは砂場で山を作り始めた…</p>
