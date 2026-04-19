@@ -142,6 +142,19 @@
           <p>下のアイコンから<br/>今日やりたい遊びを選んでね</p>
         </div>
 
+        <!--
+          @spec docs/specs/SPEC-025-game-tempo.md §9.2 自動進行モード中の演出
+          自動モードではプレビュー位置に「自動で遊んでいる…」の演出 + プログレスバーを出す。
+        -->
+        <div id="auto-progress" class="auto-progress" hidden>
+          <div class="auto-progress-icon" id="auto-progress-icon">⏩</div>
+          <div class="auto-progress-title" id="auto-progress-title">自動で遊んでいる…</div>
+          <div class="auto-progress-sub" id="auto-progress-sub">今日の遊びを選んでいます</div>
+          <div class="progress">
+            <div class="progress-bar" id="auto-progress-bar"></div>
+          </div>
+        </div>
+
         <div id="preview" class="play-preview" hidden>
           <div class="preview-art" id="preview-icon">🏖</div>
           <h3 class="preview-title" id="preview-name">砂場遊び</h3>
@@ -394,6 +407,125 @@
         <span class="hint">上の「いつ寝る？」を選ぶと翌朝へ</span>
       </footer>
     </section>
+
+    <!--
+      @screen  S8 情熱プロファイル選択（初回起動時のみ）
+      @spec    docs/specs/SPEC-025-game-tempo.md §5, §9.1
+    -->
+    <section class="screen" id="screen-passion-profile">
+      <div class="scene">
+        <h2 class="scene-title">何が好きな子？</h2>
+        <p class="scene-sub">（あとでも変わっていく）</p>
+        <div class="passion-list" id="passion-list"></div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-primary" data-action="confirm-passion" id="btn-confirm-passion" disabled>決定</button>
+      </footer>
+    </section>
+
+    <!--
+      @screen  S9 ハイライト集約（自動進行 5 ターン毎）
+      @spec    docs/specs/SPEC-025-game-tempo.md §7, §9.4
+    -->
+    <section class="screen" id="screen-highlight">
+      <div class="scene">
+        <div class="scene-art">✨</div>
+        <h2 class="scene-title">今週のハイライト</h2>
+        <p class="scene-sub" id="highlight-range">2歳 / 5日目〜9日目</p>
+
+        <div class="card">
+          <div class="card-title">遊んだ回数</div>
+          <ul class="kv-list" id="highlight-plays"></ul>
+        </div>
+
+        <!--
+          @spec docs/specs/SPEC-025-game-tempo.md §7.2 §9.4
+          @spec docs/specs/SPEC-021-parameter-gauge-ui.md §5.4a
+          原体験ゲージ（差分ハイライト付き）
+        -->
+        <div class="card" id="highlight-exp-card" hidden>
+          <div class="card-title">原体験</div>
+          <div class="gauge-group" id="highlight-exp-gauges"></div>
+        </div>
+
+        <div class="card" id="highlight-skills-card" hidden>
+          <div class="card-title">🏷 伸びたスキル</div>
+          <div class="gauge-group" id="highlight-skills"></div>
+        </div>
+
+        <div class="card warn" id="highlight-discoveries-card" hidden>
+          <div class="card-title">🎉 発見</div>
+          <ul class="kv-list" id="highlight-discoveries"></ul>
+        </div>
+      </div>
+      <footer class="actions actions-stack">
+        <div class="actions-row">
+          <button class="btn btn-primary btn-wide" data-action="continue-auto" id="btn-continue-auto">続ける</button>
+        </div>
+        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual">手動に切り替え</button>
+      </footer>
+    </section>
+
+    <!--
+      @screen  S10 日の終わりサマリ
+      @spec    docs/specs/SPEC-025-game-tempo.md §7.1, §9.5
+      自動モード中に 1 日の終わりに表示される。原体験・スキルをゲージで表示し、
+      フッターで「週末までスキップ / 明日の夜までスキップ / 手動に切り替え」の 3 択。
+    -->
+    <section class="screen" id="screen-day-summary">
+      <div class="scene">
+        <div class="scene-art">🌙</div>
+        <h2 class="scene-title">1日おわり</h2>
+        <p class="scene-sub" id="day-summary-range">1日目 / 2歳 / 夏</p>
+
+        <div class="card">
+          <div class="card-title">今日の遊び</div>
+          <ul class="kv-list" id="day-summary-plays"></ul>
+        </div>
+
+        <div class="card" id="day-summary-exp-card" hidden>
+          <div class="card-title">原体験</div>
+          <div class="gauge-group" id="day-summary-exp-gauges"></div>
+        </div>
+
+        <div class="card" id="day-summary-skills-card" hidden>
+          <div class="card-title">🏷 スキル</div>
+          <div class="gauge-group" id="day-summary-skill-gauges"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">ステータス</div>
+          <ul class="kv-list" id="day-summary-status"></ul>
+        </div>
+
+        <div class="card warn" id="day-summary-discoveries-card" hidden>
+          <div class="card-title">🎉 学んだこと</div>
+          <ul class="kv-list" id="day-summary-discoveries"></ul>
+        </div>
+      </div>
+      <footer class="actions actions-stack">
+        <div class="actions-row">
+          <button class="btn btn-primary btn-wide" data-action="skip-to-weekend" id="btn-skip-to-weekend">⏩ 週末までスキップ</button>
+        </div>
+        <div class="actions-row">
+          <button class="btn btn-secondary btn-wide" data-action="skip-to-tomorrow-night" id="btn-skip-to-tomorrow">⏩ 明日の夜までスキップ</button>
+        </div>
+        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual">🎮 手動に切り替え</button>
+      </footer>
+    </section>
+
+    <!--
+      @spec docs/specs/SPEC-025-game-tempo.md §6 介入イベント共通モーダル
+      自動進行中の Lvアップ・新遊び解禁・ライフステージ切替などで表示。
+    -->
+    <div id="interrupt-overlay" class="interrupt-overlay" hidden>
+      <div class="interrupt-modal">
+        <div class="interrupt-icon" id="interrupt-icon">✨</div>
+        <h3 class="interrupt-title" id="interrupt-title">新しい発見！</h3>
+        <p class="interrupt-body" id="interrupt-body"></p>
+        <button class="btn btn-primary" id="btn-interrupt-close">続ける</button>
+      </div>
+    </div>
 
     <div id="toast" class="toast" hidden></div>
   </div>

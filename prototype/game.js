@@ -50,6 +50,56 @@ const CATEGORIES = {
 const CATEGORY_GROUP_ORDER = ["身体", "創作", "探求", "交流", "生活", "文化"];
 
 /**
+ * @spec docs/specs/SPEC-025-game-tempo.md §5.2 情熱プロファイル
+ * プレイヤーが「何が好きな子か」を 4 種から選ぶ。自動選択のスコア式で使う。
+ */
+const PASSION_PROFILES = [
+  {
+    id: "outdoor_kid",
+    label: "外が好きな子",
+    icon: "🌳",
+    description: "走ったり、自然に触れたりするのが大好き",
+    preferredCategories: ["movement", "outdoor_toy", "nature", "water"],
+  },
+  {
+    id: "creator_kid",
+    label: "ものづくりが好きな子",
+    icon: "🎨",
+    description: "手を動かして何かを作るのが楽しい",
+    preferredCategories: ["crafting", "imagination", "music"],
+  },
+  {
+    id: "bookworm_kid",
+    label: "じっくり派",
+    icon: "📚",
+    description: "絵本や観察が好きで、ゆっくり楽しむタイプ",
+    preferredCategories: ["reading", "literacy", "sensitivity", "science"],
+  },
+  {
+    id: "social_kid",
+    label: "友達といる子",
+    icon: "🤝",
+    description: "みんなで遊ぶのが何より楽しい",
+    preferredCategories: ["social_play", "friendship", "imagination"],
+  },
+];
+
+/**
+ * @spec docs/specs/SPEC-025-game-tempo.md §4 ライフステージ別の時間流速
+ * 1 回の自動ターンで進む日数を返す。プロト段階では保育園（1日/ターン）のみ実装。
+ */
+function tempoDaysPerTurn(age) {
+  if (age <= 4)  return 1;     // 保育園
+  if (age <= 6)  return 2;     // 幼稚園
+  if (age <= 12) return 3;     // 小学校
+  if (age <= 18) return 7;     // 中高
+  if (age <= 22) return 14;    // 大学
+  if (age <= 50) return 30;    // 社会人
+  if (age <= 65) return 60;
+  return 30;                   // 老後
+}
+
+/**
  * @spec docs/specs/SPEC-002-play-selection.md
  * @spec docs/specs/SPEC-007-friends.md
  * @spec docs/specs/SPEC-022-play-category.md §5.2 遊びマスタへのカテゴリ付与
@@ -387,6 +437,36 @@ const DEFAULT_PLAYER = {
   coreTimeDoneToday: false,
   /** 強制睡眠がコアタイム終了後まで食い込んだ時間（h）。SPEC-019 §5.4.1a */
   _napOverflow: 0,
+  /** @spec SPEC-025 §5 情熱プロファイルID。null なら未選択（初回起動時に選ばせる）*/
+  passionProfileId: null,
+  /** @spec SPEC-025 §5.5 自動進行モード。true のときは runAutoTurn が回る */
+  autoMode: false,
+  /** @spec SPEC-025 §7 自動進行中のハイライト集約バッファ */
+  _autoHighlight: {
+    playsById: {},           // playId → 回数
+    skillsBefore: {},        // catId → {lv, exp}（開始時点）
+    expBefore: {},           // 原体験5カテゴリの開始値
+    discoveries: [],         // 新規解禁 or 発見イベントのテキスト
+    dayStart: 0,
+    dayEnd: 0,
+    turnCount: 0,
+  },
+  /** @spec SPEC-025 §7.1 1 日の終わりサマリ用バッファ（起床時にスナップショット取得） */
+  _daySnapshot: {
+    dayAtStart: 0,
+    expStart: {},
+    skillsStart: {},
+    playsById: {},
+    discoveries: [],
+    staminaStart: 0,
+    friendsStart: 0,
+    moneyStart: 0,
+    passionStart: 0,
+  },
+  /** @spec SPEC-025 §7.1 スキップ目的地（"tomorrow-night" or "weekend"） */
+  _skipTarget: null,
+  /** 目的地までのカウントダウン日数 */
+  _skipRemainingDays: 0,
 };
 
 const LABELS = {
@@ -1033,6 +1113,18 @@ function renderChooseScreen() {
   const dock = byId("play-dock");
   dock.innerHTML = "";
 
+  // @spec SPEC-025 §9.3 ドック最左端に「自動/手動」モードトグル
+  if (player.passionProfileId) {
+    const modeBtn = document.createElement("button");
+    modeBtn.className = "dock-icon dock-mode" + (player.autoMode ? " auto" : "");
+    modeBtn.innerHTML = player.autoMode
+      ? `<span>🤖</span><span class="dock-mode-label">自動</span>`
+      : `<span>🎮</span><span class="dock-mode-label">手動</span>`;
+    modeBtn.setAttribute("aria-label", "自動／手動モード切替");
+    modeBtn.addEventListener("click", toggleAutoMode);
+    dock.appendChild(modeBtn);
+  }
+
   // SPEC-002 §5.5 並び順：実行可 → ロック中。隠し（unlockRequired未解禁）は除外。
   const candidates = PLAYS
     .map((p) => ({ play: p, avail: isPlayAvailable(p) }))
@@ -1077,6 +1169,9 @@ function renderChooseScreen() {
   // 起床ヘッダーがある状態ではプレースホルダーは不要なので一緒に隠す
   byId("preview-placeholder").hidden = true;
   byId("btn-confirm-play").disabled = true;
+  // @spec SPEC-025 自動進行バナーは手動モード初期ではリセット
+  const autoProg = byId("auto-progress");
+  if (autoProg) autoProg.hidden = true;
   byId("btn-confirm-play").textContent = "遊ぶ";
 
   renderHUD();
@@ -1867,6 +1962,11 @@ function goChooseFromToday() {
 
   renderChooseScreen();
   showScreen("screen-choose");
+
+  // @spec SPEC-025 §5.5 自動モード中はドックが出た直後に自動ループ開始
+  if (player.autoMode && player.passionProfileId) {
+    startAutoLoop();
+  }
 }
 
 /**
@@ -2211,6 +2311,26 @@ function doNothing() {
  * 1日の成果を表示し、就寝モード選択を促す。1〜9歳はモード選択不可。
  */
 function goSleep() {
+  // @spec SPEC-025 §6.2 自動モード中は S5 就寝画面を表示せず、S10 日の終わりサマリに直行
+  if (player.autoMode) {
+    stopAutoLoop();
+
+    // @spec SPEC-025 §7.1.3 スキップ継続中なら、サマリを飛ばしてすぐに翌日へ
+    if (player._skipRemainingDays > 0) {
+      player._skipRemainingDays -= 1;
+      // 就寝 → 翌朝の処理
+      sleep("normal");
+      // まだ残りがあるか、最後の 1 日だったか
+      // sleep() は nextDay を呼び、goChooseFromToday まで行く。
+      // goChooseFromToday は autoMode=true なので startAutoLoop で再開する。
+      return;
+    }
+
+    renderDaySummary();
+    showScreen("screen-day-summary");
+    return;
+  }
+
   byId("sleep-summary").innerHTML = `
     <li><span>遊んだ回数</span><b>${player.dailyPlays} 回</b></li>
     <li><span>現在のジョウネツ</span><b>${player.passion}</b></li>
@@ -2353,6 +2473,681 @@ function nextDay(sleepMode) {
 }
 
 // =========================================================================
+// @spec docs/specs/SPEC-025-game-tempo.md §5, §6, §7, §8 ゲームテンポ設計（Option A）
+// =========================================================================
+
+/**
+ * @screen S8 情熱プロファイル選択
+ * @spec SPEC-025 §9.1
+ */
+let _pendingPassionProfileId = null;
+function renderPassionProfileScreen() {
+  _pendingPassionProfileId = null;
+  const list = byId("passion-list");
+  list.innerHTML = PASSION_PROFILES.map((p) => `
+    <button class="passion-card" data-profile="${p.id}">
+      <div class="passion-card-icon">${p.icon}</div>
+      <div class="passion-card-body">
+        <div class="passion-card-title">${p.label}</div>
+        <div class="passion-card-desc">${p.description}</div>
+      </div>
+    </button>
+  `).join("");
+  for (const el of list.querySelectorAll(".passion-card")) {
+    el.addEventListener("click", () => {
+      _pendingPassionProfileId = el.dataset.profile;
+      for (const c of list.querySelectorAll(".passion-card")) c.classList.remove("selected");
+      el.classList.add("selected");
+      byId("btn-confirm-passion").disabled = false;
+    });
+  }
+  byId("btn-confirm-passion").disabled = true;
+}
+
+function confirmPassionProfile() {
+  if (!_pendingPassionProfileId) return;
+  player.passionProfileId = _pendingPassionProfileId;
+  toast("選んだよ！自動で遊ぶ方針をセットしました");
+  // 選んだら自動モード ON を既定とする（SPEC-025 §5.5）
+  player.autoMode = true;
+  goChooseFromToday();
+}
+
+/**
+ * @spec SPEC-025 §5.4 自動選択アルゴリズム
+ * 情熱プロファイルとスキルLvから、今遊ぶべき遊びを選ぶ。
+ */
+function pickAutoPlay() {
+  const profile = PASSION_PROFILES.find((p) => p.id === player.passionProfileId);
+  const preferred = profile ? profile.preferredCategories : [];
+
+  const available = PLAYS
+    .map((p) => ({ play: p, avail: isPlayAvailable(p) }))
+    .filter(({ avail }) => !avail.isHidden && avail.ok);
+
+  if (available.length === 0) return null;
+
+  // スコア計算
+  const scored = available.map(({ play }) => {
+    const cats = play.categories || [];
+    const overlap = cats.filter((c) => preferred.includes(c)).length;
+    let skillAvg = 0;
+    if (cats.length > 0) {
+      const sum = cats.reduce((a, c) => a + ((player.skills[c] && player.skills[c].lv) || 1), 0);
+      skillAvg = sum / cats.length;
+    }
+    const unlockBonus = (play.unlockRequired && player.unlockedPlays.includes(play.id)) ? 5 : 0;
+    const jitter = Math.random() * 2;
+    const score = overlap * 10 + skillAvg * 0.5 + unlockBonus + jitter;
+    return { play, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored.slice(0, 3);
+  // 重み付き抽選（上位 3 からスコア比で選ぶ）
+  const total = top.reduce((s, x) => s + x.score, 0) || 1;
+  let r = Math.random() * total;
+  for (const x of top) {
+    r -= x.score;
+    if (r <= 0) return x.play;
+  }
+  return top[0].play;
+}
+
+/**
+ * @spec SPEC-025 §5.5 自動／手動モードの切替
+ */
+function toggleAutoMode() {
+  if (player.autoMode) {
+    // 手動へ切替
+    player.autoMode = false;
+    stopAutoLoop();
+    toast("手動モードに切り替えました");
+    goChooseFromToday();
+  } else {
+    player.autoMode = true;
+    toast("自動モードに切り替えました");
+    goChooseFromToday();
+  }
+}
+
+/**
+ * @spec SPEC-025 §5.5, §6
+ * 自動モード時に S2 画面を自動進行の演出で表示する。
+ */
+let _autoTimer = null;
+function startAutoLoop() {
+  stopAutoLoop();
+  // 表示切替
+  byId("wakeup-header").hidden = true;
+  byId("preview").hidden = true;
+  byId("preview-placeholder").hidden = true;
+  byId("choose-prompt").hidden = true;
+  byId("auto-progress").hidden = false;
+  byId("btn-confirm-play").disabled = true;
+  byId("btn-confirm-play").textContent = "自動進行中…";
+
+  // まず即座に 1 ターン目
+  runAutoTurn();
+}
+function stopAutoLoop() {
+  if (_autoTimer) { clearTimeout(_autoTimer); _autoTimer = null; }
+  byId("auto-progress").hidden = true;
+}
+
+/**
+ * @spec SPEC-025 §6 自動 1 ターンの処理
+ * 遊びを選び、軽量な演出とともに finalize して結果を蓄積。
+ * 介入イベント（解禁・Lvアップ・ステージ変化・体力ゼロ）が発生したら停止。
+ */
+function runAutoTurn() {
+  if (!player.autoMode) return;
+
+  // ハイライトバッファの初期化
+  initAutoHighlightIfNeeded();
+  // @spec SPEC-025 §7.1 日の終わりサマリ用スナップショット（起床時に 1 回）
+  initDaySnapshotIfNeeded();
+
+  const play = pickAutoPlay();
+  if (!play) {
+    // 今遊べるものがない → 手動へフォールバック
+    toast("今遊べるものがない…手動に戻します");
+    player.autoMode = false;
+    stopAutoLoop();
+    goChooseFromToday();
+    return;
+  }
+
+  // バナーの見た目更新
+  byId("auto-progress-icon").textContent = play.icon;
+  byId("auto-progress-title").textContent = `${play.name}で遊んでいる…`;
+  byId("auto-progress-sub").textContent = "じっくり楽しんでいる";
+  byId("auto-progress-bar").style.width = "0%";
+  // プログレスバーアニメ（0 → 100% を 500ms で）
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      byId("auto-progress-bar").style.transition = "width 500ms ease-out";
+      byId("auto-progress-bar").style.width = "100%";
+    });
+  });
+
+  // スキル Lv の before を記録
+  for (const c of (play.categories || [])) {
+    ensureSkill(c);
+    if (!player._autoHighlight.skillsBefore[c]) {
+      player._autoHighlight.skillsBefore[c] = { lv: player.skills[c].lv, exp: player.skills[c].exp };
+    }
+  }
+
+  // 500ms 後に finalize 相当の処理
+  _autoTimer = setTimeout(() => {
+    const stageBefore = resolveLifeStage(player.age);
+    const unlockedBefore = [...player.unlockedPlays];
+
+    // finalize は描写フェーズ無しで実行するための軽量版
+    autoFinalizePlay(play);
+
+    // ハイライト集約（週単位）
+    const h = player._autoHighlight;
+    h.playsById[play.id] = (h.playsById[play.id] || 0) + 1;
+    h.turnCount += 1;
+    h.dayEnd = player.day;
+
+    // @spec SPEC-025 §7.1 日の終わりサマリへも集約
+    const ds = player._daySnapshot;
+    ds.playsById[play.id] = (ds.playsById[play.id] || 0) + 1;
+
+    // 介入イベント判定
+    const interruptQueue = [];
+    // 解禁
+    const newUnlocks = player.unlockedPlays.filter((id) => !unlockedBefore.includes(id));
+    for (const id of newUnlocks) {
+      const p = PLAYS.find((x) => x.id === id);
+      if (!p) continue;
+      interruptQueue.push({
+        icon: p.icon,
+        title: "新しい遊びを覚えた！",
+        body: `${p.name} が遊びツリーに追加されたよ。`,
+      });
+      h.discoveries.push(`${p.icon} ${p.name}`);
+      ds.discoveries.push(`${p.icon} ${p.name}`);
+    }
+    // ライフステージ切替
+    const stageAfter = resolveLifeStage(player.age);
+    if (stageBefore && stageAfter && stageBefore.id !== stageAfter.id) {
+      interruptQueue.push({
+        icon: stageAfter.icon,
+        title: "ライフステージが変わった！",
+        body: `${stageAfter.label} に進んだよ。`,
+      });
+    }
+    // コアタイムに到達 or 余剰 0 → 自動ループは一旦停止（通常の画面遷移に任せる）
+    const now = player.clockHour + player.clockMinute / 60;
+    const coreTime = stageAfter ? stageAfter.coreTime : null;
+    const reachedCore = coreTime && stageAfter.implemented && !player.coreTimeDoneToday && now >= coreTime.startHour;
+    const spentAll = player.spareHours <= 0;
+    // 体力ゼロ（強制睡眠・終了）は finalize 内で遷移するのでここでは触らない
+
+    // @spec SPEC-025 §6.2 自動モード中は S6 コアタイム画面を出さず、裏で処理して介入イベントだけ収集
+    if (reachedCore) {
+      const coreInterrupts = autoAdvanceCoreTime();  // S6 を裏で消化し、発見イベントを返す
+      interruptQueue.push(...coreInterrupts);
+    }
+
+    // 介入イベントがあれば順にモーダル表示
+    if (interruptQueue.length > 0) {
+      showInterruptQueue(interruptQueue, () => {
+        // 介入終了後の分岐：余剰なしなら日の終わりサマリへ、余剰ありなら次ターンへ
+        if (player.spareHours <= 0) {
+          stopAutoLoop();
+          goSleep();  // 自動モード中は goSleep→renderDaySummary に分岐
+        } else if (h.turnCount >= 5) {
+          stopAutoLoop();
+          showHighlight();
+        } else {
+          runAutoTurn();
+        }
+      });
+      return;
+    }
+
+    // 区切り判定
+    if (player.spareHours <= 0) {
+      stopAutoLoop();
+      goSleep();  // 自動モード中は goSleep→renderDaySummary
+      return;
+    }
+    if (h.turnCount >= 5) {
+      stopAutoLoop();
+      showHighlight();
+      return;
+    }
+    // 次のターンへ
+    _autoTimer = setTimeout(runAutoTurn, 350);
+  }, 650);
+}
+
+/**
+ * @spec SPEC-025 §6.2 自動モード中の S6 保育園を裏で消化する。
+ * renderCoreTime() は副作用で経験値や解禁を反映するが、画面遷移せずに実行する。
+ * @returns {Array} 発生した介入イベント（新解禁など）
+ */
+function autoAdvanceCoreTime() {
+  const stage = resolveLifeStage(player.age);
+  const coreTime = stage ? stage.coreTime : null;
+  if (!coreTime || !stage.implemented) return [];
+
+  const unlockedBefore = [...player.unlockedPlays];
+  // 時刻を startHour に揃えておく
+  if (player.clockHour + player.clockMinute / 60 < coreTime.startHour) {
+    player.clockHour = Math.floor(coreTime.startHour);
+    player.clockMinute = Math.round((coreTime.startHour % 1) * 60);
+  }
+  // renderCoreTime() は裏で呼び、画面には showScreen しない
+  renderCoreTime(stage);
+  // ハイライトバッファに発見を追記
+  const h = player._autoHighlight;
+  const ds = player._daySnapshot;
+  const interrupts = [];
+  const newUnlocks = player.unlockedPlays.filter((id) => !unlockedBefore.includes(id));
+  for (const id of newUnlocks) {
+    const p = PLAYS.find((x) => x.id === id);
+    if (!p) continue;
+    h.discoveries.push(`${p.icon} ${p.name}（${stage.label}）`);
+    if (ds) ds.discoveries.push(`${p.icon} ${p.name}（${stage.label}）`);
+    interrupts.push({
+      icon: p.icon,
+      title: `${stage.label}で発見！`,
+      body: `${p.name} を覚えたよ。遊びツリーに追加されました。`,
+    });
+  }
+  h.dayEnd = player.day;
+  return interrupts;
+}
+
+/**
+ * @spec SPEC-025 §6 描写フェーズをスキップして finalize と同じ結果反映だけを行う。
+ * 構造上は finalizePlay の再利用が難しいので、同等のロジックをコンパクトに再実装する。
+ */
+function autoFinalizePlay(play) {
+  pendingPlay = play;
+  pendingGain = null;
+  pendingEvent = null;
+
+  // 倍率計算
+  const skillBoost = skillBoostMultiplier(play);
+  const lowStamMul = lowStaminaMultiplier(play);
+  const gainBoost  = skillBoost * lowStamMul;
+
+  // 経験値計算
+  const gain = {};
+  for (const [k, v] of Object.entries(play.gain)) gain[k] = Math.round(v * gainBoost);
+  if (play.friendBonusPerPerson) {
+    const mainKey = majorGainCategory(play.gain) || "social";
+    const bonus = Math.round(play.friendBonusPerPerson * player.friends * gainBoost);
+    gain[mainKey] = (gain[mainKey] || 0) + bonus;
+  }
+
+  const mainCat = majorGainCategory(play.gain);
+  let passionGain = 3;
+  if (mainCat && player.lastPlayCategory === mainCat) {
+    passionGain += 2 + player.consecutiveCategoryCount;
+  }
+  passionGain = Math.floor(passionGain * lowStamMul);
+
+  // スキル経験値
+  const cats = play.categories || [];
+  const baseExpTotal = Object.values(play.gain).reduce((a, b) => a + b, 0);
+  const skillExpPerCategory = cats.length > 0
+    ? Math.round((baseExpTotal * gainBoost) / cats.length)
+    : 0;
+  for (const c of cats) {
+    ensureSkill(c);
+    player.skills[c].exp += skillExpPerCategory;
+    player.skills[c].lv = skillLvFromExp(player.skills[c].exp);
+  }
+
+  // 原体験反映
+  for (const [k, v] of Object.entries(gain)) {
+    player.exp[k] = (player.exp[k] || 0) + v;
+  }
+
+  // ステータス反映
+  player.stamina = Math.max(0, player.stamina - (play.staminaCost || 0));
+  player.money = Math.max(0, player.money - (play.moneyCost || 0));
+  player.passion += passionGain;
+
+  // 時間経過
+  const h = Math.floor(play.timeCost);
+  const m = Math.round((play.timeCost - h) * 60);
+  player.clockHour += h;
+  player.clockMinute += m;
+  if (player.clockMinute >= 60) { player.clockHour += 1; player.clockMinute -= 60; }
+  player.spareHours = Math.max(0, +(player.spareHours - play.timeCost).toFixed(1));
+  player.dailyPlays += 1;
+
+  // 没頭連続
+  if (mainCat === player.lastPlayCategory) {
+    player.consecutiveCategoryCount += 1;
+  } else {
+    player.consecutiveCategoryCount = 0;
+    player.lastPlayCategory = mainCat;
+  }
+
+  renderHUD();
+
+  // 体力ゼロ時は共通フローに乗せる（強制睡眠／強制終了）
+  if (player.stamina <= 0) {
+    stopAutoLoop();
+    handleStaminaDepleted();
+  }
+}
+
+function initAutoHighlightIfNeeded() {
+  const h = player._autoHighlight;
+  if (!h || h.turnCount === 0) {
+    // @spec SPEC-025 §7.2 既知スキル全体のスナップショット
+    const skillsSnapshot = {};
+    for (const c of Object.keys(player.skills)) {
+      skillsSnapshot[c] = { lv: player.skills[c].lv, exp: player.skills[c].exp };
+    }
+    player._autoHighlight = {
+      playsById: {},
+      skillsBefore: skillsSnapshot,
+      expBefore: { ...player.exp },
+      discoveries: [],
+      dayStart: player.day,
+      dayEnd: player.day,
+      turnCount: 0,
+    };
+  }
+}
+
+/**
+ * @spec SPEC-025 §7.1 日の終わりサマリ用スナップショット
+ * その日の起床時点（dailyPlays===0）で 1 回だけ撮る。
+ */
+function initDaySnapshotIfNeeded() {
+  const s = player._daySnapshot;
+  if (!s || s.dayAtStart !== player.day) {
+    // スキル全体のスナップショット
+    const skillsStart = {};
+    for (const c of Object.keys(player.skills)) {
+      skillsStart[c] = { lv: player.skills[c].lv, exp: player.skills[c].exp };
+    }
+    player._daySnapshot = {
+      dayAtStart: player.day,
+      expStart: { ...player.exp },
+      skillsStart,
+      playsById: {},
+      discoveries: [],
+      staminaStart: player.stamina,
+      friendsStart: player.friends,
+      moneyStart: player.money,
+      passionStart: player.passion,
+    };
+  }
+}
+
+/**
+ * @spec SPEC-025 §6 介入モーダル
+ */
+let _interruptQueue = [];
+let _interruptThen = null;
+function showInterruptQueue(queue, then) {
+  _interruptQueue = queue.slice();
+  _interruptThen = then;
+  showNextInterrupt();
+}
+function showNextInterrupt() {
+  if (_interruptQueue.length === 0) {
+    const cb = _interruptThen;
+    _interruptThen = null;
+    byId("interrupt-overlay").hidden = true;
+    if (cb) cb();
+    return;
+  }
+  const item = _interruptQueue.shift();
+  byId("interrupt-icon").textContent = item.icon;
+  byId("interrupt-title").textContent = item.title;
+  byId("interrupt-body").textContent = item.body;
+  byId("interrupt-overlay").hidden = false;
+}
+function closeInterrupt() {
+  showNextInterrupt();
+}
+
+/**
+ * @spec SPEC-025 §7, §9.4 ハイライト集約画面
+ */
+/**
+ * @screen S9 ウィークリーハイライト
+ * @spec SPEC-025 §7.2, §9.4
+ * 原体験・スキルを差分ハイライト付きゲージで描画。
+ */
+function showHighlight() {
+  const h = player._autoHighlight;
+  byId("highlight-range").textContent = `${player.age}歳 / ${h.dayStart}日目〜${h.dayEnd}日目`;
+
+  // 遊び回数
+  const playsEl = byId("highlight-plays");
+  const playRows = Object.entries(h.playsById)
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, n]) => {
+      const p = PLAYS.find((x) => x.id === id);
+      if (!p) return "";
+      return `<li><span>${p.icon} ${p.name}</span><b>×${n}</b></li>`;
+    }).join("");
+  playsEl.innerHTML = playRows || `<li><span>（なし）</span><b>-</b></li>`;
+
+  // 原体験ゲージ
+  const expCard   = byId("highlight-exp-card");
+  const expGroup  = byId("highlight-exp-gauges");
+  const expKeys = Object.keys(LABELS).filter((k) => (player.exp[k] || 0) !== (h.expBefore[k] || 0));
+  if (expKeys.length > 0) {
+    expCard.hidden = false;
+    expGroup.innerHTML = expKeys.map((k) => `<div id="hl-exp-${k}"></div>`).join("");
+    for (const k of expKeys) {
+      const b = h.expBefore[k] || 0;
+      const a = player.exp[k] || 0;
+      renderGaugeWithDelta(byId(`hl-exp-${k}`), {
+        label: LABELS[k],
+        beforeExp: b,
+        afterExp: a,
+        lv: levelFromExp(a),
+        lvUp: levelFromExp(a) > levelFromExp(b),
+        kind: "exp",
+        lvBaseExp: (l) => l * l * 10,
+      });
+    }
+  } else {
+    expCard.hidden = true;
+  }
+
+  // スキルゲージ（スナップショット未登録のスキルも対象）
+  const skillsCard  = byId("highlight-skills-card");
+  const skillsGroup = byId("highlight-skills");
+  const skillsBeforeMap = h.skillsBefore || {};
+  const changedCats = Object.keys(player.skills).filter((c) => {
+    const a = player.skills[c];
+    const b = skillsBeforeMap[c] || { lv: 1, exp: 0 };
+    return a && (a.exp > b.exp);
+  });
+  if (changedCats.length > 0) {
+    skillsCard.hidden = false;
+    skillsGroup.innerHTML = changedCats.map((c) => `
+      <div class="skill-entry">
+        <div class="skill-label">🏷 ${CATEGORIES[c]?.label || c}</div>
+        <div id="hl-skill-${c}"></div>
+      </div>
+    `).join("");
+    for (const c of changedCats) {
+      const b = skillsBeforeMap[c] || { lv: 1, exp: 0 };
+      const a = player.skills[c];
+      renderGaugeWithDelta(byId(`hl-skill-${c}`), {
+        label: "",
+        beforeExp: b.exp,
+        afterExp: a.exp,
+        lv: a.lv,
+        lvUp: a.lv > b.lv,
+        kind: "exp",
+        lvBaseExp: (lv) => (lv - 1) * (lv - 1) * 10,
+      });
+    }
+  } else {
+    skillsCard.hidden = true;
+  }
+
+  const discCard = byId("highlight-discoveries-card");
+  if (h.discoveries.length > 0) {
+    discCard.hidden = false;
+    byId("highlight-discoveries").innerHTML = h.discoveries.map((d) => `<li><span>${d}</span><b>覚えた！</b></li>`).join("");
+  } else {
+    discCard.hidden = true;
+  }
+
+  showScreen("screen-highlight");
+  // ハイライト表示したらバッファをリセットして次区間の開始地点を更新
+  player._autoHighlight = {
+    playsById: {},
+    skillsBefore: {},
+    expBefore: { ...player.exp },
+    discoveries: [],
+    dayStart: player.day,
+    dayEnd: player.day,
+    turnCount: 0,
+  };
+}
+
+/**
+ * @spec SPEC-025 §7.1.3 スキップ継続
+ * S10 画面から「週末まで」「明日の夜まで」を押したときの共通処理。
+ *  - _skipRemainingDays に残り日数をセット（0 以上）
+ *  - 直ちに sleep("normal") を呼んで翌朝へ進む。そこから自動ループが回る
+ *  - goSleep 側で _skipRemainingDays をデクリメントし、0 の時に S10 を見せる
+ */
+function skipToNextDaySummary(days) {
+  if (!player.autoMode) {
+    player.autoMode = true;  // 切替保険
+  }
+  // days 日進むが、この直後の 1 回は「今から夜までのスキップ」なので days-1 を残す
+  player._skipRemainingDays = Math.max(0, days - 1);
+  player._skipTarget = days >= 6 ? "weekend" : "tomorrow-night";
+  // 就寝 → 翌朝 → 自動ループ再開
+  sleep("normal");
+}
+
+/**
+ * @screen S10 日の終わりサマリ
+ * @spec SPEC-025 §7.1, §9.5
+ *
+ * 前日の起床時点のスナップショット（_daySnapshot）と現在値を比較して、
+ * 1 日の成長を差分ハイライト付きゲージで表示する。
+ * フッターは「週末までスキップ」「明日の夜までスキップ」「手動に切り替え」の 3 択。
+ */
+function renderDaySummary() {
+  const snap = player._daySnapshot || {};
+  const seasonLabel = SEASON_LABEL[player.season] || player.season;
+  byId("day-summary-range").textContent =
+    `${player.day}日目 / ${player.age}歳 / ${seasonLabel}`;
+
+  // 今日の遊び
+  const playsEl = byId("day-summary-plays");
+  const playRows = Object.entries(snap.playsById || {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, n]) => {
+      const p = PLAYS.find((x) => x.id === id);
+      if (!p) return "";
+      return `<li><span>${p.icon} ${p.name}</span><b>×${n}</b></li>`;
+    }).join("");
+  playsEl.innerHTML = playRows || `<li><span>（何もしなかった）</span><b>-</b></li>`;
+
+  // 原体験ゲージ
+  const expCard  = byId("day-summary-exp-card");
+  const expGroup = byId("day-summary-exp-gauges");
+  const expKeys = Object.keys(LABELS).filter((k) => {
+    const b = (snap.expStart || {})[k] || 0;
+    const a = player.exp[k] || 0;
+    return a !== b;
+  });
+  if (expKeys.length > 0) {
+    expCard.hidden = false;
+    expGroup.innerHTML = expKeys.map((k) => `<div id="ds-exp-${k}"></div>`).join("");
+    for (const k of expKeys) {
+      const b = (snap.expStart || {})[k] || 0;
+      const a = player.exp[k] || 0;
+      renderGaugeWithDelta(byId(`ds-exp-${k}`), {
+        label: LABELS[k],
+        beforeExp: b,
+        afterExp: a,
+        lv: levelFromExp(a),
+        lvUp: levelFromExp(a) > levelFromExp(b),
+        kind: "exp",
+        lvBaseExp: (l) => l * l * 10,
+      });
+    }
+  } else {
+    expCard.hidden = true;
+  }
+
+  // スキルゲージ（スナップショット未登録＝当日初のスキルも対象にする）
+  const skillsCard  = byId("day-summary-skills-card");
+  const skillsGroup = byId("day-summary-skill-gauges");
+  const skillsStart = snap.skillsStart || {};
+  const changedCats = Object.keys(player.skills).filter((c) => {
+    const a = player.skills[c];
+    const b = skillsStart[c] || { lv: 1, exp: 0 };
+    return a && (a.exp > b.exp);
+  });
+  if (changedCats.length > 0) {
+    skillsCard.hidden = false;
+    skillsGroup.innerHTML = changedCats.map((c) => `
+      <div class="skill-entry">
+        <div class="skill-label">🏷 ${CATEGORIES[c]?.label || c}</div>
+        <div id="ds-skill-${c}"></div>
+      </div>
+    `).join("");
+    for (const c of changedCats) {
+      const b = skillsStart[c] || { lv: 1, exp: 0 };
+      const a = player.skills[c];
+      renderGaugeWithDelta(byId(`ds-skill-${c}`), {
+        label: "",
+        beforeExp: b.exp,
+        afterExp: a.exp,
+        lv: a.lv,
+        lvUp: a.lv > b.lv,
+        kind: "exp",
+        lvBaseExp: (lv) => (lv - 1) * (lv - 1) * 10,
+      });
+    }
+  } else {
+    skillsCard.hidden = true;
+  }
+
+  // ステータス差分
+  const staminaB = snap.staminaStart ?? player.stamina;
+  const staminaA = player.stamina;
+  const statusRows = [
+    `<li><span>❤️ 体力</span><b>${Math.floor(staminaB)} / ${Math.floor(player.staminaCap)} → ${Math.floor(staminaA)} / ${Math.floor(player.staminaCap)}</b></li>`,
+    `<li><span>🔥 ジョウネツ</span><b class="up">${snap.passionStart ?? player.passion} → ${player.passion}</b></li>`,
+  ];
+  if ((snap.friendsStart ?? player.friends) !== player.friends) {
+    statusRows.push(`<li><span>👥 友人数</span><b class="up">${snap.friendsStart} → ${player.friends}</b></li>`);
+  }
+  byId("day-summary-status").innerHTML = statusRows.join("");
+
+  // 学んだこと
+  const discCard = byId("day-summary-discoveries-card");
+  const discoveries = (snap.discoveries || []);
+  if (discoveries.length > 0) {
+    discCard.hidden = false;
+    byId("day-summary-discoveries").innerHTML = discoveries.map((d) => `<li><span>${d}</span><b>覚えた！</b></li>`).join("");
+  } else {
+    discCard.hidden = true;
+  }
+}
+
+// =========================================================================
 // イベント配線
 // =========================================================================
 
@@ -2366,8 +3161,31 @@ document.addEventListener("click", (e) => {
       break;
     case "close-tree":
       // @spec docs/specs/SPEC-023-play-tree.md §5.1 S7 → S2
-      renderChooseScreen();
-      showScreen("screen-choose");
+      goChooseFromToday();
+      break;
+    case "confirm-passion":
+      // @spec SPEC-025 §5.3
+      confirmPassionProfile();
+      break;
+    case "continue-auto":
+      // @spec SPEC-025 §9.4 ハイライトから続行
+      goChooseFromToday();
+      break;
+    case "skip-to-tomorrow-night":
+      // @spec SPEC-025 §7.1.3 「明日の夜までスキップ」
+      skipToNextDaySummary(1);
+      break;
+    case "skip-to-weekend":
+      // @spec SPEC-025 §7.1.3 「週末までスキップ」（プロトでは 6 日連続）
+      skipToNextDaySummary(6);
+      break;
+    case "switch-to-manual":
+      // @spec SPEC-025 §5.5 / §7.1.3 手動に切替
+      player.autoMode = false;
+      player._skipRemainingDays = 0;
+      player._skipTarget = null;
+      toast("手動モードに切り替えました");
+      goChooseFromToday();
       break;
     case "goto-coretime":
       // @spec SPEC-003 §5.8 結果フェーズから「保育園へ行く」でコアタイムへ
@@ -2416,5 +3234,16 @@ player.staminaCap = player.staminaBaseCap + (player.staminaBonusCap || 0);
 player.stamina = Math.min(player.stamina, player.staminaCap);
 
 // @spec SPEC-002 §1.1 起動直後は S2 に直接出現（旧 S1 起床画面を経由しない）
+// @spec SPEC-025 §5.3 情熱プロファイル未選択ならまず S8 を表示
 renderHUD();
-goChooseFromToday();
+
+// 介入モーダルの閉じるボタンは dom-load 後に配線
+const _btnInterruptClose = byId("btn-interrupt-close");
+if (_btnInterruptClose) _btnInterruptClose.addEventListener("click", closeInterrupt);
+
+if (!player.passionProfileId) {
+  renderPassionProfileScreen();
+  showScreen("screen-passion-profile");
+} else {
+  goChooseFromToday();
+}
