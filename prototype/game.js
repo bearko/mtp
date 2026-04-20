@@ -407,6 +407,14 @@ let EVENTS              = DEFAULT_EVENTS;
 let NURSERY_DISCOVERIES = DEFAULT_NURSERY_DISCOVERIES;
 /** @spec SPEC-026 §5.2.1 チュートリアル専用の発見（絵本→滑り台→砂場） */
 let TUTORIAL_DISCOVERIES = [];
+/** @spec SPEC-047 §4 場所マスタ（locations.json から読み込み） */
+let LOCATIONS = [
+  { id: "home", name: "自宅", shortName: "自宅", icon: "🏠", type: "residential",
+    travelTime: 0, travelFare: 0, accessibleFromHome: true,
+    lifeStageTag: ["nursery","kindergarten","elementary","juniorhigh","highschool","university","worker","retirement"],
+    description: "自宅", specialBuffs: {},
+    parentalOutingWeekdayWeight: 40, parentalOutingWeekendWeight: 0, category: "always" },
+];
 
 /* =========================================================================
  * @spec SPEC-031 / SPEC-032 転生イントロのシーン定義とランダム名マスタ
@@ -477,11 +485,14 @@ let NAMES         = DEFAULT_NAMES;
  */
 async function loadMasters() {
   try {
-    const [cat, plays, evs] = await Promise.all([
+    const [cat, plays, evs, locs] = await Promise.all([
       fetch("./data/categories.json").then((r) => { if (!r.ok) throw new Error("categories " + r.status); return r.json(); }),
       fetch("./data/plays.json").then((r) => { if (!r.ok) throw new Error("plays " + r.status); return r.json(); }),
       fetch("./data/events.json").then((r) => { if (!r.ok) throw new Error("events " + r.status); return r.json(); }),
+      // @spec SPEC-047 §4.1 場所マスタ。失敗しても LOCATIONS = home だけで動くように耐性あり
+      fetch("./data/locations.json").then((r) => { if (!r.ok) throw new Error("locations " + r.status); return r.json(); }).catch((e) => { console.warn("[master] locations optional", e); return null; }),
     ]);
+    if (Array.isArray(locs) && locs.length > 0) LOCATIONS = locs;
     CATEGORIES = cat;
     PLAYS = plays;
     EVENTS = evs.filter((e) => e.scope === "random_play");
@@ -638,6 +649,14 @@ const DEFAULT_PLAYER = {
   _pendingWeeklyHighlight: false,
   /** @spec SPEC-025 §7.2.0 スキップ中に S9 経由 → 続けるで sleep に戻るフラグ */
   _skipAfterWeekly: false,
+  /** @spec SPEC-047 §4.3 現在地の場所 id */
+  location: "home",
+  /** @spec SPEC-047 §4.3 解禁済みの場所（現状は「親に連れて行ってもらった先」を記録） */
+  unlockedLocations: ["home", "near_park"],
+  /** @spec SPEC-047 §8.3 場所由来の持続バフ（期限付き） */
+  persistBuffs: [],
+  /** @spec SPEC-047 §7.3 今日の親遣い先（null なら自宅） */
+  _parentalOutingToday: null,
 };
 
 /**
@@ -725,6 +744,267 @@ function soyouGrade(value) {
   if (v >=  40) return "E";
   if (v >=  20) return "F";
   return "G";
+}
+
+/* =========================================================================
+ * @spec SPEC-047 §4 §5 §8 場所ヘルパ関数
+ * ========================================================================= */
+
+/** @return 現在の場所オブジェクト（なければ home） */
+function currentLocation() {
+  return LOCATIONS.find((l) => l.id === player.location) || LOCATIONS.find((l) => l.id === "home") || LOCATIONS[0];
+}
+
+/** 場所 id → 名前（id 不明なら id 自体を返す） */
+function locationName(id) {
+  const l = LOCATIONS.find((x) => x.id === id);
+  return l ? l.name : id;
+}
+
+/** 場所 id → アイコン */
+function locationIcon(id) {
+  const l = LOCATIONS.find((x) => x.id === id);
+  return l ? l.icon : "📍";
+}
+
+/**
+ * 重み付きランダム抽選
+ * @param pool [{ weight キー: number, ...}]
+ * @param weightKey 重みフィールド名
+ */
+function weightedRandomLocation(pool, weightKey) {
+  if (!pool || pool.length === 0) return null;
+  const total = pool.reduce((sum, p) => sum + (p[weightKey] || 0), 0);
+  if (total <= 0) return pool[0];
+  let r = Math.random() * total;
+  for (const p of pool) {
+    r -= (p[weightKey] || 0);
+    if (r <= 0) return p;
+  }
+  return pool[pool.length - 1];
+}
+
+/** @spec SPEC-047 §8.1 保育園期 平日の親遣い抽選 */
+function pickWeekdayParentalOuting() {
+  const pool = LOCATIONS.filter((l) =>
+    l.parentalOutingWeekdayWeight > 0 &&
+    (l.lifeStageTag || []).includes("nursery")
+  );
+  return weightedRandomLocation(pool, "parentalOutingWeekdayWeight");
+}
+
+/** @spec SPEC-047 §8.2 保育園期 土日祝の親遣い抽選 */
+function pickWeekendParentalOuting() {
+  if (Math.random() < 0.40) {
+    return LOCATIONS.find((l) => l.id === "home");
+  }
+  const pool = LOCATIONS.filter((l) =>
+    l.parentalOutingWeekendWeight > 0 &&
+    (l.lifeStageTag || []).includes("nursery") &&
+    (!l.seasonWindow || l.seasonWindow.includes(player.season))
+  );
+  return weightedRandomLocation(pool, "parentalOutingWeekendWeight") || LOCATIONS.find((l) => l.id === "home");
+}
+
+/** @spec SPEC-047 §8.3 持続バフの期限切れを掃除 */
+function cleanupPersistBuffs() {
+  if (!Array.isArray(player.persistBuffs)) { player.persistBuffs = []; return; }
+  player.persistBuffs = player.persistBuffs.filter((b) => (b.untilDay || 0) >= player.day);
+}
+
+/** @spec SPEC-047 §8.3 持続バフからこのプレイの加算倍率を算出 */
+function applyPersistBuffsToGain(play) {
+  cleanupPersistBuffs();
+  let mul = 1.0;
+  const cats = play.categories || [];
+  for (const buff of player.persistBuffs || []) {
+    if (buff.type === "category" && cats.includes(buff.category)) {
+      mul *= buff.multiplier || 1.0;
+    }
+  }
+  return mul;
+}
+
+/**
+ * @spec SPEC-047 §7 §8 起床時の場所解決。
+ *   保育園期：親遣い抽選（平日/土日）で _parentalOutingToday を設定。
+ *     - 家以外の場合は移動演出に入る前提で、location はまだ home のまま。
+ *     - すぐに pushTravelFlow() で画面遷移を開始する。
+ *   幼稚園以降は将来拡張。
+ */
+function maybeResolveMorningLocation() {
+  player._parentalOutingToday = null;
+  const stage = resolveLifeStage(player.age);
+  if (!stage || stage.id !== "nursery") {
+    // 保育園期以外は、場所は home に固定（幼稚園以降で改修予定）
+    player.location = "home";
+    return;
+  }
+  // phase0 は初週の世界観演出を邪魔しない
+  if (tutorialPhase(player.day) === "phase0") {
+    player.location = "home";
+    return;
+  }
+  const dow = fakeDateForDay(player.day).getUTCDay(); // 0=日, 6=土
+  const weekend = (dow === 0 || dow === 6);
+  const picked = weekend ? pickWeekendParentalOuting() : pickWeekdayParentalOuting();
+  if (!picked || picked.id === "home") {
+    player.location = "home";
+    return;
+  }
+  // 家以外が選ばれた → 今日はそこに親が連れて行く
+  player._parentalOutingToday = picked.id;
+  player.location = "home";  // 移動前は家にいる状態
+  // 解禁済みに追加（マップ画面で視認できるように）
+  if (!player.unlockedLocations.includes(picked.id)) {
+    player.unlockedLocations = [...player.unlockedLocations, picked.id];
+  }
+}
+
+/**
+ * @spec SPEC-047 §7.3 §7.4 移動開始（保育園期の親遣い移動）
+ *   goChooseFromToday の代わりに、親遣いが発動していれば移動演出に遷移する。
+ */
+function maybeStartParentalOutingTravel() {
+  const locId = player._parentalOutingToday;
+  if (!locId) return false;
+  const loc = LOCATIONS.find((l) => l.id === locId);
+  if (!loc) return false;
+  // 既にその場所に到着済みなら何もしない（再突入防止）
+  if (player.location === locId) return false;
+  // 移動演出へ
+  startTravelAnimation(loc, /* isParental */ true);
+  return true;
+}
+
+/** @spec SPEC-047 §7.3 移動演出画面（S15）を開始 */
+function startTravelAnimation(targetLoc, isParental) {
+  player._pendingTravelTarget = targetLoc.id;
+  player._pendingTravelIsParental = !!isParental;
+  renderTravelAnimation(targetLoc, isParental);
+  showScreen("screen-travel");
+  // 演出は 1.6 秒、その後自動的に移動結果画面へ
+  if (_travelTimer) clearTimeout(_travelTimer);
+  _travelTimer = setTimeout(() => {
+    completeTravel(targetLoc, isParental);
+  }, 1600);
+}
+
+let _travelTimer = null;
+
+/** 移動完了：location を切り替えて移動結果画面（S16）へ */
+function completeTravel(targetLoc, isParental) {
+  // 時間を進める（travelTime 時間）
+  const tt = targetLoc.travelTime || 0;
+  if (tt > 0) {
+    const h = Math.floor(tt);
+    const m = Math.round((tt - h) * 60);
+    player.clockHour += h;
+    player.clockMinute += m;
+    if (player.clockMinute >= 60) { player.clockHour += Math.floor(player.clockMinute / 60); player.clockMinute %= 60; }
+    player.spareHours = Math.max(0, +(player.spareHours - tt).toFixed(2));
+  }
+  // 運賃（保育園期は親負担）
+  if (!isParental && (targetLoc.travelFare || 0) > 0) {
+    player.money = Math.max(0, player.money - targetLoc.travelFare);
+  }
+  // 現在地を更新
+  player.location = targetLoc.id;
+  if (!player.unlockedLocations.includes(targetLoc.id)) {
+    player.unlockedLocations.push(targetLoc.id);
+  }
+  renderHUD();
+  renderTravelResult(targetLoc, isParental);
+  showScreen("screen-travel-result");
+}
+
+/** @spec SPEC-047 §7.3 移動演出画面の描画 */
+function renderTravelAnimation(targetLoc, isParental) {
+  const root = byId("screen-travel");
+  if (!root) return;
+  byId("travel-icon").textContent = targetLoc.icon || "🚶";
+  byId("travel-title").textContent = isParental
+    ? `${targetLoc.icon} ${targetLoc.name}にむかっている…`
+    : `🚶 ${targetLoc.name}に向かう…`;
+  byId("travel-subtitle").textContent = isParental
+    ? `おとうさん・おかあさんと一緒に（${Math.round(targetLoc.travelTime * 60)}分）`
+    : `徒歩・交通機関で移動中（${Math.round(targetLoc.travelTime * 60)}分）`;
+}
+
+/** @spec SPEC-047 §7.3 移動結果画面の描画 */
+function renderTravelResult(targetLoc, isParental) {
+  byId("travel-result-icon").textContent = targetLoc.icon || "📍";
+  byId("travel-result-title").textContent = `${targetLoc.name}に来た！`;
+  byId("travel-result-desc").textContent = targetLoc.description || "";
+  // fullday_trip の場合は「1日すごす」、通常は「遊ぶ」ボタン
+  const btn = byId("btn-travel-result-next");
+  if (targetLoc.category === "fullday_trip") {
+    btn.textContent = `1日すごす`;
+    btn.dataset.mode = "fullday";
+    btn.dataset.locId = targetLoc.id;
+  } else {
+    btn.textContent = "遊ぶ";
+    btn.dataset.mode = "choose";
+    btn.dataset.locId = targetLoc.id;
+  }
+}
+
+/** 「遊ぶ／1日すごす」ボタンクリック時の処理 */
+function onTravelResultNext() {
+  const btn = byId("btn-travel-result-next");
+  const mode = btn.dataset.mode;
+  const locId = btn.dataset.locId;
+  const loc = LOCATIONS.find((l) => l.id === locId);
+  if (!loc) { goChooseFromToday(); return; }
+  if (mode === "fullday") {
+    runFullDayEvent(loc);
+  } else {
+    // 通常場所：遊び選択画面へ
+    renderChooseScreen();
+    showScreen("screen-choose");
+  }
+}
+
+/**
+ * @spec SPEC-047 §7.4 土日祝の fullday_trip 発動：
+ *   その場所の soyouGain を一括加算し、persistBuff を記録、直接 S10 に遷移する。
+ */
+function runFullDayEvent(targetLoc) {
+  const buffs = targetLoc.specialBuffs || {};
+  const gain = buffs.soyouGain || {};
+  // 素養加算（旧キー自動変換）
+  for (const [k, v] of Object.entries(normalizeGainToSoyou(gain))) {
+    if (SOYOU_KEYS.includes(k)) {
+      player.soyou[k] = (player.soyou[k] || 0) + v;
+    }
+  }
+  // 日サマリのスナップショットに反映
+  if (player._daySnapshot) {
+    player._daySnapshot.playsById = player._daySnapshot.playsById || {};
+    player._daySnapshot.playsById[`fullday_${targetLoc.id}`] = 1;
+    player._daySnapshot.discoveries = player._daySnapshot.discoveries || [];
+    player._daySnapshot.discoveries.push(`${targetLoc.icon} ${targetLoc.name}で 1 日過ごした`);
+  }
+  // 持続バフ
+  if (buffs.persistBuff) {
+    player.persistBuffs = player.persistBuffs || [];
+    player.persistBuffs.push({
+      type: "category",
+      category: buffs.persistBuff.category,
+      multiplier: buffs.persistBuff.multiplier || 1.0,
+      untilDay: player.day + (buffs.persistBuff.durationDays || 30),
+      sourceLocationId: targetLoc.id,
+    });
+  }
+  // 時間は夕方まで一気に進める
+  player.clockHour = 18;
+  player.clockMinute = 0;
+  player.spareHours = 0;
+  player.location = "home"; // 帰宅
+  toast(`${targetLoc.icon} ${targetLoc.name}で 1 日過ごした！`, 2400);
+  // 日サマリへ
+  renderDaySummary();
+  showScreen("screen-day-summary");
 }
 
 function installSoyouAliases(p) {
@@ -1022,6 +1302,12 @@ function renderHUD() {
     const g = soyouGrade(player.soyou.passion);
     passionGradeEl.textContent = g;
     passionGradeEl.className = "grade-" + g;
+  }
+  // @spec SPEC-047 §6 HUD 右エリアに場所表示（情熱表示は素養カードに内包されているので廃止）
+  const locEl = byId("hud-location");
+  if (locEl) {
+    const loc = currentLocation();
+    locEl.innerHTML = `${loc.icon || "📍"} <span>${loc.shortName || loc.name}</span>`;
   }
 }
 
@@ -1744,6 +2030,17 @@ function isPlayAvailable(play) {
     return { ok: false, reasons: ["まだ知らない遊び"], isHidden: true };
   }
 
+  // @spec SPEC-047 §5.1 場所フィルタ：この遊びが現在地でできるか
+  if (Array.isArray(play.locations) && play.locations.length > 0) {
+    if (!play.locations.includes(player.location)) {
+      return {
+        ok: false,
+        reasons: [`ここ（${locationName(player.location)}）では遊べない`],
+        isHidden: true,
+      };
+    }
+  }
+
   // v3: 体力不足・時間不足以外のロック条件は isHidden=true でドック非表示
   // @spec SPEC-002 §5.9 低体力・低時間プレイ（v2）：
   //   体力不足 or 時間不足でも遊べるようにする。経験値は min(体力倍率, 時間倍率) で割る。
@@ -2090,8 +2387,10 @@ function finalizePlay() {
   // ---- ①' 熟練ブースト・低体力倍率を算出（SPEC-024 §5.4 / SPEC-002 §5.9）----
   const skillBoost   = skillBoostMultiplier(play);
   const lowStamMul   = lowStaminaMultiplier(play);
-  // 2 つを合成して経験値系に掛ける基本倍率
-  const gainBoost    = skillBoost * lowStamMul;
+  // @spec SPEC-047 §8.3 場所由来の持続バフ（博物館 → 読書 +20% など）
+  const locBuff      = applyPersistBuffsToGain(play);
+  // 3 つを合成して経験値系に掛ける基本倍率
+  const gainBoost    = skillBoost * lowStamMul * locBuff;
 
   // ---- ① 獲得経験値の計算（SPEC-033 §5 旧キー自動変換）----
   const gain = {};
@@ -2564,6 +2863,9 @@ function goChooseFromToday() {
   //   起床時に 1 回だけ初期化する（auto モードの runAutoTurn と同じタイミング）。
   initDaySnapshotIfNeeded();
   initAutoHighlightIfNeeded();
+
+  // @spec SPEC-047 §7 親遣いの移動演出が発動する日はここで画面遷移を引き受ける
+  if (maybeStartParentalOutingTravel()) return;
 
   const stage = resolveLifeStage(player.age);
   const coreTime = getActiveCoreTime();
@@ -3120,6 +3422,12 @@ function nextDay(sleepMode) {
   if (sickness) toast("朝から体調がすぐれない…（余剰時間 -2h）", 2400);
   else if (!sched && sleepMode === "latenight") toast("夜更かしで生活リズムが乱れた…");
   else if (!sched && sleepMode === "early") toast("早寝でリズム回復！");
+
+  // @spec SPEC-047 §7 §8 保育園期の親遣い抽選（起床時）
+  //   - 平日：pickWeekdayParentalOuting で家・近くの公園・大きな公園・児童館・図書館から重み抽選
+  //   - 土日祝：pickWeekendParentalOuting で 40%家／60%遠出
+  //   - phase0（初週）は安定運用のため常に自宅
+  maybeResolveMorningLocation();
 
   // @spec SPEC-002 §1.1 翌日も S2 に直行（起床ヘッダーで状態を表示）
   renderHUD();
@@ -4028,6 +4336,10 @@ document.addEventListener("click", (e) => {
       // @spec SPEC-025 §7.2.0 週境界なら次に週末ハイライトを挟む
       if (consumeWeeklyHighlightIfPending()) { /* S9 を表示中 */ }
       else { sleep("normal"); }
+      break;
+    case "travel-result-next":
+      // @spec SPEC-047 §7.3 §7.4 移動結果から次画面（通常は S2／fullday なら S10）
+      onTravelResultNext();
       break;
     case "switch-to-manual":
       // @spec SPEC-025 §5.5 / §7.1.3 手動に切替
