@@ -36,6 +36,9 @@
 | [SPEC-036](./SPEC-036-testing.md) | 自動テスト戦略（単体 / 結合 / シナリオ） | Active | `tests/` 全体 / `tests/run.sh` / `tests/lib/assert.js` | 2026-04-19 |
 | [SPEC-047](./SPEC-047-location-map.md) | 場所・マップシステム（保育園の親遣い移動／遊びの場所フィルタ／持続バフ） | Active | `prototype/data/locations.json` / `prototype/index.html` #hud-location, #screen-travel, #screen-travel-result / `prototype/game.js` LOCATIONS, player.location, startTravelAnimation, runFullDayEvent | 2026-04-19 |
 | [SPEC-048](./SPEC-048-design-review.md) | ゲームデザインレビュー（プランナー視点の改善提案・Tier S/A/B/C） | Review | 叩き台文書のみ、実装は分岐 SPEC で | 2026-04-19 |
+| [SPEC-049](./SPEC-049-mylife-benchmark.md) | パワプロ『マイライフ』分析レポート + 応用案 7 件 | Research | 調査レポート | 2026-04-19 |
+| [SPEC-050](./SPEC-050-annual-mission.md) | 年間ミッション & 年度末両親面談（マイライフ応用案 B+C） | Draft | `prototype/data/missions.json` / `prototype/game.js` annualMissions / #screen-parental-meeting | 2026-04-19 |
+| [SPEC-051](./SPEC-051-profile-screen.md) | プロファイル画面（ミッション/称号/ハマり/記録を一元表示、応用案 D+F） | Draft | `prototype/index.html` #screen-profile / `prototype/game.js` renderProfileScreen, player.titles | 2026-04-19 |
 
 ## ライフステージ別コアタイム
 
