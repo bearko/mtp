@@ -46,11 +46,17 @@
           </div>
         </div>
       </div>
-      <!-- 右エリア：所持金・友人・情熱 -->
+      <!-- 右エリア：所持金・友人・場所 -->
       <div class="hud-col hud-col-right">
         <div class="hud-money-row" id="hud-money-row">💰 <span id="hud-money">0</span></div>
         <div class="hud-friends-row" title="友人数">👥 <span id="hud-friends">2</span></div>
-        <div class="hud-passion-row" title="情熱（旧ジョウネツ）">🔥 <span id="hud-passion-grade">G</span><small>(<span id="hud-passion">0</span>)</small></div>
+        <!--
+          @spec SPEC-047 §6 現在地を表示（従来の情熱表示を置き換え）
+          情熱（passion）は素養カードに内包されているので冗長のため廃止。
+        -->
+        <div class="hud-location" id="hud-location" title="今いる場所">🏠 <span>自宅</span></div>
+        <!-- 旧情熱表示：互換のため DOM だけ残して hidden -->
+        <div class="hud-passion-row" id="hud-passion-row" title="情熱（旧ジョウネツ）" hidden>🔥 <span id="hud-passion-grade">G</span><small>(<span id="hud-passion">0</span>)</small></div>
       </div>
     </header>
 
@@ -150,6 +156,36 @@
       下部のドックでアイコンをタップすると、上部プレビューに詳細が出る。
       「遊ぶ」ボタン or 同じアイコン再タップで確定して S3 に遷移。
     -->
+
+    <!--
+      @screen S15 移動演出画面
+      @spec   docs/specs/SPEC-047-location-map.md §7.3
+      保育園期は親遣い抽選の結果、自宅以外が選ばれたときに起床直後に挿入される。
+    -->
+    <section class="screen" id="screen-travel">
+      <div class="scene travel-scene">
+        <div class="travel-art" id="travel-icon">🚗</div>
+        <h2 class="scene-title" id="travel-title">向かっている…</h2>
+        <p class="scene-sub" id="travel-subtitle">おとうさんとおかあさんと一緒に</p>
+        <div class="travel-dots"><span></span><span></span><span></span></div>
+      </div>
+    </section>
+
+    <!--
+      @screen S16 移動結果画面
+      @spec   docs/specs/SPEC-047-location-map.md §7.3
+    -->
+    <section class="screen" id="screen-travel-result">
+      <div class="scene travel-result-scene">
+        <div class="travel-result-art" id="travel-result-icon">📍</div>
+        <h2 class="scene-title" id="travel-result-title">着いた！</h2>
+        <p class="scene-sub" id="travel-result-desc">遊べる場所に到着した。</p>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-primary btn-wide" id="btn-travel-result-next" data-action="travel-result-next">遊ぶ</button>
+      </footer>
+    </section>
+
     <section class="screen" id="screen-choose">
       <!--
         @spec SPEC-034 §5.1 §5.2  画面中央は素養カード 5 枚と turn-hint のみ

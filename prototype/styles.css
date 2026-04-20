@@ -2026,3 +2026,89 @@ body {
 .skill-line-effect .pct-arrow { color: #3aa85b; margin: 0 3px; }
 .skill-line.is-new { background: rgba(255, 220, 80, 0.1); border-radius: 6px; }
 .skill-line.is-new .skill-line-name::before { content: "✨ "; }
+
+/* ==========================================================================
+   @spec SPEC-047 §6 HUD 場所表示
+   ========================================================================== */
+.hud-location {
+  font-size: 11px;
+  color: #d7dedb;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 1px;
+}
+.hud-location span {
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   @spec SPEC-047 §7.3 移動演出画面（S15）
+   ========================================================================== */
+#screen-travel {
+  background: linear-gradient(180deg, #78ccf5 0%, #a6e1ff 100%);
+}
+.travel-scene {
+  min-height: 80dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 20px;
+}
+.travel-art {
+  font-size: 96px;
+  animation: travel-move 1.2s ease-in-out infinite;
+}
+@keyframes travel-move {
+  0%   { transform: translateX(-30px); }
+  50%  { transform: translateX(30px); }
+  100% { transform: translateX(-30px); }
+}
+.travel-dots {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.travel-dots span {
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  animation: travel-blink 0.9s infinite;
+}
+.travel-dots span:nth-child(2) { animation-delay: 0.3s; }
+.travel-dots span:nth-child(3) { animation-delay: 0.6s; }
+@keyframes travel-blink {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50%      { opacity: 1.0; transform: scale(1.15); }
+}
+
+/* ==========================================================================
+   @spec SPEC-047 §7.3 移動結果画面（S16）
+   ========================================================================== */
+#screen-travel-result {
+  background: linear-gradient(180deg, #f6f1e2 0%, #e9ddbb 100%);
+}
+.travel-result-scene {
+  min-height: 75dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  gap: 16px;
+}
+.travel-result-art {
+  font-size: 120px;
+  animation: travel-result-pop 0.7s ease-out;
+}
+@keyframes travel-result-pop {
+  0%   { transform: scale(0.2); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1.0); }
+}

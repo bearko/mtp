@@ -25,7 +25,13 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "絵本の時間、最後まで静かに聞けました。とくにわんわんが出てくる場面を気に入っていたようです。",
-    "renrakuchoParent": "寝る前に絵本をせがまれ、同じページを何度も開いては笑っていました。"
+    "renrakuchoParent": "寝る前に絵本をせがまれ、同じページを何度も開いては笑っていました。",
+    "locations": [
+      "home",
+      "library",
+      "children_hall",
+      "grandparents_house"
+    ]
   },
   {
     "id": "slide",
@@ -52,7 +58,11 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "滑り台に夢中でした。お兄さんの真似をして足から滑ろうと挑戦していました☺",
-    "renrakuchoParent": "帰り道で公園を見つけると、指をさして滑り台アピールをしていました。"
+    "renrakuchoParent": "帰り道で公園を見つけると、指をさして滑り台アピールをしていました。",
+    "locations": [
+      "near_park",
+      "big_park"
+    ]
   },
   {
     "id": "sandbox",
@@ -85,7 +95,11 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "公園でお砂場遊びをしました☺スコップを使って上手に穴を掘っていました。夢中になっていたのでお家でも連れて行ってあげてください♪",
-    "renrakuchoParent": "服が砂だらけで帰ってきましたが、とても満足そうな顔でした。"
+    "renrakuchoParent": "服が砂だらけで帰ってきましたが、とても満足そうな顔でした。",
+    "locations": [
+      "near_park",
+      "big_park"
+    ]
   },
   {
     "id": "clay",
@@ -111,7 +125,12 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "粘土でにょろにょろの長いものを作っていました。先生に見せて嬉しそうでした。",
-    "renrakuchoParent": "手先が器用になってきました。小さなものをつまむ動作がスムーズです。"
+    "renrakuchoParent": "手先が器用になってきました。小さなものをつまむ動作がスムーズです。",
+    "locations": [
+      "home",
+      "children_hall",
+      "grandparents_house"
+    ]
   },
   {
     "id": "trampoline",
@@ -136,7 +155,12 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "トランポリンで上手にバランスを取れるようになってきました。",
-    "renrakuchoParent": "リビングでソファを跳ねる癖がついてしまいました…。"
+    "renrakuchoParent": "リビングでソファを跳ねる癖がついてしまいました…。",
+    "locations": [
+      "near_park",
+      "big_park",
+      "home"
+    ]
   },
   {
     "id": "snow",
@@ -166,7 +190,12 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "冷たい雪に最初は驚いていましたが、気づけば雪だるまを転がしていました。",
-    "renrakuchoParent": "手袋を脱ぎたがらず家でもはめていました。"
+    "renrakuchoParent": "手袋を脱ぎたがらず家でもはめていました。",
+    "locations": [
+      "near_park",
+      "big_park",
+      "home"
+    ]
   },
   {
     "id": "pool",
@@ -195,7 +224,12 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "プールの時間、はじめは足だけでしたが最後はお腹まで入っていました。",
-    "renrakuchoParent": "お風呂で顔に水をかけても平気になってきました。"
+    "renrakuchoParent": "お風呂で顔に水をかけても平気になってきました。",
+    "locations": [
+      "near_park",
+      "big_park",
+      "home"
+    ]
   },
   {
     "id": "tag",
@@ -223,7 +257,12 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "お友達と追いかけっこをして満面の笑み。転んでも泣かずに立ち上がっていました。",
-    "renrakuchoParent": "走り回ると転ぶのですが、すぐ起き上がれるようになってきました。"
+    "renrakuchoParent": "走り回ると転ぶのですが、すぐ起き上がれるようになってきました。",
+    "locations": [
+      "near_park",
+      "big_park",
+      "home"
+    ]
   },
   {
     "id": "playhouse",
@@ -253,7 +292,12 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "おままごとで「どうぞ」「ありがとう」のやり取りを楽しんでいました。",
-    "renrakuchoParent": "家でもぬいぐるみ相手にご飯をあげるしぐさをしています。"
+    "renrakuchoParent": "家でもぬいぐるみ相手にご飯をあげるしぐさをしています。",
+    "locations": [
+      "home",
+      "children_hall",
+      "grandparents_house"
+    ]
   },
   {
     "id": "bughunt",
@@ -283,7 +327,10 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "園庭でバッタを見つけて、しばらく観察していました。",
-    "renrakuchoParent": "散歩中も石をひっくり返してダンゴムシを探すのが日課です。"
+    "renrakuchoParent": "散歩中も石をひっくり返してダンゴムシを探すのが日課です。",
+    "locations": [
+      "home"
+    ]
   },
   {
     "id": "big_slide",
@@ -312,7 +359,10 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "大きい滑り台にも挑戦できました！順番を守って並べてすごいです。",
-    "renrakuchoParent": "「もっと大きいすべりだい行く！」と主張するようになりました。"
+    "renrakuchoParent": "「もっと大きいすべりだい行く！」と主張するようになりました。",
+    "locations": [
+      "big_park"
+    ]
   },
   {
     "id": "blocks",
@@ -339,7 +389,11 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "ブロックを高く積んで集中していました。倒しては笑っていました。",
-    "renrakuchoParent": "リビングが常にブロックだらけで、踏むたび悶絶しています。"
+    "renrakuchoParent": "リビングが常にブロックだらけで、踏むたび悶絶しています。",
+    "locations": [
+      "home",
+      "children_hall"
+    ]
   },
   {
     "id": "song",
@@ -367,7 +421,12 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "『あたま・かた・ひざ・ぽん』で体を大きく動かせるようになりました。",
-    "renrakuchoParent": "お風呂の中で一人で歌っているのがかわいいです。"
+    "renrakuchoParent": "お風呂の中で一人で歌っているのがかわいいです。",
+    "locations": [
+      "home",
+      "children_hall",
+      "grandparents_house"
+    ]
   },
   {
     "id": "drawing",
@@ -395,7 +454,12 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "クレヨンを握って大きく腕を動かして描いていました。",
-    "renrakuchoParent": "壁に絵を描かれて心臓が止まりそうになりました…。"
+    "renrakuchoParent": "壁に絵を描かれて心臓が止まりそうになりました…。",
+    "locations": [
+      "home",
+      "children_hall",
+      "grandparents_house"
+    ]
   },
   {
     "id": "soap_bubble",
@@ -428,7 +492,10 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "シャボン玉に目を輝かせ、追いかけて転んでも笑顔でした。",
-    "renrakuchoParent": "帰り道も『ぶくぶく、ぶくぶく』と呟きながら歩いていました。"
+    "renrakuchoParent": "帰り道も『ぶくぶく、ぶくぶく』と呟きながら歩いていました。",
+    "locations": [
+      "home"
+    ]
   },
   {
     "id": "tricycle",
@@ -455,7 +522,10 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "三輪車をこぐのが上手になってきました。コースを外れずに走れました。",
-    "renrakuchoParent": "お散歩のときも自分で三輪車を押してついてきます。"
+    "renrakuchoParent": "お散歩のときも自分で三輪車を押してついてきます。",
+    "locations": [
+      "big_park"
+    ]
   },
   {
     "id": "ball_play",
@@ -482,7 +552,10 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "ボールをお友達と転がしあいっこしていました。",
-    "renrakuchoParent": "リビングでボール蹴りにハマり、花瓶が危険です。"
+    "renrakuchoParent": "リビングでボール蹴りにハマり、花瓶が危険です。",
+    "locations": [
+      "big_park"
+    ]
   },
   {
     "id": "water_balloon",
@@ -511,7 +584,12 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "水風船に大喜び。ずぶ濡れになって笑っていました。",
-    "renrakuchoParent": "水で遊んだあとは決まってぐっすり昼寝します。"
+    "renrakuchoParent": "水で遊んだあとは決まってぐっすり昼寝します。",
+    "locations": [
+      "near_park",
+      "big_park",
+      "home"
+    ]
   },
   {
     "id": "puzzle",
@@ -539,7 +617,13 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "パズルを最後まで一人で完成させられました！",
-    "renrakuchoParent": "同じパズルを何度もやりたがります。"
+    "renrakuchoParent": "同じパズルを何度もやりたがります。",
+    "locations": [
+      "home",
+      "library",
+      "children_hall",
+      "grandparents_house"
+    ]
   },
   {
     "id": "leaf_hunt",
@@ -569,7 +653,12 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "きれいな落ち葉を集めて、どんぐりと一緒に袋に入れていました。",
-    "renrakuchoParent": "ポケットからどんぐりが出てきて洗濯機に入りかけました。"
+    "renrakuchoParent": "ポケットからどんぐりが出てきて洗濯機に入りかけました。",
+    "locations": [
+      "home",
+      "children_hall",
+      "grandparents_house"
+    ]
   },
   {
     "id": "picnic",
@@ -606,6 +695,9 @@
     ],
     "lifeStageTag": "nursery",
     "renrakuchoTeacher": "大きなおにぎりを上手に両手で持って食べていました。",
-    "renrakuchoParent": "外で食べると野菜も食べてくれるので、助かっています。"
+    "renrakuchoParent": "外で食べると野菜も食べてくれるので、助かっています。",
+    "locations": [
+      "home"
+    ]
   }
 ]

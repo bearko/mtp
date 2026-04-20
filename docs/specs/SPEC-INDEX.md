@@ -34,6 +34,7 @@
 | [SPEC-034](./SPEC-034-s2-hud-redesign.md) | S2 遊び選択画面リデザイン（3エリアHUD + 素養カード + ゴーストプレビュー） | Active | `prototype/index.html` #hud, #screen-choose / `prototype/game.js` renderHUD, renderChooseScreen, renderPlayPreview / `prototype/styles.css` .hud-*, .soyou-card | 2026-04-19 |
 | [SPEC-035](./SPEC-035-result-summary-ui.md) | 結果画面・サマリ画面の UI 統一（素養カード流用・スキル行・ステータスカット・連絡帳ファーストビュー） | Active | `prototype/index.html` #screen-playing, #screen-day-summary, #screen-highlight / `prototype/game.js` renderSoyouResultList, renderSkillLines / `prototype/styles.css` .soyou-result-*, .skill-lines | 2026-04-19 |
 | [SPEC-036](./SPEC-036-testing.md) | 自動テスト戦略（単体 / 結合 / シナリオ） | Active | `tests/` 全体 / `tests/run.sh` / `tests/lib/assert.js` | 2026-04-19 |
+| [SPEC-047](./SPEC-047-location-map.md) | 場所・マップシステム（保育園の親遣い移動／遊びの場所フィルタ／持続バフ） | Active | `prototype/data/locations.json` / `prototype/index.html` #hud-location, #screen-travel, #screen-travel-result / `prototype/game.js` LOCATIONS, player.location, startTravelAnimation, runFullDayEvent | 2026-04-19 |
 
 ## ライフステージ別コアタイム
 
