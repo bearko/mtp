@@ -657,6 +657,8 @@ const DEFAULT_PLAYER = {
   persistBuffs: [],
   /** @spec SPEC-047 §7.3 今日の親遣い先（null なら自宅） */
   _parentalOutingToday: null,
+  /** @spec SPEC-047 §7.3 スキップの到達日。この日までは親遣い抽選を抑制。0 ならスキップなし */
+  _skipTargetDay: 0,
 };
 
 /**
@@ -826,14 +828,30 @@ function applyPersistBuffsToGain(play) {
 }
 
 /**
- * @spec SPEC-047 §7 §8 起床時の場所解決。
+ * @spec SPEC-047 §7 §8 / SPEC-025 §7.1.3 起床時の場所解決。
  *   保育園期：親遣い抽選（平日/土日）で _parentalOutingToday を設定。
  *     - 家以外の場合は移動演出に入る前提で、location はまだ home のまま。
  *     - すぐに pushTravelFlow() で画面遷移を開始する。
  *   幼稚園以降は将来拡張。
+ *
+ *   【スキップ中の扱い（SPEC-025 §7.1.3 v2）】
+ *     - _skipRemainingDays > 0 の間は親遣い抽選を一切行わない。location は home に固定。
+ *     - これにより「週末までスキップ」「明日の夜までスキップ」中に移動演出で
+ *       ループが止まる不具合を防止する。
+ *     - ただしスキップの最終日（_skipRemainingDays が 0 になった朝）は通常通り抽選する。
  */
 function maybeResolveMorningLocation() {
   player._parentalOutingToday = null;
+  // スキップ継続中は場所イベントを発生させない（§7.1.3 v2）
+  // 残り日数が 1 以上 or スキップ目標日まで到達していない間は家固定
+  const skipping = (player._skipRemainingDays || 0) > 0;
+  const beforeTarget = (player._skipTargetDay || 0) >= player.day;
+  if (skipping || beforeTarget) {
+    player.location = "home";
+    return;
+  }
+  // 目標日を過ぎたら _skipTargetDay をクリア
+  player._skipTargetDay = 0;
   const stage = resolveLifeStage(player.age);
   if (!stage || stage.id !== "nursery") {
     // 保育園期以外は、場所は home に固定（幼稚園以降で改修予定）
@@ -4023,6 +4041,11 @@ function skipToNextDaySummary(days) {
   // days 日進むが、この直後の 1 回は「今から夜までのスキップ」なので days-1 を残す
   player._skipRemainingDays = Math.max(0, days - 1);
   player._skipTarget = days >= 5 ? "weekend" : "tomorrow-night";
+  // @spec SPEC-047 §7.3 スキップの到達日を記録。この日の朝までは親遣い抽選を抑制する。
+  //   例：Day 1（水）で「週末までスキップ」→ daysUntilWeekend(1)=4 → _skipTargetDay=5（日）
+  //   スキップ中（Day 2-5）の朝は全て maybeResolveMorningLocation で home 固定。
+  //   Day 5 の夜に S10 → S9 を見る正常フロー。
+  player._skipTargetDay = player.day + days;
   // @spec SPEC-025 §7.2.0 スキップ開始直後に週境界なら S9 を先に見せてから sleep
   if (consumeWeeklyHighlightIfPending()) {
     // S9 表示中。続ける押下時に自動で goChooseFromToday → 翌日ループに戻る
@@ -4346,6 +4369,7 @@ document.addEventListener("click", (e) => {
       player.autoMode = false;
       player._skipRemainingDays = 0;
       player._skipTarget = null;
+      player._skipTargetDay = 0;
       toast("手動モードに切り替えました");
       goChooseFromToday();
       break;
