@@ -1,0 +1,107 @@
+[
+  {
+    "id": "title_puzzle_9",
+    "name": "パズル9ピース",
+    "icon": "🧩",
+    "lifeStageTag": "nursery",
+    "description": "ジグソーパズル9ピースを自分で完成させた",
+    "flavor": { "speaker": "mother", "text": "えらいね〜、できたね！" }
+  },
+  {
+    "id": "title_share_toy",
+    "name": "やさしいお友達",
+    "icon": "🤝",
+    "lifeStageTag": "nursery",
+    "description": "お友達におもちゃを気持ちよく貸してあげられた",
+    "flavor": { "speaker": "teacher_sakura", "text": "とってもやさしいね！" }
+  },
+  {
+    "id": "title_singer",
+    "name": "おうたマスター",
+    "icon": "🎤",
+    "lifeStageTag": "nursery",
+    "description": "好きな歌を最後までうたえるようになった",
+    "flavor": { "speaker": "father", "text": "お父さん感動したよ" }
+  },
+  {
+    "id": "title_picturebook_lover",
+    "name": "絵本が大好き",
+    "icon": "📖",
+    "lifeStageTag": "nursery",
+    "description": "絵本を 30 回読んだ",
+    "autoTrigger": { "type": "playCountAtLeast", "playId": "picturebook", "count": 30 },
+    "flavor": { "speaker": "mother", "text": "お気に入りの絵本ができたね" }
+  },
+  {
+    "id": "title_park_explorer",
+    "name": "公園の冒険家",
+    "icon": "🌳",
+    "lifeStageTag": "nursery",
+    "description": "公園で 20 回遊んだ",
+    "autoTrigger": { "type": "playCountAtLeastAtLocation", "locationIds": ["near_park", "big_park"], "count": 20 },
+    "flavor": { "speaker": "narration", "text": "公園のことなら誰よりも詳しい！" }
+  },
+  {
+    "id": "title_balanced",
+    "name": "バランスの取れた子",
+    "icon": "⚖️",
+    "lifeStageTag": "nursery",
+    "description": "5 つの素養がすべて 20 以上",
+    "autoTrigger": { "type": "allSoyouAtLeast", "value": 20 },
+    "flavor": { "speaker": "teacher_sakura", "text": "いろんなことに興味があってえらいね" }
+  },
+  {
+    "id": "title_first_step",
+    "name": "はじめの一歩",
+    "icon": "👣",
+    "lifeStageTag": "nursery",
+    "description": "保育園での最初の発見",
+    "autoTrigger": { "type": "discoveryFound", "discovery": "disc_1_stand" },
+    "flavor": { "speaker": "mother", "text": "歩けるようになったね！" }
+  },
+  {
+    "id": "title_counting",
+    "name": "かぞえられる",
+    "icon": "🔢",
+    "lifeStageTag": "nursery",
+    "description": "数字を覚えた",
+    "autoTrigger": { "type": "soyouAtLeast", "key": "intellect", "value": 80 },
+    "flavor": { "speaker": "father", "text": "1、2、3...上手に数えられるね" }
+  },
+  {
+    "id": "title_active_kid",
+    "name": "元気いっぱい",
+    "icon": "💨",
+    "lifeStageTag": "nursery",
+    "description": "身体をたくさん動かせた",
+    "autoTrigger": { "type": "soyouAtLeast", "key": "body", "value": 100 },
+    "flavor": { "speaker": "narration", "text": "走り回って元気いっぱい！" }
+  },
+  {
+    "id": "title_curious",
+    "name": "なんでも知りたい",
+    "icon": "💡",
+    "lifeStageTag": "nursery",
+    "description": "知性がたくさん育った",
+    "autoTrigger": { "type": "soyouAtLeast", "key": "intellect", "value": 100 },
+    "flavor": { "speaker": "mother", "text": "『なんで？』が口ぐせになったね" }
+  },
+  {
+    "id": "title_artist",
+    "name": "こころの画家",
+    "icon": "🎨",
+    "lifeStageTag": "nursery",
+    "description": "感性がたくさん育った",
+    "autoTrigger": { "type": "soyouAtLeast", "key": "sensitivity", "value": 100 },
+    "flavor": { "speaker": "teacher_sakura", "text": "色のえらび方が素敵ね" }
+  },
+  {
+    "id": "title_friendly",
+    "name": "みんなとなかよし",
+    "icon": "👥",
+    "lifeStageTag": "nursery",
+    "description": "お友達と仲良くできた",
+    "autoTrigger": { "type": "soyouAtLeast", "key": "social", "value": 80 },
+    "flavor": { "speaker": "teacher_sakura", "text": "みんなと仲良しだね" }
+  }
+]
