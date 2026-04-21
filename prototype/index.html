@@ -60,6 +60,36 @@
       </div>
     </header>
 
+    <!--
+      @spec SPEC-050 §5 ミッションバナー（HUD 直下、active ミッションを常時表示）
+      折りたたみ式：summary をタップで open/close。
+    -->
+    <details class="mission-banner" id="mission-banner" hidden>
+      <summary class="mission-banner-summary">
+        <span class="mission-banner-icon">📋</span>
+        <span class="mission-banner-label">やってみたい目標（<b id="mission-banner-count">0</b>）</span>
+        <span class="mission-banner-chevron">▼</span>
+      </summary>
+      <ul class="mission-banner-list" id="mission-banner-list"></ul>
+    </details>
+
+    <!--
+      @screen S-mission ミッションモーダル（発端・触媒・達成 共用）
+      @spec   docs/specs/SPEC-050-annual-mission.md §5
+    -->
+    <section class="screen" id="screen-mission-modal">
+      <div class="mission-modal-stage">
+        <div class="mission-modal-phase" id="mission-modal-phase">🌱 はじまり</div>
+        <h2 class="mission-modal-title" id="mission-modal-title">ミッション名</h2>
+        <p class="mission-modal-subtitle" id="mission-modal-subtitle">目標の説明</p>
+        <div class="mission-modal-dialog">
+          <div class="mission-modal-speaker" id="mission-modal-speaker">？？？</div>
+          <div class="mission-modal-body" id="mission-modal-body">セリフがここに入る</div>
+        </div>
+        <button class="btn btn-primary btn-wide" id="btn-mission-modal-next" data-action="mission-modal-next">つぎへ</button>
+      </div>
+    </section>
+
     <!-- 旧 S1 起床画面は廃止。起床ヘッダーは S2 の先頭に統合された（SPEC-002 §1.1） -->
 
     <!--

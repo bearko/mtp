@@ -2112,3 +2112,177 @@ body {
   60%  { transform: scale(1.2); opacity: 1; }
   100% { transform: scale(1.0); }
 }
+
+/* ==========================================================================
+   @spec SPEC-050 §5 ミッションバナー（HUD 直下、折りたたみ）
+   ========================================================================== */
+.mission-banner {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  background: #fff6e0;
+  border-bottom: 1px solid #e9d8a8;
+  padding: 0;
+  margin: 0;
+}
+.mission-banner[open] {
+  padding-bottom: 8px;
+}
+.mission-banner-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6a4d16;
+  user-select: none;
+}
+.mission-banner-summary::-webkit-details-marker { display: none; }
+.mission-banner-icon { font-size: 16px; }
+.mission-banner-label { flex: 1; }
+.mission-banner-label b { font-weight: 700; color: #9a6b1a; }
+.mission-banner-chevron {
+  font-size: 11px;
+  color: #ad863d;
+  transition: transform 0.2s ease;
+}
+.mission-banner[open] .mission-banner-chevron { transform: rotate(180deg); }
+
+.mission-banner-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mission-banner-item {
+  background: #fffbef;
+  border: 1px solid #edd9a0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.mbi-title {
+  font-weight: 700;
+  color: #5d3e06;
+  font-size: 13px;
+}
+.mbi-subtitle {
+  color: #8a6d30;
+  font-size: 11px;
+  margin: 2px 0 6px;
+}
+.mbi-progress {
+  height: 6px;
+  background: #e7d9b3;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.mbi-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f2b84e 0%, #f28c2e 100%);
+  transition: width 0.4s ease;
+}
+.mbi-progress-label {
+  font-size: 10px;
+  color: #9a6b1a;
+  text-align: right;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   @spec SPEC-050 ミッションモーダル（発端・触媒・達成の演出）
+   ========================================================================== */
+#screen-mission-modal {
+  background: linear-gradient(180deg, #fff8e7 0%, #ffe8bf 100%);
+  padding: 0;
+}
+#screen-mission-modal.incite {
+  background: linear-gradient(180deg, #eef4ff 0%, #c6d8f5 100%);
+}
+#screen-mission-modal.catalyst {
+  background: linear-gradient(180deg, #fff8e7 0%, #ffe3a8 100%);
+}
+#screen-mission-modal.celebration {
+  background: linear-gradient(180deg, #fff5d6 0%, #ffcb6b 50%, #ff9f43 100%);
+}
+#screen-mission-modal.celebration::before {
+  content: "🎉 🎊 🎉 🎊 🎉";
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 32px;
+  letter-spacing: 12px;
+  animation: celebration-float 1.6s ease-out;
+}
+@keyframes celebration-float {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  30%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(10px); }
+}
+
+.mission-modal-stage {
+  min-height: 75dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  padding: 64px 24px 40px;
+  gap: 14px;
+  text-align: center;
+}
+.mission-modal-phase {
+  font-size: 14px;
+  color: #8f6a1b;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+#screen-mission-modal.celebration .mission-modal-phase {
+  color: #b04410;
+  font-size: 16px;
+}
+.mission-modal-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #2a1f08;
+  margin: 4px 0;
+}
+.mission-modal-subtitle {
+  font-size: 14px;
+  color: #6b5830;
+  margin: 0 0 14px;
+}
+.mission-modal-dialog {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 14px;
+  padding: 16px 18px;
+  min-height: 110px;
+  text-align: left;
+  box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.25);
+}
+.mission-modal-speaker {
+  font-size: 12px;
+  color: #a36a14;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.mission-modal-body {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #2a1f08;
+  white-space: pre-wrap;
+  transition: color 0.2s ease;
+}
+.mission-modal-body.emotion-happy       { color: #a3631f; }
+.mission-modal-body.emotion-happy_cry   { color: #b04410; font-weight: 700; }
+.mission-modal-body.emotion-amazed      { color: #2a7ad1; }
+.mission-modal-body.emotion-concerned   { color: #6b5830; font-style: italic; }
+#btn-mission-modal-next {
+  margin-top: 16px;
+  align-self: stretch;
+}

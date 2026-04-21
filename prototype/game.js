@@ -416,6 +416,11 @@ let LOCATIONS = [
     parentalOutingWeekdayWeight: 40, parentalOutingWeekendWeight: 0, category: "always" },
 ];
 
+/** @spec SPEC-050 §4.1 / SPEC-052 ミッションシナリオマスタ */
+let MISSION_SCENARIOS = [];
+/** @spec SPEC-051 §4.5 称号マスタ */
+let TITLES = [];
+
 /* =========================================================================
  * @spec SPEC-031 / SPEC-032 転生イントロのシーン定義とランダム名マスタ
  *   - ISEKAI_SCENES / NAMES は起動時に data/isekai.json / data/names.json から
@@ -485,14 +490,20 @@ let NAMES         = DEFAULT_NAMES;
  */
 async function loadMasters() {
   try {
-    const [cat, plays, evs, locs] = await Promise.all([
+    const [cat, plays, evs, locs, missions, titles] = await Promise.all([
       fetch("./data/categories.json").then((r) => { if (!r.ok) throw new Error("categories " + r.status); return r.json(); }),
       fetch("./data/plays.json").then((r) => { if (!r.ok) throw new Error("plays " + r.status); return r.json(); }),
       fetch("./data/events.json").then((r) => { if (!r.ok) throw new Error("events " + r.status); return r.json(); }),
       // @spec SPEC-047 §4.1 場所マスタ。失敗しても LOCATIONS = home だけで動くように耐性あり
       fetch("./data/locations.json").then((r) => { if (!r.ok) throw new Error("locations " + r.status); return r.json(); }).catch((e) => { console.warn("[master] locations optional", e); return null; }),
+      // @spec SPEC-050 / SPEC-052 ミッションシナリオ。失敗時は空配列で OK
+      fetch("./data/mission-scenarios.json").then((r) => { if (!r.ok) throw new Error("mission-scenarios " + r.status); return r.json(); }).catch((e) => { console.warn("[master] missions optional", e); return []; }),
+      // @spec SPEC-051 称号マスタ
+      fetch("./data/titles.json").then((r) => { if (!r.ok) throw new Error("titles " + r.status); return r.json(); }).catch((e) => { console.warn("[master] titles optional", e); return []; }),
     ]);
     if (Array.isArray(locs) && locs.length > 0) LOCATIONS = locs;
+    if (Array.isArray(missions)) MISSION_SCENARIOS = missions;
+    if (Array.isArray(titles)) TITLES = titles;
     CATEGORIES = cat;
     PLAYS = plays;
     EVENTS = evs.filter((e) => e.scope === "random_play");
@@ -659,6 +670,20 @@ const DEFAULT_PLAYER = {
   _parentalOutingToday: null,
   /** @spec SPEC-047 §7.3 スキップの到達日。この日までは親遣い抽選を抑制。0 ならスキップなし */
   _skipTargetDay: 0,
+  /**
+   * @spec SPEC-050 §4 ストーリー型ミッションの進行状態。
+   *   各エントリ: { id, state: "INCITED"|"ACCEPTED"|"COMPLETED", startDay, hintsShown: [hintIdx...] }
+   */
+  activeMissions: [],
+  completedMissions: [],
+  /** @spec SPEC-051 §4.5 獲得済み称号 { id, acquiredDay, flavor } */
+  titles: [],
+  /** @spec SPEC-051 §6.2.2 忘れられない日（ミッション達成・fullday trip 等） */
+  memorableDays: [],
+  /** @spec SPEC-051 §6.2.1 連絡帳ハイライト（感情温度が高いコメント） */
+  renrakuchoHighlights: [],
+  /** @spec SPEC-051 §3.1 各遊びの累計プレイ回数（称号判定用） */
+  _playCounts: {},
 };
 
 /**
@@ -827,6 +852,450 @@ function applyPersistBuffsToGain(play) {
   return mul;
 }
 
+/* =========================================================================
+ * @spec SPEC-050 / SPEC-052 ミッションエンジン（ストーリー型）
+ *
+ * ミッションの進行状態：
+ *   INCITED（発端済み、触媒待ち）→ ACCEPTED（受諾、挑戦中）→ COMPLETED（達成）
+ *
+ * 主要関数：
+ *   - getMissionState(id) / setMissionState(id, ...)
+ *   - evaluateMissionCondition(cond)           ：SPEC-052 §7 条件評価
+ *   - checkMissionTriggers(context)            ：発端/達成のトリガー判定
+ *   - startMissionIncite(m, context)           ：発端シーンを起動
+ *   - acceptMission(m)                         ：触媒を経て受諾
+ *   - completeMission(m)                       ：達成演出を起動
+ *   - showMissionModal(mission, phase)         ：モーダルでセリフを順次表示
+ *   - renderMissionBanner()                    ：HUD 下のバナー更新
+ * ========================================================================= */
+
+function getMissionState(id) {
+  return player.activeMissions.find((m) => m.id === id);
+}
+
+/** @spec SPEC-052 §7 進捗条件の評価 */
+function evaluateMissionCondition(cond) {
+  if (!cond) return { match: true, progress: 1.0 };
+  const parts = [];
+  if (cond.soyouAtLeast) {
+    for (const [k, v] of Object.entries(cond.soyouAtLeast)) {
+      parts.push(Math.min(1.0, (player.soyou[k] || 0) / v));
+    }
+  }
+  if (cond.playCountAtLeast) {
+    for (const [id, v] of Object.entries(cond.playCountAtLeast)) {
+      parts.push(Math.min(1.0, (player._playCounts[id] || 0) / v));
+    }
+  }
+  if (cond.playCountAtLeastAtLocation) {
+    const count = cond.playCountAtLeastAtLocation.locationIds.reduce((s, lid) => s + (player._playCountsByLocation?.[lid] || 0), 0);
+    parts.push(Math.min(1.0, count / cond.playCountAtLeastAtLocation.count));
+  }
+  if (cond.allSoyouAtLeast != null) {
+    const v = cond.allSoyouAtLeast;
+    for (const k of SOYOU_KEYS) {
+      parts.push(Math.min(1.0, (player.soyou[k] || 0) / v));
+    }
+  }
+  const match = parts.every((p) => p >= 1.0);
+  const progress = parts.length > 0 ? parts.reduce((a, b) => a + b, 0) / parts.length : 1.0;
+  return { match, progress };
+}
+
+/**
+ * @spec SPEC-052 §2 発端／達成トリガーの判定。
+ * context = { type: "enterLocation", location: "..." } or { type: "afterPlay", playId: "..." }
+ * 候補ミッションを返す。副作用は呼び出し側で。
+ */
+function findMissionsToTrigger(context) {
+  const stage = resolveLifeStage(player.age);
+  const stageId = stage ? stage.id : "nursery";
+  const candidates = [];
+
+  for (const m of MISSION_SCENARIOS) {
+    if (m.lifeStageTag && m.lifeStageTag !== stageId) continue;
+    const cur = getMissionState(m.id);
+    const completed = (player.completedMissions || []).includes(m.id);
+
+    // 発端：まだ未受諾かつ未完了
+    if (!cur && !completed && m.incite && triggerMatches(m.incite.trigger, context)) {
+      if (m.incite.minAge && player.age < m.incite.minAge) continue;
+      if (m.incite.maxAge && player.age > m.incite.maxAge) continue;
+      if (m.incite.trigger.probability != null && Math.random() >= m.incite.trigger.probability) continue;
+      candidates.push({ mission: m, phase: "incite" });
+      continue;
+    }
+
+    // 達成：受諾済みかつトリガー一致かつ条件達成
+    if (cur && cur.state === "ACCEPTED" && m.accomplish && triggerMatches(m.accomplish.trigger, context)) {
+      const { match } = evaluateMissionCondition(m.accomplish.trigger.requires);
+      if (match) {
+        candidates.push({ mission: m, phase: "accomplish" });
+      }
+    }
+  }
+  return candidates;
+}
+
+function triggerMatches(trigger, context) {
+  if (!trigger || !context) return false;
+  if (trigger.type !== context.type) return false;
+  switch (trigger.type) {
+    case "enterLocation":
+      return trigger.location === context.location;
+    case "playCountAtLeast":
+      return context.playId === trigger.playId && (player._playCounts[trigger.playId] || 0) >= trigger.count;
+    case "afterPlay":
+      return context.playId === trigger.playId;
+    default:
+      return false;
+  }
+}
+
+/** @spec SPEC-050 §3 発端シーンの起動（モーダル演出） */
+function startMissionIncite(mission) {
+  const ms = { id: mission.id, state: "INCITED", startDay: player.day, hintsShown: [] };
+  player.activeMissions.push(ms);
+  showMissionModal(mission, "incite", () => {
+    acceptMission(mission);
+  });
+}
+
+/** @spec SPEC-050 §3 触媒（モーダル＋解禁＋バナー登録） */
+function acceptMission(mission) {
+  const ms = getMissionState(mission.id);
+  if (!ms) return;
+  ms.state = "ACCEPTED";
+  const cat = mission.catalyst || {};
+  // 遊び解禁
+  for (const pid of (cat.unlockPlays || [])) {
+    if (!player.unlockedPlays.includes(pid)) player.unlockedPlays.push(pid);
+  }
+  // 場所解禁
+  for (const lid of (cat.unlockLocations || [])) {
+    if (!player.unlockedLocations.includes(lid)) player.unlockedLocations.push(lid);
+  }
+  // 関係値増減
+  if (cat.relationshipDelta) {
+    player.relationships = player.relationships || {};
+    for (const [npcId, delta] of Object.entries(cat.relationshipDelta)) {
+      const cur = player.relationships[npcId] || { value: 50, history: [] };
+      cur.value = Math.max(0, Math.min(100, cur.value + delta));
+      player.relationships[npcId] = cur;
+    }
+  }
+  showMissionModal(mission, "catalyst", () => {
+    renderMissionBanner();
+  });
+}
+
+/** @spec SPEC-050 §5 達成（4 軸を埋める演出 + 報酬 + 連絡帳） */
+function completeMission(mission) {
+  const ms = getMissionState(mission.id);
+  if (!ms || ms.state !== "ACCEPTED") return;
+  ms.state = "COMPLETED";
+  const acc = mission.accomplish || {};
+  const rew = acc.rewards || {};
+
+  // 称号
+  for (const titleId of (rew.titles || [])) {
+    const t = TITLES.find((x) => x.id === titleId);
+    if (!t) continue;
+    if (player.titles.some((pt) => pt.id === titleId)) continue;
+    player.titles.push({
+      id: titleId,
+      acquiredDay: player.day,
+      flavor: t.flavor ? t.flavor.text : "",
+    });
+  }
+  // 素養ボーナス
+  if (rew.soyouBonus) {
+    for (const [k, v] of Object.entries(normalizeGainToSoyou(rew.soyouBonus))) {
+      if (SOYOU_KEYS.includes(k)) {
+        player.soyou[k] = (player.soyou[k] || 0) + v;
+      }
+    }
+  }
+  // 持続バフ
+  for (const buff of (rew.persistBuffs || [])) {
+    player.persistBuffs = player.persistBuffs || [];
+    player.persistBuffs.push({
+      type: buff.type || "category",
+      category: buff.category,
+      multiplier: buff.multiplier || 1.0,
+      untilDay: player.day + (buff.durationDays || 30),
+      sourceMissionId: mission.id,
+    });
+  }
+  // 遊び解禁
+  for (const pid of (rew.unlockPlays || [])) {
+    if (!player.unlockedPlays.includes(pid)) player.unlockedPlays.push(pid);
+  }
+  // 関係値増減
+  if (rew.relationshipDelta) {
+    player.relationships = player.relationships || {};
+    for (const [npcId, delta] of Object.entries(rew.relationshipDelta)) {
+      const cur = player.relationships[npcId] || { value: 50, history: [] };
+      cur.value = Math.max(0, Math.min(100, cur.value + delta));
+      player.relationships[npcId] = cur;
+    }
+  }
+  // 忘れられない日
+  if (acc.memorableDay) {
+    player.memorableDays = player.memorableDays || [];
+    player.memorableDays.push({
+      day: player.day,
+      type: "mission_accomplishment",
+      missionId: mission.id,
+      emotionText: acc.memorableDay.emotionText,
+    });
+  }
+  // 連絡帳ハイライトにも追加
+  if (acc.renrakuchoEntry) {
+    player.renrakuchoHighlights = player.renrakuchoHighlights || [];
+    player.renrakuchoHighlights.unshift({
+      day: player.day,
+      speaker: "teacher_sakura",
+      text: acc.renrakuchoEntry,
+      emotion: "happy",
+      fromMissionId: mission.id,
+    });
+    // 上限 20 件
+    if (player.renrakuchoHighlights.length > 20) {
+      player.renrakuchoHighlights = player.renrakuchoHighlights.slice(0, 20);
+    }
+  }
+
+  // activeMissions から除去、completedMissions に追加
+  player.activeMissions = player.activeMissions.filter((m) => m.id !== mission.id);
+  if (!player.completedMissions.includes(mission.id)) {
+    player.completedMissions.push(mission.id);
+  }
+
+  // 演出モーダル
+  showMissionModal(mission, "accomplish", () => {
+    renderMissionBanner();
+    renderHUD();  // 素養値の変動を HUD に反映
+  });
+}
+
+/**
+ * 進捗ヒント（挑戦中に親の励まし等を差し込む）
+ */
+function maybeShowChallengeHints(mission) {
+  const ms = getMissionState(mission.id);
+  if (!ms || ms.state !== "ACCEPTED") return;
+  const hints = (mission.challenge && mission.challenge.progressHints) || [];
+  for (let i = 0; i < hints.length; i++) {
+    const h = hints[i];
+    if (ms.hintsShown.includes(i)) continue;
+    const { match } = evaluateMissionCondition(h.condition);
+    if (match) {
+      ms.hintsShown.push(i);
+      // 簡易：トーストで表示
+      const firstLine = h.dialog && h.dialog[0] ? h.dialog[0].text : "";
+      if (firstLine) toast(firstLine, 2400);
+      if (h.once) break;
+    }
+  }
+}
+
+/**
+ * 称号の自動認定（ミッション外の累積系）
+ */
+function evaluateTitleAutoTriggers() {
+  for (const t of TITLES) {
+    if (!t.autoTrigger) continue;
+    if (player.titles.some((pt) => pt.id === t.id)) continue;
+    const trig = t.autoTrigger;
+    let match = false;
+    switch (trig.type) {
+      case "playCountAtLeast":
+        match = (player._playCounts[trig.playId] || 0) >= trig.count;
+        break;
+      case "playCountAtLeastAtLocation":
+        const sum = (trig.locationIds || []).reduce((s, lid) => s + (player._playCountsByLocation?.[lid] || 0), 0);
+        match = sum >= trig.count;
+        break;
+      case "soyouAtLeast":
+        match = (player.soyou[trig.key] || 0) >= trig.value;
+        break;
+      case "allSoyouAtLeast":
+        match = SOYOU_KEYS.every((k) => (player.soyou[k] || 0) >= trig.value);
+        break;
+      case "discoveryFound":
+        match = (player.discoveredIds || []).includes(trig.discovery);
+        break;
+    }
+    if (match) {
+      player.titles.push({
+        id: t.id,
+        acquiredDay: player.day,
+        flavor: t.flavor ? t.flavor.text : "",
+      });
+      toast(`🏆 「${t.name}」を覚えた！`, 2600);
+    }
+  }
+}
+
+/**
+ * 場所到着時のミッショントリガ呼び出し（completeTravel / maybeResolveMorningLocation 後に呼ぶ）
+ */
+function onLocationEntered(locationId) {
+  const triggers = findMissionsToTrigger({ type: "enterLocation", location: locationId });
+  // 達成トリガが優先（発端より先に処理）
+  const accTrig = triggers.find((x) => x.phase === "accomplish");
+  if (accTrig) {
+    completeMission(accTrig.mission);
+    return;
+  }
+  const inciteTrig = triggers.find((x) => x.phase === "incite");
+  if (inciteTrig) {
+    startMissionIncite(inciteTrig.mission);
+  }
+}
+
+/**
+ * プレイ完了時のミッショントリガ呼び出し（finalizePlay 末尾に呼ぶ）
+ */
+function onPlayFinalized(play) {
+  player._playCounts = player._playCounts || {};
+  player._playCounts[play.id] = (player._playCounts[play.id] || 0) + 1;
+  player._playCountsByLocation = player._playCountsByLocation || {};
+  player._playCountsByLocation[player.location] = (player._playCountsByLocation[player.location] || 0) + 1;
+
+  // 挑戦中ミッションの進捗ヒント
+  for (const ms of player.activeMissions) {
+    if (ms.state !== "ACCEPTED") continue;
+    const m = MISSION_SCENARIOS.find((x) => x.id === ms.id);
+    if (m) maybeShowChallengeHints(m);
+  }
+  // 累積系トリガ（playCountAtLeast）
+  const triggers = findMissionsToTrigger({ type: "playCountAtLeast", playId: play.id });
+  const incite = triggers.find((x) => x.phase === "incite");
+  if (incite) startMissionIncite(incite.mission);
+
+  // 称号の自動認定
+  evaluateTitleAutoTriggers();
+  // ミッションバナーの更新
+  renderMissionBanner();
+}
+
+/* =========================================================================
+ * @spec SPEC-050 §5 §7  ミッションモーダル演出 / バナー
+ * ========================================================================= */
+
+const SPEAKER_LABEL = {
+  narration: "（ナレーション）",
+  player: "あなた",
+  mother: "お母さん",
+  father: "お父さん",
+  teacher_sakura: "さくら先生",
+  teacher_midori: "みどり先生",
+};
+function speakerDisplay(id) {
+  return SPEAKER_LABEL[id] || id || "";
+}
+
+const PHASE_LABEL = {
+  incite:     "🌱 はじまり",
+  catalyst:   "💬 きっかけ",
+  accomplish: "🎉 達成！",
+};
+
+let _missionModalQueue = [];
+let _missionModalOnClose = null;
+
+/**
+ * @spec SPEC-050 ミッションのダイアログをモーダル表示。
+ * phase: "incite" | "catalyst" | "accomplish"
+ * onDone: すべてのセリフを見終わった後のコールバック
+ */
+function showMissionModal(mission, phase, onDone) {
+  const section = mission[phase] || {};
+  const dialog = section.dialog || [];
+  if (dialog.length === 0) { if (onDone) onDone(); return; }
+
+  _missionModalQueue = dialog.slice();
+  _missionModalOnClose = onDone || null;
+
+  const root = byId("screen-mission-modal");
+  if (!root) { // DOM 未実装時のフォールバック
+    for (const line of dialog) {
+      toast(`${speakerDisplay(line.speaker)}: ${line.text}`, 1200);
+    }
+    if (onDone) setTimeout(onDone, 1500);
+    return;
+  }
+
+  byId("mission-modal-phase").textContent = PHASE_LABEL[phase] || "";
+  byId("mission-modal-title").textContent = mission.title || "";
+  byId("mission-modal-subtitle").textContent = mission.subtitle || "";
+  // 達成時だけ紙吹雪クラス
+  root.classList.toggle("celebration", phase === "accomplish");
+  root.classList.toggle("incite", phase === "incite");
+  root.classList.toggle("catalyst", phase === "catalyst");
+
+  showScreen("screen-mission-modal");
+  showNextMissionDialog();
+}
+
+function showNextMissionDialog() {
+  if (_missionModalQueue.length === 0) {
+    const cb = _missionModalOnClose;
+    _missionModalOnClose = null;
+    if (cb) {
+      // callback は次のフェーズ（catalyst など）を起動する可能性があるので先に実行
+      cb();
+      // callback で再度 showMissionModal が呼ばれていれば、screen-mission-modal が active のまま
+      if (document.querySelector(".screen.active")?.id === "screen-mission-modal") return;
+    }
+    // モーダルを閉じる → S2 に戻る
+    goChooseFromToday();
+    return;
+  }
+  const line = _missionModalQueue.shift();
+  const emotionClass = line.emotion ? `emotion-${line.emotion}` : "";
+  byId("mission-modal-speaker").textContent = speakerDisplay(line.speaker);
+  const body = byId("mission-modal-body");
+  body.className = "mission-modal-body " + emotionClass;
+  body.textContent = line.text || "";
+}
+
+/**
+ * @spec SPEC-050 §5 HUD 下のミッションバナー
+ * active ミッション 0 件なら非表示、1+ 件なら折りたたみ式で表示。
+ */
+function renderMissionBanner() {
+  const banner = byId("mission-banner");
+  if (!banner) return;
+  const list = byId("mission-banner-list");
+  const active = (player.activeMissions || []).filter((m) => m.state === "ACCEPTED");
+  banner.hidden = (active.length === 0);
+  if (active.length === 0) { if (list) list.innerHTML = ""; return; }
+
+  byId("mission-banner-count").textContent = active.length;
+
+  if (list) {
+    list.innerHTML = active.map((ms) => {
+      const m = MISSION_SCENARIOS.find((x) => x.id === ms.id);
+      if (!m) return "";
+      const acc = m.accomplish || {};
+      const req = acc.trigger && acc.trigger.requires;
+      const prog = evaluateMissionCondition(req);
+      const pct = Math.round((prog.progress || 0) * 100);
+      return `
+        <li class="mission-banner-item">
+          <div class="mbi-title">${m.title}</div>
+          <div class="mbi-subtitle">${m.subtitle || ""}</div>
+          <div class="mbi-progress"><div class="mbi-progress-fill" style="width:${pct}%"></div></div>
+          <div class="mbi-progress-label">${pct}%</div>
+        </li>
+      `;
+    }).join("");
+  }
+}
+
 /**
  * @spec SPEC-047 §7 §8 / SPEC-025 §7.1.3 起床時の場所解決。
  *   保育園期：親遣い抽選（平日/土日）で _parentalOutingToday を設定。
@@ -932,6 +1401,11 @@ function completeTravel(targetLoc, isParental) {
     player.unlockedLocations.push(targetLoc.id);
   }
   renderHUD();
+  // @spec SPEC-050 §3 場所到着はミッションの発端/達成トリガになる
+  try { onLocationEntered(targetLoc.id); } catch (e) { console.warn("[mission] onLocationEntered error", e); }
+  // onLocationEntered で達成演出に飛んだ場合、screen-mission-modal が active になっているので
+  // travel-result を重ねて表示してしまうと後から上書きされる。active 判定で切り分け。
+  if (document.querySelector(".screen.active")?.id === "screen-mission-modal") return;
   renderTravelResult(targetLoc, isParental);
   showScreen("screen-travel-result");
 }
@@ -2545,6 +3019,10 @@ function finalizePlay() {
   renderResultPanel(before);
   renderHUD();
 
+  // ---- ⑧' ミッションエンジンに通知（進捗ヒント・累積トリガ・称号判定）----
+  // @spec SPEC-050 §4 §9 / SPEC-051 §4.5
+  try { onPlayFinalized(play); } catch (e) { console.warn("[mission] onPlayFinalized error", e); }
+
   // ---- ⑨ 体力ゼロ判定（SPEC-019 §5.4）----
   if (player.stamina <= 0) {
     handleStaminaDepleted();
@@ -2884,6 +3362,9 @@ function goChooseFromToday() {
 
   // @spec SPEC-047 §7 親遣いの移動演出が発動する日はここで画面遷移を引き受ける
   if (maybeStartParentalOutingTravel()) return;
+
+  // @spec SPEC-050 §9 ミッションバナーの更新（ここで毎朝呼ぶのが確実）
+  try { renderMissionBanner(); } catch (e) { /* noop */ }
 
   const stage = resolveLifeStage(player.age);
   const coreTime = getActiveCoreTime();
@@ -4363,6 +4844,10 @@ document.addEventListener("click", (e) => {
     case "travel-result-next":
       // @spec SPEC-047 §7.3 §7.4 移動結果から次画面（通常は S2／fullday なら S10）
       onTravelResultNext();
+      break;
+    case "mission-modal-next":
+      // @spec SPEC-050 §5 ミッションモーダルの「つぎへ」
+      showNextMissionDialog();
       break;
     case "switch-to-manual":
       // @spec SPEC-025 §5.5 / §7.1.3 手動に切替
