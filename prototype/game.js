@@ -1077,9 +1077,9 @@ function computePreviewHint() {
     let nearReady = false;
     switch (t.type) {
       case "enterLocation":
-        // 親遣いの候補に含まれる、または解禁済みの場所なら near
-        nearReady = (player.unlockedLocations || []).includes(t.location)
-                  || player._parentalOutingToday === t.location;
+        // @spec SPEC-055 §1.2 v2 enterLocation 型は「今朝の親遣い先」のときだけ near。
+        //   解禁済みだけで判定すると毎日鳴ってサプライズ性が消えるため。
+        nearReady = (player._parentalOutingToday === t.location);
         break;
       case "playCountAtLeast":
         const count = (player._playCounts || {})[t.playId] || 0;
@@ -1101,8 +1101,13 @@ function renderPreviewHint() {
   const root = byId("mission-prelude");
   if (!root) return;
   const result = computePreviewHint();
+  const headlineEl0 = byId("mission-prelude-headline");
+  const detailEl0   = byId("mission-prelude-detail");
   if (!result) {
     root.hidden = true;
+    // テキストもクリアして残留を避ける（テスト時の状態遷移検証も含む）
+    if (headlineEl0) headlineEl0.textContent = "";
+    if (detailEl0)   detailEl0.textContent   = "";
     return;
   }
   root.hidden = false;

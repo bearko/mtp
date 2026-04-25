@@ -1,5 +1,13 @@
 [
   {
+    "id": "title_picturebook_first",
+    "name": "絵本さいごまで",
+    "icon": "📚",
+    "lifeStageTag": "nursery",
+    "description": "おなじ絵本を最後のページまで読みきった",
+    "flavor": { "speaker": "mother", "text": "毎日コツコツ読んできたから、最後までいけたんだね" }
+  },
+  {
     "id": "title_puzzle_9",
     "name": "パズル9ピース",
     "icon": "🧩",

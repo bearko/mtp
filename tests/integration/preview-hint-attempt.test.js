@@ -154,6 +154,98 @@ async function jumpToChoose(page) {
     it("title_singer 獲得", () => assert(afterYes.titles.includes("title_singer"), JSON.stringify(afterYes.titles)));
   });
 
+  // ============================================================
+  // @spec SPEC-055 §9 1 年目（age=1, チュートリアル中）でも体験できることを保証
+  // ============================================================
+  // フィクスチャをクリーンに戻す
+  await page.evaluate(() => {
+    player.completedMissions = [];
+    player.activeMissions = [];
+    player.titles = [];
+    player._playCounts = {};
+    player.soyou = { body: 0, intellect: 0, sensitivity: 0, social: 0, passion: 0 };
+  });
+
+  // age=1 / picturebook 累計 3 → 70%（floor(3*0.7)=2）で予告ヒント
+  const y1prelude = await page.evaluate(() => {
+    player.age = 1;
+    player.day = 5;
+    player._playCounts = { picturebook: 3 };
+    renderPreviewHint();
+    return {
+      hidden: document.getElementById("mission-prelude")?.hidden,
+      detail: document.getElementById("mission-prelude-detail")?.textContent,
+    };
+  });
+  describe("SPEC-055 §9 1 年目（age=1, Day 5）で予告ヒント表示", () => {
+    it("hidden = false", () => assertEq(y1prelude.hidden, false));
+    it("detail に『お母さん』を含む（m_picturebook_first 由来）", () =>
+      assert(y1prelude.detail.includes("お母さん"), y1prelude.detail));
+  });
+
+  // age=1 / picturebook 累計 6 + intellect 15 → 達成プロンプト表示
+  await page.evaluate(() => {
+    player.age = 1;
+    player.day = 12;
+    player._playCounts = { picturebook: 6 };
+    player.soyou.intellect = 15;
+    player.soyou.sensitivity = 10;
+    player.activeMissions = [{ id: "m_picturebook_first", state: "ACCEPTED", startDay: 8, hintsShown: [] }];
+    onPlayFinalized({ id: "picturebook", categories: ["reading"], gain: { intellect: 5 } });
+  });
+  await new Promise(r => setTimeout(r, 400));
+  const y1prompt = await page.evaluate(() => ({
+    active: document.querySelector(".screen.active")?.id,
+    subtitle: document.getElementById("attempt-prompt-subtitle")?.textContent,
+    yesLabel: document.getElementById("btn-attempt-prompt-yes")?.textContent,
+  }));
+  describe("SPEC-055 §9 1 年目（age=1）で manualAttempt プロンプト表示", () => {
+    it("screen-mission-attempt-prompt active", () =>
+      assertEq(y1prompt.active, "screen-mission-attempt-prompt"));
+    it("subtitle = 絵本さいごまで（m_picturebook_first）", () =>
+      assertEq(y1prompt.subtitle, "絵本さいごまで"));
+    it("yesLabel = よんでみる", () => assertEq(y1prompt.yesLabel, "よんでみる"));
+  });
+
+  // 達成 → title_picturebook_first 獲得
+  await page.click("#btn-attempt-prompt-yes");
+  await new Promise(r => setTimeout(r, 600));
+  const y1after = await page.evaluate(() => ({
+    titles: player.titles.map(t => t.id),
+    completed: player.completedMissions,
+  }));
+  describe("SPEC-055 §9 1 年目で完走（達成 → title 獲得）", () => {
+    it("title_picturebook_first 獲得", () =>
+      assert(y1after.titles.includes("title_picturebook_first"), JSON.stringify(y1after.titles)));
+    it("m_picturebook_first 完了", () =>
+      assert(y1after.completed.includes("m_picturebook_first")));
+  });
+
+  // enterLocation の near 判定が「親遣い先のときだけ」になっていること
+  const enterCheck = await page.evaluate(() => {
+    player.completedMissions = [];
+    player.activeMissions = [];
+    player.age = 1;
+    player.day = 5;
+    player._playCounts = {};
+    player._parentalOutingToday = null;
+    player.unlockedLocations = ["home", "near_park"];
+    renderPreviewHint();
+    const hiddenWithoutOuting = document.getElementById("mission-prelude")?.hidden;
+
+    player._parentalOutingToday = "near_park";
+    renderPreviewHint();
+    const hiddenWithOuting = document.getElementById("mission-prelude")?.hidden;
+    const detail = document.getElementById("mission-prelude-detail")?.textContent;
+    return { hiddenWithoutOuting, hiddenWithOuting, detail };
+  });
+  describe("SPEC-055 §1.2 v2 enterLocation 型は親遣い先の朝だけ予告", () => {
+    it("親遣いなしなら hidden", () => assertEq(enterCheck.hiddenWithoutOuting, true));
+    it("親遣いが near_park ならヒント表示", () => assertEq(enterCheck.hiddenWithOuting, false));
+    it("『公園で誰かが寂しそう?』が含まれる", () =>
+      assert(enterCheck.detail.includes("公園"), enterCheck.detail));
+  });
+
   describe("PAGEERR なし", () => {
     it("予告ヒント・manualAttempt フローでエラー 0 件", () => {
       if (errs.length) throw new Error(errs.slice(0, 3).join("\n"));

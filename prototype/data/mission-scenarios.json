@@ -1,5 +1,67 @@
 [
   {
+    "id": "m_picturebook_first",
+    "lifeStageTag": "nursery",
+    "title": "絵本さいごまで",
+    "subtitle": "おなじ絵本を最後まで読めるようになる",
+    "priority": 6,
+    "allowConcurrent": true,
+
+    "incite": {
+      "trigger": { "type": "playCountAtLeast", "playId": "picturebook", "count": 3 },
+      "minAge": 1,
+      "previewHint": {
+        "icon": "💭",
+        "headline": "もうすぐ何か…",
+        "detail": "お母さんが何か気になってるみたい?"
+      },
+      "dialog": [
+        { "speaker": "narration", "text": "おなじ絵本を、3かいよんでみたよ" },
+        { "speaker": "mother", "text": "おなじページがすき？さいごまでいけるかな？" }
+      ]
+    },
+
+    "catalyst": {
+      "dialog": [
+        { "speaker": "mother", "text": "じぶんの『すき』をみつけられたね" },
+        { "speaker": "mother", "text": "もうすこしよんで、さいごまで読めたらすごいね" }
+      ],
+      "addToMissionBanner": true
+    },
+
+    "accomplish": {
+      "trigger": {
+        "type": "playCountAtLeast",
+        "playId": "picturebook",
+        "count": 6,
+        "manualAttempt": true,
+        "attemptPrompt": {
+          "title": "もうできるかも？",
+          "headline": "絵本をたくさん読んできたね。今日はさいごまで読み切ってみる？",
+          "yesLabel": "よんでみる",
+          "laterLabel": "まだ、こんどにする"
+        },
+        "requires": {
+          "soyouAtLeast": { "intellect": 10, "sensitivity": 8 }
+        }
+      },
+      "dialog": [
+        { "speaker": "narration", "text": "ページをめくって、さいごまで…" },
+        { "speaker": "narration", "text": "（じぶんで、最後のページまで来た）" },
+        { "speaker": "mother", "text": "毎日コツコツ読んできたから、最後までいけたんだね", "emotion": "happy_cry" },
+        { "speaker": "father", "text": "好きな絵本を、最後まで読めるって素敵なことだよ", "emotion": "happy" }
+      ],
+      "animation": { "type": "confetti_celebration" },
+      "renrakuchoEntry": "おうちで絵本を読み聞かせしている時、最後のページまで集中して聞けたそうです。少しずつ集中する力がついてきました。",
+      "memorableDay": { "emotionText": "はじめて絵本をさいごまで読みきった日" },
+      "rewards": {
+        "titles": ["title_picturebook_first"],
+        "soyouBonus": { "intellect": 15, "sensitivity": 12, "passion": 8 },
+        "persistBuffs": [{ "type": "play", "playId": "picturebook", "multiplier": 1.15, "durationDays": 30 }]
+      }
+    }
+  },
+  {
     "id": "m_puzzle_9",
     "lifeStageTag": "nursery",
     "title": "パズルにちょうせん！",
@@ -83,7 +145,7 @@
 
     "incite": {
       "trigger": { "type": "enterLocation", "location": "near_park", "probability": 0.4 },
-      "minAge": 2,
+      "minAge": 1,
       "previewHint": {
         "icon": "💭",
         "headline": "もうすぐ何か…",
@@ -114,7 +176,7 @@
           "laterLabel": "まだ、こんどにする"
         },
         "requires": {
-          "soyouAtLeast": { "social": 30, "passion": 20 }
+          "soyouAtLeast": { "social": 15, "passion": 10 }
         }
       },
       "dialog": [
@@ -142,8 +204,8 @@
     "allowConcurrent": true,
 
     "incite": {
-      "trigger": { "type": "playCountAtLeast", "playId": "song", "count": 3 },
-      "minAge": 2,
+      "trigger": { "type": "playCountAtLeast", "playId": "song", "count": 4 },
+      "minAge": 1,
       "previewHint": {
         "icon": "💭",
         "headline": "もうすぐ何か…",
@@ -166,7 +228,7 @@
       "trigger": {
         "type": "playCountAtLeast",
         "playId": "song",
-        "count": 10,
+        "count": 8,
         "manualAttempt": true,
         "attemptPrompt": {
           "title": "もうできるかも？",
@@ -175,7 +237,7 @@
           "laterLabel": "まだ、こんどにする"
         },
         "requires": {
-          "soyouAtLeast": { "sensitivity": 30, "passion": 25 }
+          "soyouAtLeast": { "sensitivity": 12, "passion": 10 }
         }
       },
       "dialog": [
