@@ -40,7 +40,7 @@
     "timeCost": 2,
     "moneyCost": 0,
     "staminaCost": 8,
-    "ageMin": 2,
+    "ageMin": 1,
     "ageMax": 10,
     "categories": [
       "outdoor_toy",
