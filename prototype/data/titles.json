@@ -5,7 +5,7 @@
     "icon": "🧩",
     "lifeStageTag": "nursery",
     "description": "ジグソーパズル9ピースを自分で完成させた",
-    "flavor": { "speaker": "mother", "text": "えらいね〜、できたね！" }
+    "flavor": { "speaker": "mother", "text": "毎日コツコツ練習してきたから、できるようになったね" }
   },
   {
     "id": "title_share_toy",
@@ -13,7 +13,7 @@
     "icon": "🤝",
     "lifeStageTag": "nursery",
     "description": "お友達におもちゃを気持ちよく貸してあげられた",
-    "flavor": { "speaker": "teacher_sakura", "text": "とってもやさしいね！" }
+    "flavor": { "speaker": "teacher_sakura", "text": "お友達のことを考えて行動できたね" }
   },
   {
     "id": "title_singer",
@@ -21,16 +21,16 @@
     "icon": "🎤",
     "lifeStageTag": "nursery",
     "description": "好きな歌を最後までうたえるようになった",
-    "flavor": { "speaker": "father", "text": "お父さん感動したよ" }
+    "flavor": { "speaker": "father", "text": "毎日続けてきたから歌えるようになったんだね" }
   },
   {
     "id": "title_picturebook_lover",
-    "name": "絵本が大好き",
+    "name": "絵本がだいすき",
     "icon": "📖",
     "lifeStageTag": "nursery",
     "description": "絵本を 30 回読んだ",
     "autoTrigger": { "type": "playCountAtLeast", "playId": "picturebook", "count": 30 },
-    "flavor": { "speaker": "mother", "text": "お気に入りの絵本ができたね" }
+    "flavor": { "speaker": "mother", "text": "毎日のように絵本を開いてきたね" }
   },
   {
     "id": "title_park_explorer",
@@ -39,16 +39,16 @@
     "lifeStageTag": "nursery",
     "description": "公園で 20 回遊んだ",
     "autoTrigger": { "type": "playCountAtLeastAtLocation", "locationIds": ["near_park", "big_park"], "count": 20 },
-    "flavor": { "speaker": "narration", "text": "公園のことなら誰よりも詳しい！" }
+    "flavor": { "speaker": "narration", "text": "色んな遊具を試してきたね" }
   },
   {
     "id": "title_balanced",
-    "name": "バランスの取れた子",
+    "name": "いろんなことに興味津々",
     "icon": "⚖️",
     "lifeStageTag": "nursery",
     "description": "5 つの素養がすべて 20 以上",
     "autoTrigger": { "type": "allSoyouAtLeast", "value": 20 },
-    "flavor": { "speaker": "teacher_sakura", "text": "いろんなことに興味があってえらいね" }
+    "flavor": { "speaker": "teacher_sakura", "text": "色んな遊びに挑戦してきたね" }
   },
   {
     "id": "title_first_step",
@@ -57,16 +57,16 @@
     "lifeStageTag": "nursery",
     "description": "保育園での最初の発見",
     "autoTrigger": { "type": "discoveryFound", "discovery": "disc_1_stand" },
-    "flavor": { "speaker": "mother", "text": "歩けるようになったね！" }
+    "flavor": { "speaker": "mother", "text": "何度も転んだけど、また立ち上がってきたね" }
   },
   {
     "id": "title_counting",
-    "name": "かぞえられる",
+    "name": "かぞえられるようになった",
     "icon": "🔢",
     "lifeStageTag": "nursery",
     "description": "数字を覚えた",
     "autoTrigger": { "type": "soyouAtLeast", "key": "intellect", "value": 80 },
-    "flavor": { "speaker": "father", "text": "1、2、3...上手に数えられるね" }
+    "flavor": { "speaker": "father", "text": "毎日少しずつ覚えてきたね" }
   },
   {
     "id": "title_active_kid",
@@ -75,7 +75,7 @@
     "lifeStageTag": "nursery",
     "description": "身体をたくさん動かせた",
     "autoTrigger": { "type": "soyouAtLeast", "key": "body", "value": 100 },
-    "flavor": { "speaker": "narration", "text": "走り回って元気いっぱい！" }
+    "flavor": { "speaker": "narration", "text": "走るのが楽しい、を毎日積み重ねてきた" }
   },
   {
     "id": "title_curious",
@@ -84,7 +84,7 @@
     "lifeStageTag": "nursery",
     "description": "知性がたくさん育った",
     "autoTrigger": { "type": "soyouAtLeast", "key": "intellect", "value": 100 },
-    "flavor": { "speaker": "mother", "text": "『なんで？』が口ぐせになったね" }
+    "flavor": { "speaker": "mother", "text": "『なんで？』を大事にしてきたね" }
   },
   {
     "id": "title_artist",
@@ -93,7 +93,7 @@
     "lifeStageTag": "nursery",
     "description": "感性がたくさん育った",
     "autoTrigger": { "type": "soyouAtLeast", "key": "sensitivity", "value": 100 },
-    "flavor": { "speaker": "teacher_sakura", "text": "色のえらび方が素敵ね" }
+    "flavor": { "speaker": "teacher_sakura", "text": "色や音を感じてきたから、今のあなたがいるね" }
   },
   {
     "id": "title_friendly",
@@ -102,6 +102,6 @@
     "lifeStageTag": "nursery",
     "description": "お友達と仲良くできた",
     "autoTrigger": { "type": "soyouAtLeast", "key": "social", "value": 80 },
-    "flavor": { "speaker": "teacher_sakura", "text": "みんなと仲良しだね" }
+    "flavor": { "speaker": "teacher_sakura", "text": "お友達一人ひとりに向き合ってきたね" }
   }
 ]

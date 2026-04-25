@@ -29,7 +29,7 @@
       "progressHints": [
         {
           "condition": { "playCountAtLeast": { "puzzle_4pieces": 3 } },
-          "dialog": [{ "speaker": "mother", "text": "4ピースが上手になってきたね！" }],
+          "dialog": [{ "speaker": "mother", "text": "毎日少しずつ練習してきたね" }],
           "once": true
         }
       ]
@@ -49,11 +49,11 @@
         { "speaker": "narration", "text": "今日はジグソーパズル9ピースに挑戦してみる…" },
         { "speaker": "narration", "text": "（じっと集中して…）" },
         { "speaker": "narration", "text": "できた！" },
-        { "speaker": "teacher_sakura", "text": "わあ、できたね！すごいね！", "emotion": "amazed" },
-        { "speaker": "mother", "text": "ひと月前はできなかったのに、今日はできたね！", "emotion": "happy_cry" }
+        { "speaker": "teacher_sakura", "text": "あきらめずにやれたね！", "emotion": "amazed" },
+        { "speaker": "mother", "text": "ひと月前はできなかったのに、毎日練習してきたから、今日できたんだね", "emotion": "happy_cry" }
       ],
       "animation": { "type": "confetti_celebration" },
-      "renrakuchoEntry": "今日○○ちゃんがパズル9ピースを自分でクリアできました。お母さんがとても喜んでいましたよ。",
+      "renrakuchoEntry": "今日○○ちゃんがパズル9ピースを自分でクリアできました。コツコツ練習してきた成果ですね。お母さんも一緒に喜んでいました。",
       "memorableDay": { "emotionText": "パズル9ピース、自分でできた日" },
       "rewards": {
         "titles": ["title_puzzle_9"],
@@ -98,11 +98,11 @@
       "dialog": [
         { "speaker": "narration", "text": "勇気をだして、おもちゃを貸してあげる…" },
         { "speaker": "narration", "text": "友達：「ありがとう！一緒にあそぼ！」" },
-        { "speaker": "teacher_sakura", "text": "とってもやさしいね！", "emotion": "amazed" },
-        { "speaker": "mother", "text": "お友達にやさしくできて、お母さんもうれしい", "emotion": "happy" }
+        { "speaker": "teacher_sakura", "text": "お友達のことを考えられたね", "emotion": "amazed" },
+        { "speaker": "mother", "text": "やさしさを行動にできたね、お母さんも嬉しい", "emotion": "happy" }
       ],
       "animation": { "type": "confetti_celebration" },
-      "renrakuchoEntry": "お友達におもちゃを気持ちよく貸してあげられました。保育園でも『やさしい子ですね』とほめられました。",
+      "renrakuchoEntry": "お友達におもちゃを気持ちよく貸してあげられました。保育園でも『よく譲り合いができている』と言ってもらえました。",
       "memorableDay": { "emotionText": "はじめて自分からおもちゃを貸せた日" },
       "rewards": {
         "titles": ["title_share_toy"],
@@ -147,11 +147,11 @@
       },
       "dialog": [
         { "speaker": "narration", "text": "大きな声で、最後までうたいきれた！" },
-        { "speaker": "father", "text": "上手だね！お父さん感動したよ", "emotion": "happy" },
-        { "speaker": "mother", "text": "ぜんぜんちがうね、すごい成長したね", "emotion": "happy_cry" }
+        { "speaker": "father", "text": "毎日コツコツ歌ってきたんだね、最後まで聞けたよ", "emotion": "happy" },
+        { "speaker": "mother", "text": "ぜんぜんちがうね、毎日続けてきた成果だね", "emotion": "happy_cry" }
       ],
       "animation": { "type": "confetti_celebration" },
-      "renrakuchoEntry": "最近お家でたくさんお歌をうたっているそうで、保育園でも元気な歌声を聞かせてくれます。",
+      "renrakuchoEntry": "最近お家でたくさんお歌をうたってるそうで、保育園でも元気に最後まで歌い切れていました。",
       "memorableDay": { "emotionText": "初めて最後まで歌い切れた日" },
       "rewards": {
         "titles": ["title_singer"],
