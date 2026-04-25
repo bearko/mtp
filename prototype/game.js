@@ -420,6 +420,8 @@ let LOCATIONS = [
 let MISSION_SCENARIOS = [];
 /** @spec SPEC-051 §4.5 称号マスタ */
 let TITLES = [];
+/** @spec SPEC-054 §2 親が他者から褒められる場面 */
+let PARENTAL_COMPLIMENTS = [];
 
 /* =========================================================================
  * @spec SPEC-031 / SPEC-032 転生イントロのシーン定義とランダム名マスタ
@@ -501,6 +503,11 @@ async function loadMasters() {
       // @spec SPEC-051 称号マスタ
       fetch("./data/titles.json").then((r) => { if (!r.ok) throw new Error("titles " + r.status); return r.json(); }).catch((e) => { console.warn("[master] titles optional", e); return []; }),
     ]);
+    // @spec SPEC-054 §2 parental_compliment マスタ（並列ロードに混ぜると Promise.all が複雑なので別 await）
+    try {
+      const pc = await fetch("./data/parental-compliments.json").then((r) => r.ok ? r.json() : []);
+      if (Array.isArray(pc)) PARENTAL_COMPLIMENTS = pc;
+    } catch (e) { console.warn("[master] parental-compliments optional", e); }
     if (Array.isArray(locs) && locs.length > 0) LOCATIONS = locs;
     if (Array.isArray(missions)) MISSION_SCENARIOS = missions;
     if (Array.isArray(titles)) TITLES = titles;
@@ -684,6 +691,8 @@ const DEFAULT_PLAYER = {
   renrakuchoHighlights: [],
   /** @spec SPEC-051 §3.1 各遊びの累計プレイ回数（称号判定用） */
   _playCounts: {},
+  /** @spec SPEC-054 §2.3 parental_compliment の cooldown（30 日に 1 回まで） */
+  _lastParentalComplimentDay: 0,
 };
 
 /**
@@ -1149,10 +1158,103 @@ function onLocationEntered(locationId) {
     completeMission(accTrig.mission);
     return;
   }
+  // @spec SPEC-054 §4.1 ミッション発端より優先で parental_compliment を判定
+  //   ただし発端と同列なら parental_compliment が cooldown 中の場合は発動しない
+  const pc = maybeTriggerParentalCompliment({ type: "enterLocation", location: locationId });
+  if (pc) {
+    startParentalCompliment(pc);
+    return;
+  }
   const inciteTrig = triggers.find((x) => x.phase === "incite");
   if (inciteTrig) {
     startMissionIncite(inciteTrig.mission);
   }
+}
+
+/* =========================================================================
+ * @spec SPEC-054 §4 parental_compliment（親が他者から褒められる場面）
+ * ========================================================================= */
+
+/** cooldown と条件をチェックし、発動可能な場面を返す（無ければ null） */
+function maybeTriggerParentalCompliment(context) {
+  const COOLDOWN_DAYS = 30;
+  if (player.day - (player._lastParentalComplimentDay || 0) < COOLDOWN_DAYS) return null;
+  const stage = resolveLifeStage(player.age);
+  if (!stage || stage.id !== "nursery") return null;
+  if (tutorialPhase(player.day) === "phase0") return null;
+
+  const candidates = (PARENTAL_COMPLIMENTS || []).filter((pc) => {
+    if (pc.lifeStageTag && pc.lifeStageTag !== stage.id) return false;
+    if (!triggerMatches(pc.trigger, context)) return false;
+    if (pc.trigger.minAge && player.age < pc.trigger.minAge) return false;
+    if (pc.trigger.requires) {
+      const { match } = evaluateMissionCondition(pc.trigger.requires);
+      if (!match) return false;
+    }
+    return true;
+  });
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+/** parental_compliment を発動：ダイアログ表示＋報酬適用 */
+function startParentalCompliment(pc) {
+  player._lastParentalComplimentDay = player.day;
+  // 報酬を先に適用しておき、ダイアログ閉じた後に S2 へ
+  const rew = pc.rewards || {};
+  if (rew.soyouBonus) {
+    for (const [k, v] of Object.entries(normalizeGainToSoyou(rew.soyouBonus))) {
+      if (SOYOU_KEYS.includes(k)) {
+        player.soyou[k] = (player.soyou[k] || 0) + v;
+      }
+    }
+  }
+  if (pc.dialog && rew.memorableDay) {
+    player.memorableDays.push({
+      day: player.day,
+      type: "parental_compliment",
+      pcId: pc.id,
+      emotionText: rew.memorableDay.emotionText,
+    });
+  }
+  if (rew.renrakuchoEntry) {
+    player.renrakuchoHighlights = player.renrakuchoHighlights || [];
+    player.renrakuchoHighlights.unshift({
+      day: player.day,
+      speaker: "narrator_neighbor",  // 第三者からの言葉として記録
+      text: rew.renrakuchoEntry,
+      emotion: "happy",
+      fromPcId: pc.id,
+    });
+    if (player.renrakuchoHighlights.length > 20) {
+      player.renrakuchoHighlights = player.renrakuchoHighlights.slice(0, 20);
+    }
+  }
+  // ダイアログ表示（既存のミッションモーダルを共用、phase は "compliment" として扱う）
+  showComplimentModal(pc);
+}
+
+/** parental_compliment 用モーダル（mission-modal を流用、専用クラスで雰囲気を分ける） */
+function showComplimentModal(pc) {
+  _missionModalQueue = (pc.dialog || []).slice();
+  _missionModalOnClose = () => { renderHUD(); };
+
+  const root = byId("screen-mission-modal");
+  if (!root) {
+    for (const line of (pc.dialog || [])) {
+      toast(`${speakerDisplay(line.speaker)}: ${line.text}`, 1400);
+    }
+    return;
+  }
+  byId("mission-modal-phase").textContent = "🌸 ほめられた";
+  byId("mission-modal-title").textContent = pc.title || "ほめられた瞬間";
+  byId("mission-modal-subtitle").textContent = "";
+  // 専用クラス（オレンジ寄りの暖色背景）
+  root.classList.remove("celebration", "incite", "catalyst");
+  root.classList.add("compliment");
+
+  showScreen("screen-mission-modal");
+  showNextMissionDialog();
 }
 
 /**
@@ -1192,6 +1294,11 @@ const SPEAKER_LABEL = {
   father: "お父さん",
   teacher_sakura: "さくら先生",
   teacher_midori: "みどり先生",
+  // @spec SPEC-054 §5 第三者 NPC（暫定、SPEC-041 で本格 NPC 化予定）
+  narrator_neighbor: "ご近所さん",
+  narrator_other_parent: "他のお母さん",
+  narrator_relative: "おばあちゃん",
+  narrator_park_oji: "公園のおじいさん",
 };
 function speakerDisplay(id) {
   return SPEAKER_LABEL[id] || id || "";

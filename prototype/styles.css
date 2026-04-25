@@ -2286,3 +2286,32 @@ body {
   margin-top: 16px;
   align-self: stretch;
 }
+
+/* ==========================================================================
+   @spec SPEC-054 §4.2 parental_compliment 専用モーダル（既存 mission-modal を流用）
+   背景：暖色寄り（オレンジ＋クリーム）。celebration より落ち着いた、家庭的な雰囲気
+   ========================================================================== */
+#screen-mission-modal.compliment {
+  background: linear-gradient(180deg, #fff3d6 0%, #ffd9a6 60%, #ffba7a 100%);
+}
+#screen-mission-modal.compliment .mission-modal-phase {
+  color: #b65d10;
+  font-size: 14px;
+}
+#screen-mission-modal.compliment::before {
+  content: "🌸 🌼 🌸";
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  letter-spacing: 14px;
+  opacity: 0.8;
+  animation: compliment-fade 1.2s ease-out;
+}
+@keyframes compliment-fade {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  100% { opacity: 0.8; transform: translateX(-50%) translateY(0); }
+}
+.mission-modal-body.emotion-warm     { color: #a3631f; }
+.mission-modal-body.emotion-proud    { color: #1f8f4a; font-weight: 700; }
