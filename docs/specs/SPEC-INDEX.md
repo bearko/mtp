@@ -40,6 +40,7 @@
 | [SPEC-050](./SPEC-050-annual-mission.md) | 年間ミッション & 年度末両親面談（マイライフ応用案 B+C） | Draft | `prototype/data/missions.json` / `prototype/game.js` annualMissions / #screen-parental-meeting | 2026-04-19 |
 | [SPEC-051](./SPEC-051-profile-screen.md) | プロファイル画面「自分の宝箱」（他人と比較しない、感情軸で振り返る 4 タブ） | Draft | `prototype/index.html` #screen-profile / `prototype/data/titles.json` / `prototype/game.js` renderProfileScreen, player.titles | 2026-04-19 v2 |
 | [SPEC-052](./SPEC-052-mission-scenario-dsl.md) | ミッションシナリオ DSL（4 幕構造の JSON 記述仕様） | Draft | `prototype/data/mission-scenarios.json` / `prototype/game.js` parseMissionScenario, triggerMissionEvent | 2026-04-19 |
+| [SPEC-053](./SPEC-053-neuroscience-review.md) | 脳科学レビュー（PR #21/#22 診断、報酬系視点での評価と改善提案） | Review | レビュー文書のみ。改善案は SPEC-054〜056 に分岐予定 | 2026-04-25 |
 
 ## ライフステージ別コアタイム
 
