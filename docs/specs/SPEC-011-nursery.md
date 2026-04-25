@@ -205,3 +205,285 @@
 - [ ] 新規解禁遊び（手押し車、三輪車、お歌の発表会など）
 - [ ] 発見に選択肢を与える（「滑り台 or 砂場を学ぶ」）
 - [ ] 発見ログの蓄積と振り返り画面
+
+## 10. 保育園「貯める」ギミック（Issue #14 反映 v2）
+
+Issue #14 のライフステージごとの基本コンセプトで、保育園は **「貯める」遊び** と定義された。遊びの選択肢は少なめだが、没頭して素養（SPEC-033）をどんどん貯める期間。以下の 3 つのギミックを仕様として追加する（順次実装）。
+
+### 10.1 親遣い遠出イベント（Parental Outing）
+- 1日の始まり（起床直後）に、**親の意思で特別な遊びが発動** することがある
+- 発生タイミング：
+  - 土日祝日（`dayOfWeek` が土日）：確率 40%
+  - 平日：確率 2%（稀）
+- ネガティブではなく **特別な遊び**。経験値は通常の 1.5〜2.0 倍
+- 例：`trip_zoo`（動物園）・`trip_aquarium`（水族館）・`trip_park_big`（大きな公園）
+- 発動したその日は **他の遊びは不可**。遠出の 1 発だけ遊んで **直接 S10 日の終わり** へ
+- 親の支出：`moneyCost` は親が負担するため `player.money` からは引かない（幼少期なので関係ない）
+
+**データ構造**（SPEC-028 マスタに追加）:
+```json
+{
+  "id": "trip_zoo",
+  "scope": "parental_outing",
+  "icon": "🦒",
+  "name": "動物園",
+  "lifeStageTag": "nursery",
+  "gain": { "intellect": 30, "sensitivity": 20, "social": 10, "passion": 8 },
+  "text": "おとうさん・おかあさんに動物園に連れて行ってもらった！"
+}
+```
+
+### 10.2 アイテムバフ（Item Buff）
+- 遠出系イベント（または稀な「お買い物」イベント）の後、**親が新しい絵本やおもちゃを買ってくれる** ことがある
+- 購入されたアイテムは `player.items[]` に追加される
+- アイテムごとに「{カテゴリ}系の遊びで獲得経験値 +N%」のバフが付く
+- 例：
+  - `item_new_picturebook`：読書カテゴリの遊びで +15%
+  - `item_sandbox_set`：クラフト系の遊びで +20%
+  - `item_ball`：運動系の遊びで +15%
+- バフは `finalizePlay()` の gainBoost に乗算で反映
+
+### 10.3 感染症イベント（Infection）
+- ネガティブイベント。保育園で感染症にかかる可能性がある
+- 発生条件：
+  - 月別確率：**4-6月**（春）・**11-2月**（冬）は高確率 15%／日
+  - 7-10月（夏秋）は低確率 3%／日
+- 発動すると：
+  - 3〜5 日間、朝の余剰時間がゼロ（病欠）
+  - 体力が毎朝 `-20%`（発熱）
+  - 体力は毎朝 0.5 倍しか回復しない
+  - 連絡帳に「お休みのお知らせ」が表示される
+- 3 日目以降に自然回復する
+
+### 10.4 実装ステップ
+1. イベントマスタ（`events.json`）に `scope: "parental_outing"` / `scope: "infection"` を追加
+2. `nextDay()` 冒頭で確率抽選し、親遣い遠出 or 感染症を発火
+3. 発火した日は `player._specialDayMode = "outing" | "infection"` フラグを立てて S2 の dock を隠す
+4. `renderSoyouResultList` は既存の描画でそのまま動く
+5. アイテムは `player.items = [{ id, buffs: { category: multiplier } }]` で持ち、`skillBoostMultiplier()` と並列に適用
+
+### 10.5 改訂履歴（Issue #14 反映）
+- 2026-04-19: §10 新設（親遣い遠出・アイテムバフ・感染症）
+- 2026-04-19 v2: §11〜§15 細部拡張（年齢別発見・保育士 NPC・遠出 12 件・アイテム 10 件・病気詳細）
+
+## 11. 年齢別の発見プール詳細
+
+保育園期は 1-4 歳の 4 年間（年齢 1→2→3→4）。それぞれの発達段階で発見できる内容が異なる。
+
+### 11.1 1 歳の発見プール
+
+| ID | テキスト | 解禁 | 効果 |
+|---|---|---|---|
+| `disc_1_mama`   | 「ママ」と呼べるようになった | – | intellect +5, social +3 |
+| `disc_1_stand`  | 立って歩けるようになった | play:`walking` 解禁 | body +8 |
+| `disc_1_scoop`  | スプーンでごはんを食べられる | play:`mealtime` 解禁 | body +3, sensitivity +3 |
+| `disc_1_smile`  | 先生に笑顔を見せられる | teacher_sakura +5 | social +4, passion +2 |
+| `disc_1_cry`    | 泣いて不快を伝えられる | – | social +2（表現）|
+
+### 11.2 2 歳の発見プール
+
+| ID | テキスト | 解禁 | 効果 |
+|---|---|---|---|
+| `disc_2_2words` | 二語文が話せる：『ママ、だっこ』 | intellect カテゴリ開放 | intellect +10 |
+| `disc_2_run`    | 走れるようになった | play:`running_around` 解禁 | body +10 |
+| `disc_2_color`  | 色の名前を覚えた | play:`color_game` 解禁 | sensitivity +8, intellect +5 |
+| `disc_2_pretend`| ごっこ遊びを始めた | play:`pretend_play` 解禁 | sensitivity +10, social +5 |
+| `disc_2_share`  | おもちゃを貸してあげられた | teacher_sakura +8 | social +6 |
+| `disc_2_water`  | 水たまりで遊んだ | play:`water_play` 解禁 | body +5, sensitivity +5 |
+
+### 11.3 3 歳の発見プール
+
+| ID | テキスト | 解禁 | 効果 |
+|---|---|---|---|
+| `disc_3_why`    | 「なんで？」と聞けるようになった | intellect 補正 +20% | intellect +15 |
+| `disc_3_draw`   | 人の顔を描けた | play:`drawing_portraits` 解禁 | sensitivity +15 |
+| `disc_3_tricycle`| 三輪車をこげた | play:`tricycle` 解禁 | body +12 |
+| `disc_3_friend` | 親友ができた | friend_yuta or friend_maya 加入 | social +15, passion +10 |
+| `disc_3_song`   | 歌を最後まで歌えた | play:`singing_alone` 解禁 | sensitivity +10, passion +8 |
+| `disc_3_tag`    | 鬼ごっこのルールを理解 | play:`tag_game` 解禁 | body +8, social +10 |
+
+### 11.4 4 歳の発見プール
+
+| ID | テキスト | 解禁 | 効果 |
+|---|---|---|---|
+| `disc_4_hiragana` | ひらがなを読めるように | intellect +30, 絵本系遊びのスキル +30 | intellect +20 |
+| `disc_4_cooperate`| 友達と協力して砂場で作った | play:`sand_cooperation` 解禁 | social +15, sensitivity +10 |
+| `disc_4_help`    | 先生のお手伝いが出来た | teacher_sakura +10 | social +10, passion +5 |
+| `disc_4_count`   | 10 まで数えられるように | play:`counting_game` 解禁 | intellect +15 |
+| `disc_4_climb`   | ジャングルジムの頂上まで | body +15, passion +5 | body +15 |
+| `disc_4_perform` | 発表会で台詞を言えた | sensitivity +20, passion +20 | – |
+
+### 11.5 発見確率
+- 毎日、保育園コアタイム中に 1 度抽選
+- 抽選対象は年齢層の発見プール ∪ まだ未発見のもの
+- 発見済みのものは除外
+- 確率：60%（phase0 期は 0%）
+
+## 12. 保育士 NPC の詳細（SPEC-041 連携）
+
+### 12.1 さくら先生（teacher_sakura）
+- 女性、22 歳、新米保育士
+- 性格：元気で明るい、子ども目線で遊ぶ
+- 関係値の上がり方：一緒に遊んだ日で +2、連絡帳にコメントする日で +1
+- 発言例：
+  - 「今日もいっぱい遊ぼうね！」（登園時）
+  - 「すごい！もういっかいやってみよう！」（プレイ中）
+  - 「また明日ね〜」（降園時）
+
+### 12.2 園長先生（principal_sato）
+- 女性、55 歳、ベテラン
+- 園の方針を決める。年 2 回の面談で登場
+- プレイヤーとの関係値は低めから始まる（30）
+
+### 12.3 同じクラスの友達（5 人）
+- 0 歳時点でクラスに自動配置
+- 性格・好みでランダム：
+  - ハル（活発、外遊び）
+  - ヒカリ（静か、絵本）
+  - タケル（やんちゃ、ケンカも）
+  - ナナ（優しい、協力）
+  - ソウタ（臆病、要励まし）
+- 発見イベントで関係値が変動
+
+## 13. 親遣い遠出の詳細（12 件）
+
+| ID | 場所 | 曜日条件 | 獲得素養 | フレーバー |
+|---|---|---|---|---|
+| `outing_zoo` | 動物園 | 土日 | intellect 30, sensitivity 20, social 10, passion 8 | キリンを初めて見て大喜び |
+| `outing_aquarium` | 水族館 | 土日 | intellect 25, sensitivity 25, social 8, passion 7 | 魚に手を伸ばす |
+| `outing_big_park` | 大きな公園 | 土日 | body 30, social 15, passion 10 | 広くて走り回った |
+| `outing_museum_kids` | こども科学館 | 土日 | intellect 40, sensitivity 15 | 体験型展示に夢中 |
+| `outing_farm` | 観光牧場 | 土日 | body 20, sensitivity 25, intellect 15 | 牛に触った！ |
+| `outing_shrine_festival` | 神社のお祭り | 祝日夏 | social 25, sensitivity 20, passion 15 | 屋台のリンゴ飴 |
+| `outing_sea` | 海水浴 | 土日夏 | body 35, sensitivity 25 | 波にはじめて触れた |
+| `outing_ski` | スキー場 | 冬週末 | body 30, passion 15 | 雪で目がキラキラ |
+| `outing_grandma` | おばあちゃんの家 | 祝日 | social 20, intellect 15, sensitivity 15 | 手作りの料理 |
+| `outing_shopping_mall`| ショッピングモール | 土日 | social 10, sensitivity 10 | 新しいおもちゃを見た |
+| `outing_library` | 図書館 | 平日も可 | intellect 20, sensitivity 10 | たくさんの絵本 |
+| `outing_restaurant` | 外食（家族で） | 夕方 | social 15, passion 10 | 家族で楽しい時間 |
+
+### 13.1 確率式
+```js
+function outingRate(dow, age, stageMood) {
+  const weekend = (dow === 0 || dow === 6);
+  const base = weekend ? 0.40 : 0.02;
+  // 保育園 3 歳以降で確率が少し上がる（親も外出させやすい）
+  const ageBonus = age >= 3 ? 0.05 : 0;
+  // 特殊シーズン（夏祭り・クリスマス等）で +10%
+  return base + ageBonus;
+}
+```
+
+### 13.2 その日の画面フロー
+- 朝起床 → モーダル：「今日は◯◯に行くよ！」
+- S2 ドックは dim にして「今日は遠出の日」と表示
+- 時間 は自動消化（00:00 → 18:00 まで加速演出）
+- 18:00 に帰宅 → S10 日サマリへ
+- 日サマリの連絡帳に「今日の冒険」エピソードを追加
+
+## 14. アイテムバフの詳細（10 件）
+
+### 14.1 データ構造
+```json
+{
+  "id": "item_new_picturebook",
+  "name": "新しい絵本",
+  "icon": "📕",
+  "description": "お気に入りの一冊。何度も読み返したくなる。",
+  "unlockFrom": "outing_library / outing_shopping_mall",
+  "buffs": {
+    "soyouGainCategory": { "reading": 0.20, "literacy": 0.15 },
+    "skillBoostCategory": { "reading": 0.30 }
+  },
+  "stackable": false,
+  "lifeStageTag": "nursery"
+}
+```
+
+### 14.2 初期 10 アイテム
+
+| ID | 名前 | 効果 | 入手元 |
+|---|---|---|---|
+| `item_new_picturebook` | 新しい絵本 | 読書・文字系 +20% / +30% | 図書館・書店 |
+| `item_wooden_blocks` | 積み木セット | クラフト系 +25% | おもちゃ屋 |
+| `item_ball` | やわらかいボール | 運動系 +15% | ショッピングモール |
+| `item_crayon_set` | クレヨンセット | 絵画系 +25% | ショッピングモール |
+| `item_stuffed_animal` | ぬいぐるみ | sensitivity 遊びで +15% | おばあちゃん |
+| `item_sandbox_toys` | 砂場セット | 砂場遊び +30% | 公園グッズ |
+| `item_music_rattle` | ガラガラ楽器 | 音楽系 +15% | ベビー用品 |
+| `item_wagon` | 手押し車 | 運動・散歩 +15% | ベビー用品 |
+| `item_puzzle` | 木のパズル | intellect +20% | 知育玩具 |
+| `item_new_shoes` | 新しい靴 | 外遊び +10% / 運動スキル +15% | 季節買い替え |
+
+### 14.3 アイテム効果の適用
+`finalizePlay()` の経験値計算で、該当カテゴリにバフを適用：
+```js
+function applyItemBuffs(gain, categories) {
+  for (const item of player.items || []) {
+    for (const cat of categories) {
+      const mul = (item.buffs.soyouGainCategory || {})[cat];
+      if (mul) {
+        // gain は新キー（body/intellect/...）。cat はカテゴリ名（reading 等）
+        // カテゴリに紐づく素養キー（SPEC-022）経由で加算する
+        const soyouKey = categoryToSoyouKey(cat); // reading -> intellect
+        if (gain[soyouKey]) gain[soyouKey] = Math.round(gain[soyouKey] * (1 + mul));
+      }
+    }
+  }
+  return gain;
+}
+```
+
+## 15. 病気（感染症）の詳細
+
+### 15.1 病気一覧
+
+| ID | 病名 | 季節 | 期間 | 体力減 | 治療費 |
+|---|---|---|---|---|---|
+| `infection_cold` | 風邪 | 全期 | 3-5 日 | 1 日 -20% | 親負担 |
+| `infection_flu` | インフルエンザ | 11-2月 | 5-7 日 | 1 日 -30% | 親負担 |
+| `infection_rota` | ロタウイルス | 4-6月 | 4 日 | 1 日 -40% | 親負担 |
+| `infection_hand` | 手足口病 | 5-8月 | 5-7 日 | 1 日 -15% + 社交イベント不可 | 親負担 |
+| `infection_chicken` | 水ぼうそう | 4-6月 | 7-10 日 | 1 日 -20% | 親負担 |
+
+### 15.2 感染確率式
+```js
+function infectionRate(month, stamina) {
+  const highSeason = (month >= 3 && month <= 5) || month >= 10 || month <= 1;
+  const base = highSeason ? 0.15 : 0.03;
+  // 体力が低い（50% 未満）だと +50%
+  const weak = (stamina / staminaCap) < 0.5;
+  return base * (weak ? 1.5 : 1.0);
+}
+```
+
+### 15.3 病気中の挙動
+- 朝の余剰時間 = 0（登園不可）
+- HUD に `🤒 病気` バッジ
+- 体力回復量は半分
+- `player._specialDayMode = "infection"` で dock を閉じる（将来実装）
+- 連絡帳「おやすみのお知らせ」を表示
+- 3 日目以降に自然回復、完治すると passion +5（頑張った）
+
+## 16. 1 日の細やかなタイムテーブル
+
+保育園の 1 日（実装は簡略だが設計上は以下を想定）：
+
+| 時刻 | 活動 | 任意／固定 |
+|---|---|---|
+| 07:00 | 起床、朝食 | 固定 |
+| 08:00 | 登園前の自由遊び（最大 1h） | 任意 |
+| 09:00 | 登園（コアタイム開始） | 固定 |
+| 09:30 | 自由遊び（園庭 or 室内） | – |
+| 11:00 | 先生と一緒の活動（歌・体操・絵本） | – |
+| 12:00 | 給食 | – |
+| 13:00-15:00 | お昼寝 | 固定 |
+| 15:00 | おやつ | – |
+| 15:30 | 自由遊び（園庭） | – |
+| 16:00 | 降園（コアタイム終了） | 固定 |
+| 16:00-18:00 | 夕方の自由遊び（家 or 公園） | 任意 |
+| 18:00 | 夕食・入浴 | 固定 |
+| 19:00 | 就寝準備 | – |
+| 19:00 | 就寝 | 固定 |
+
+プレイヤーが直接操作できるのは「登園前」「夕方の自由遊び」の 2 区間。コアタイム中はランダムに発見イベントが発火。

@@ -34,6 +34,16 @@
 | [SPEC-034](./SPEC-034-s2-hud-redesign.md) | S2 遊び選択画面リデザイン（3エリアHUD + 素養カード + ゴーストプレビュー） | Active | `prototype/index.html` #hud, #screen-choose / `prototype/game.js` renderHUD, renderChooseScreen, renderPlayPreview / `prototype/styles.css` .hud-*, .soyou-card | 2026-04-19 |
 | [SPEC-035](./SPEC-035-result-summary-ui.md) | 結果画面・サマリ画面の UI 統一（素養カード流用・スキル行・ステータスカット・連絡帳ファーストビュー） | Active | `prototype/index.html` #screen-playing, #screen-day-summary, #screen-highlight / `prototype/game.js` renderSoyouResultList, renderSkillLines / `prototype/styles.css` .soyou-result-*, .skill-lines | 2026-04-19 |
 | [SPEC-036](./SPEC-036-testing.md) | 自動テスト戦略（単体 / 結合 / シナリオ） | Active | `tests/` 全体 / `tests/run.sh` / `tests/lib/assert.js` | 2026-04-19 |
+| [SPEC-037](./SPEC-037-soyou-denomination.md) | 素養ポイントのデノミ（ライフステージ遷移時に 1/4） | Draft | `prototype/game.js` applySoyouDenomination / nextDay | 2026-04-19 |
+| [SPEC-038](./SPEC-038-guardian-spirit.md) | 英霊システム（幼稚園から解禁、初期 5 体 + 拡張 20 体） | Draft | `prototype/data/guardian-spirits.json` / `prototype/game.js` renderGuardianSelect / applyGuardianBuffs | 2026-04-19 |
+| [SPEC-039](./SPEC-039-lessons.md) | 稽古教室（水泳/バイオリン/ピアノ/ダンス/絵画/英会話 + 発表会 + 級位） | Draft | `prototype/data/lessons.json` / `prototype/game.js` renderLessonEnroll / runLessonEvent | 2026-04-19 |
+| [SPEC-040](./SPEC-040-worldview.md) | 世界観総則（舞台・時代背景・価値観・テーマ・感情曲線） | Active | 全 SPEC の基盤 | 2026-04-19 |
+| [SPEC-041](./SPEC-041-npc-relationships.md) | NPC・人間関係システム（親/先生/友達/恋人/同僚の関係値） | Draft | `prototype/data/npcs.json` / `prototype/game.js` updateRelationship | 2026-04-19 |
+| [SPEC-042](./SPEC-042-economy.md) | 経済システム（お小遣い・給与・支出・貯蓄・価格体系） | Draft | `prototype/data/prices.json` / `prototype/game.js` grantAllowance / payExpense | 2026-04-19 |
+| [SPEC-043](./SPEC-043-evaluation-events.md) | 試験・発表会・評価システム（模試/大会/検定/発表会/昇進試験の統一） | Draft | `prototype/data/events.json` scope=evaluation / `prototype/game.js` runEvaluationEvent | 2026-04-19 |
+| [SPEC-044](./SPEC-044-admission-path.md) | 進路選択・受験システム（幼小中高大の進学分岐） | Draft | `prototype/data/schools.json` / `prototype/game.js` renderAdmissionChoice | 2026-04-19 |
+| [SPEC-045](./SPEC-045-career.md) | キャリア・職業システム（業界・企業・昇進・転職・独立） | Draft | `prototype/data/industries.json` / `prototype/game.js` runJobHunting | 2026-04-19 |
+| [SPEC-046](./SPEC-046-life-events.md) | ライフイベント（恋愛・結婚・出産・病気・移住・死亡・エンディング） | Draft | `prototype/data/life-events.json` / `prototype/game.js` runLifeEvent | 2026-04-19 |
 | [SPEC-047](./SPEC-047-location-map.md) | 場所・マップシステム（保育園の親遣い移動／遊びの場所フィルタ／持続バフ） | Active | `prototype/data/locations.json` / `prototype/index.html` #hud-location, #screen-travel, #screen-travel-result / `prototype/game.js` LOCATIONS, player.location, startTravelAnimation, runFullDayEvent | 2026-04-19 |
 | [SPEC-048](./SPEC-048-design-review.md) | ゲームデザインレビュー（プランナー視点の改善提案・Tier S/A/B/C） | Review | 叩き台文書のみ、実装は分岐 SPEC で | 2026-04-19 |
 | [SPEC-049](./SPEC-049-mylife-benchmark.md) | パワプロ『マイライフ』分析レポート + 応用案 7 件 | Research | 調査レポート | 2026-04-19 |
