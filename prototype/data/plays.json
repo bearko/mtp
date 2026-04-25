@@ -699,5 +699,38 @@
     "locations": [
       "home"
     ]
+  },
+  {
+    "id": "puzzle_4pieces",
+    "name": "パズル4ピース",
+    "icon": "🧩",
+    "timeCost": 1,
+    "moneyCost": 0,
+    "staminaCost": 3,
+    "ageMin": 2,
+    "ageMax": 10,
+    "categories": [
+      "crafting",
+      "sensitivity"
+    ],
+    "gain": {
+      "intellect": 8,
+      "sensitivity": 5,
+      "passion": 3
+    },
+    "unlockRequired": true,
+    "descriptions": [
+      "4ピースのかんたんなパズルを組み立てる。",
+      "かたちを合わせられた！",
+      "もうすこし難しいのもできるかな？"
+    ],
+    "lifeStageTag": "nursery",
+    "locations": [
+      "home",
+      "children_hall",
+      "grandparents_house"
+    ],
+    "renrakuchoTeacher": "細かい作業に集中して取り組んでいました。",
+    "renrakuchoParent": "家でもパズルを何度もくり返して遊んでいます。"
   }
 ]
