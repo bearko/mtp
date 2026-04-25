@@ -1007,6 +1007,113 @@ function acceptMission(mission) {
 }
 
 /** @spec SPEC-050 §5 達成（4 軸を埋める演出 + 報酬 + 連絡帳） */
+/**
+ * @spec SPEC-055 §2 達成可能になったとき：
+ *   - autoAttempt: true → 即 completeMission（既存挙動）
+ *   - manualAttempt: true → 『ちょうせんしてみる？』モーダル経由（SDT 自律性）
+ *   - どちらの指定も無い → manualAttempt 扱い（v2 デフォルト）
+ */
+let _attemptPromptMission = null;
+function tryStartMissionAccomplish(mission) {
+  const trigger = (mission.accomplish && mission.accomplish.trigger) || {};
+  if (trigger.autoAttempt && !trigger.manualAttempt) {
+    completeMission(mission);
+    return;
+  }
+  // manualAttempt or デフォルト → モーダル
+  showAttemptPromptModal(mission);
+}
+
+function showAttemptPromptModal(mission) {
+  _attemptPromptMission = mission;
+  const trigger = (mission.accomplish && mission.accomplish.trigger) || {};
+  const prompt = trigger.attemptPrompt || {};
+  const titleEl = byId("attempt-prompt-title");
+  if (titleEl) titleEl.textContent = prompt.title || "もうできるかも？";
+  const subtitleEl = byId("attempt-prompt-subtitle");
+  if (subtitleEl) subtitleEl.textContent = mission.title || "";
+  const headlineEl = byId("attempt-prompt-headline");
+  if (headlineEl) headlineEl.textContent = prompt.headline || "今ならできるかもしれない…挑戦してみる？";
+  const yesBtn = byId("btn-attempt-prompt-yes");
+  if (yesBtn) yesBtn.textContent = prompt.yesLabel || "ちょうせんしてみる";
+  const laterBtn = byId("btn-attempt-prompt-later");
+  if (laterBtn) laterBtn.textContent = prompt.laterLabel || "まだ、こんどにする";
+  showScreen("screen-mission-attempt-prompt");
+}
+
+function onAttemptPromptYes() {
+  const mission = _attemptPromptMission;
+  _attemptPromptMission = null;
+  if (mission) {
+    completeMission(mission);
+  } else {
+    goChooseFromToday();
+  }
+}
+
+function onAttemptPromptLater() {
+  // S2 へ。ミッションは ACCEPTED のまま、再訪時に再度プロンプトが出る
+  _attemptPromptMission = null;
+  goChooseFromToday();
+}
+
+/**
+ * @spec SPEC-055 §1 予告ヒントの計算
+ * 未完了かつ active でないミッションの中から、発端トリガが「あと一歩」のものを返す。
+ */
+function computePreviewHint() {
+  const stage = resolveLifeStage(player.age);
+  if (!stage) return null;
+  const stageId = stage.id;
+  for (const m of MISSION_SCENARIOS) {
+    if (m.lifeStageTag && m.lifeStageTag !== stageId) continue;
+    if (player.completedMissions.includes(m.id)) continue;
+    if (player.activeMissions.some((a) => a.id === m.id)) continue;
+    if (!m.incite || !m.incite.previewHint) continue;
+    if (m.incite.minAge && player.age < m.incite.minAge) continue;
+    const t = m.incite.trigger;
+    if (!t) continue;
+
+    let nearReady = false;
+    switch (t.type) {
+      case "enterLocation":
+        // 親遣いの候補に含まれる、または解禁済みの場所なら near
+        nearReady = (player.unlockedLocations || []).includes(t.location)
+                  || player._parentalOutingToday === t.location;
+        break;
+      case "playCountAtLeast":
+        const count = (player._playCounts || {})[t.playId] || 0;
+        nearReady = count >= Math.floor((t.count || 1) * 0.7);
+        break;
+    }
+    if (nearReady) {
+      return { mission: m, hint: m.incite.previewHint };
+    }
+  }
+  return null;
+}
+
+/**
+ * @spec SPEC-055 §1 HUD 直下に予告ヒントを描画。
+ *   なければ要素を hidden に。
+ */
+function renderPreviewHint() {
+  const root = byId("mission-prelude");
+  if (!root) return;
+  const result = computePreviewHint();
+  if (!result) {
+    root.hidden = true;
+    return;
+  }
+  root.hidden = false;
+  const headlineEl = byId("mission-prelude-headline");
+  const detailEl   = byId("mission-prelude-detail");
+  const iconEl     = byId("mission-prelude-icon");
+  if (iconEl)     iconEl.textContent     = result.hint.icon || "💭";
+  if (headlineEl) headlineEl.textContent = result.hint.headline || "もうすぐ何か…";
+  if (detailEl)   detailEl.textContent   = result.hint.detail || "";
+}
+
 function completeMission(mission) {
   const ms = getMissionState(mission.id);
   if (!ms || ms.state !== "ACCEPTED") return;
@@ -1163,7 +1270,8 @@ function onLocationEntered(locationId) {
   // 達成トリガが優先（発端より先に処理）
   const accTrig = triggers.find((x) => x.phase === "accomplish");
   if (accTrig) {
-    completeMission(accTrig.mission);
+    // @spec SPEC-055 §2 manualAttempt 対応：『ちょうせんしてみる？』モーダルを挟む
+    tryStartMissionAccomplish(accTrig.mission);
     return;
   }
   // @spec SPEC-054 §4.1 ミッション発端より優先で parental_compliment を判定
@@ -1280,8 +1388,14 @@ function onPlayFinalized(play) {
     const m = MISSION_SCENARIOS.find((x) => x.id === ms.id);
     if (m) maybeShowChallengeHints(m);
   }
-  // 累積系トリガ（playCountAtLeast）
+  // 累積系トリガ（playCountAtLeast）：達成 → 発端の優先順位
   const triggers = findMissionsToTrigger({ type: "playCountAtLeast", playId: play.id });
+  // @spec SPEC-055 §2 達成は manualAttempt 経由（モーダル）
+  const acc = triggers.find((x) => x.phase === "accomplish");
+  if (acc) {
+    tryStartMissionAccomplish(acc.mission);
+    return;
+  }
   const incite = triggers.find((x) => x.phase === "incite");
   if (incite) startMissionIncite(incite.mission);
 
@@ -1289,6 +1403,8 @@ function onPlayFinalized(play) {
   evaluateTitleAutoTriggers();
   // ミッションバナーの更新
   renderMissionBanner();
+  // @spec SPEC-055 §1 予告ヒントの再計算
+  renderPreviewHint();
 }
 
 /* =========================================================================
@@ -3480,6 +3596,8 @@ function goChooseFromToday() {
 
   // @spec SPEC-050 §9 ミッションバナーの更新（ここで毎朝呼ぶのが確実）
   try { renderMissionBanner(); } catch (e) { /* noop */ }
+  // @spec SPEC-055 §1 予告ヒント（HUD 直下）も毎朝再計算
+  try { renderPreviewHint(); } catch (e) { /* noop */ }
 
   const stage = resolveLifeStage(player.age);
   const coreTime = getActiveCoreTime();
@@ -5053,6 +5171,14 @@ document.addEventListener("click", (e) => {
     case "mission-modal-next":
       // @spec SPEC-050 §5 ミッションモーダルの「つぎへ」
       showNextMissionDialog();
+      break;
+    case "attempt-prompt-yes":
+      // @spec SPEC-055 §2 達成プロンプト『ちょうせんしてみる』
+      onAttemptPromptYes();
+      break;
+    case "attempt-prompt-later":
+      // @spec SPEC-055 §2 達成プロンプト『まだ、こんどにする』
+      onAttemptPromptLater();
       break;
     case "switch-to-manual":
       // @spec SPEC-025 §5.5 / §7.1.3 手動に切替

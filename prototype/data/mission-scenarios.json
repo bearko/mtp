@@ -10,6 +10,11 @@
     "incite": {
       "trigger": { "type": "enterLocation", "location": "children_hall", "probability": 0.6 },
       "minAge": 2,
+      "previewHint": {
+        "icon": "💭",
+        "headline": "もうすぐ何か…",
+        "detail": "児童館で誰かが見守っている?"
+      },
       "dialog": [
         { "speaker": "narration", "text": "児童館で、他のお友達がパズルで遊んでいる…" },
         { "speaker": "player",    "text": "（やってみたい…）" }
@@ -39,7 +44,13 @@
       "trigger": {
         "type": "enterLocation",
         "location": "children_hall",
-        "autoAttempt": true,
+        "manualAttempt": true,
+        "attemptPrompt": {
+          "title": "もうできるかも？",
+          "headline": "毎日4ピースを練習してきたよ。今日は9ピースに挑戦してみる？",
+          "yesLabel": "ちょうせんしてみる",
+          "laterLabel": "まだ、こんどにする"
+        },
         "requires": {
           "soyouAtLeast": { "body": 30, "intellect": 40, "passion": 50 },
           "playCountAtLeast": { "puzzle_4pieces": 5 }
@@ -73,6 +84,11 @@
     "incite": {
       "trigger": { "type": "enterLocation", "location": "near_park", "probability": 0.4 },
       "minAge": 2,
+      "previewHint": {
+        "icon": "💭",
+        "headline": "もうすぐ何か…",
+        "detail": "公園で誰かが寂しそう?"
+      },
       "dialog": [
         { "speaker": "narration", "text": "公園で、他のお友達がおもちゃを欲しそうにしている…" }
       ]
@@ -90,7 +106,13 @@
       "trigger": {
         "type": "enterLocation",
         "location": "near_park",
-        "autoAttempt": true,
+        "manualAttempt": true,
+        "attemptPrompt": {
+          "title": "もうできるかも？",
+          "headline": "公園に来たよ。お友達におもちゃを貸してあげる勇気、ある？",
+          "yesLabel": "やってみる",
+          "laterLabel": "まだ、こんどにする"
+        },
         "requires": {
           "soyouAtLeast": { "social": 30, "passion": 20 }
         }
@@ -122,6 +144,11 @@
     "incite": {
       "trigger": { "type": "playCountAtLeast", "playId": "song", "count": 3 },
       "minAge": 2,
+      "previewHint": {
+        "icon": "💭",
+        "headline": "もうすぐ何か…",
+        "detail": "お父さん・お母さんが何か聞きたそう?"
+      },
       "dialog": [
         { "speaker": "narration", "text": "おうちでお歌をうたっていたら…" },
         { "speaker": "mother", "text": "あれ、さっきのお歌、もういちど聞かせて！" }
@@ -140,7 +167,13 @@
         "type": "playCountAtLeast",
         "playId": "song",
         "count": 10,
-        "autoAttempt": true,
+        "manualAttempt": true,
+        "attemptPrompt": {
+          "title": "もうできるかも？",
+          "headline": "毎日たくさん歌ってきたね。今日は最後まで歌い切ってみる？",
+          "yesLabel": "うたってみる",
+          "laterLabel": "まだ、こんどにする"
+        },
         "requires": {
           "soyouAtLeast": { "sensitivity": 30, "passion": 25 }
         }
