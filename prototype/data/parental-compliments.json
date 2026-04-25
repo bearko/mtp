@@ -1,0 +1,186 @@
+[
+  {
+    "id": "pc_neighbor_greeting",
+    "lifeStageTag": "nursery",
+    "title": "ご近所さんとのあいさつ",
+    "trigger": {
+      "type": "enterLocation",
+      "location": "near_park",
+      "minAge": 2,
+      "requires": { "soyouAtLeast": { "social": 30 } }
+    },
+    "dialog": [
+      { "speaker": "narration", "text": "公園で、ご近所のおばさんとすれ違った。" },
+      { "speaker": "narrator_neighbor", "text": "あら○○ちゃん、こんにちは" },
+      { "speaker": "player", "text": "「こんにちは」" },
+      { "speaker": "narrator_neighbor", "text": "○○ちゃん、いつも自分から挨拶してくれて。よく気を配って育ててますね", "emotion": "warm" },
+      { "speaker": "mother", "text": "ありがとうございます。家でも頑張ってるんです", "emotion": "proud" },
+      { "speaker": "narration", "text": "（お母さん、嬉しそう…）", "emotion": "happy_cry" }
+    ],
+    "rewards": {
+      "soyouBonus": { "passion": 5, "social": 3 },
+      "renrakuchoEntry": "ご近所さんに挨拶のことを褒めていただきました。お母さんがとても嬉しそうでした。",
+      "memorableDay": { "emotionText": "ご近所さんに挨拶をほめられた日" }
+    }
+  },
+  {
+    "id": "pc_park_share",
+    "lifeStageTag": "nursery",
+    "title": "公園での譲り合い",
+    "trigger": {
+      "type": "enterLocation",
+      "location": "big_park",
+      "minAge": 3,
+      "requires": { "soyouAtLeast": { "social": 50 } }
+    },
+    "dialog": [
+      { "speaker": "narration", "text": "大きな公園で、他のお母さんに話しかけられた。" },
+      { "speaker": "narrator_other_parent", "text": "○○ちゃん、さっきうちの子におもちゃ譲ってくれたんです" },
+      { "speaker": "narrator_other_parent", "text": "やさしい行動が自然にできてて、見てて感心しちゃいました", "emotion": "warm" },
+      { "speaker": "mother", "text": "そんな…ありがとうございます", "emotion": "proud" },
+      { "speaker": "narration", "text": "（お母さん、ちょっと照れてる）", "emotion": "happy" }
+    ],
+    "rewards": {
+      "soyouBonus": { "social": 5, "passion": 5 },
+      "renrakuchoEntry": "公園で他のお母さんから譲り合いのことを褒められました。お母さんが照れて喜んでいました。",
+      "memorableDay": { "emotionText": "公園で他のママさんに褒められた日" }
+    }
+  },
+  {
+    "id": "pc_library_focus",
+    "lifeStageTag": "nursery",
+    "title": "図書館での集中",
+    "trigger": {
+      "type": "enterLocation",
+      "location": "library",
+      "minAge": 2,
+      "requires": { "soyouAtLeast": { "intellect": 50 } }
+    },
+    "dialog": [
+      { "speaker": "narration", "text": "図書館で、司書さんが声をかけてくれた。" },
+      { "speaker": "narrator_neighbor", "text": "○○ちゃん、いつも絵本に夢中で読んでますね" },
+      { "speaker": "narrator_neighbor", "text": "集中して聴き入る時間を毎日積み重ねてきたんでしょうね", "emotion": "warm" },
+      { "speaker": "mother", "text": "家でも何度も読み返したりして…", "emotion": "proud" },
+      { "speaker": "narration", "text": "（お母さん、誇らしそう…）", "emotion": "happy" }
+    ],
+    "rewards": {
+      "soyouBonus": { "intellect": 6, "passion": 4 },
+      "renrakuchoEntry": "図書館で司書さんから集中力を褒められて、お母さんが嬉しそうでした。",
+      "memorableDay": { "emotionText": "図書館で集中を褒められた日" }
+    }
+  },
+  {
+    "id": "pc_grandparents_polite",
+    "lifeStageTag": "nursery",
+    "title": "おじいちゃん・おばあちゃんからの言葉",
+    "trigger": {
+      "type": "enterLocation",
+      "location": "grandparents_house",
+      "minAge": 2,
+      "requires": { "soyouAtLeast": { "social": 40 } }
+    },
+    "dialog": [
+      { "speaker": "narration", "text": "祖父母の家で、おばあちゃんがしみじみと話している。" },
+      { "speaker": "narrator_relative", "text": "○○ちゃん、行儀がよくなったわねぇ" },
+      { "speaker": "narrator_relative", "text": "お母さんお父さんが、毎日大事に向き合ってきたんだろうね", "emotion": "warm" },
+      { "speaker": "father", "text": "ありがとう。家でも教えながら一緒にやってます", "emotion": "proud" },
+      { "speaker": "narration", "text": "（お父さんがちょっと胸を張った）", "emotion": "happy" }
+    ],
+    "rewards": {
+      "soyouBonus": { "social": 5, "intellect": 3, "passion": 3 },
+      "renrakuchoEntry": "祖父母の家で行儀のことを褒められて、お父さんが嬉しそうでした。",
+      "memorableDay": { "emotionText": "祖父母に成長を喜ばれた日" }
+    }
+  },
+  {
+    "id": "pc_park_oji_song",
+    "lifeStageTag": "nursery",
+    "title": "公園のおじいさん",
+    "trigger": {
+      "type": "enterLocation",
+      "location": "near_park",
+      "minAge": 3,
+      "requires": { "soyouAtLeast": { "sensitivity": 40 } }
+    },
+    "dialog": [
+      { "speaker": "narration", "text": "公園で、いつも散歩してるおじいさんが話しかけてくれた。" },
+      { "speaker": "narrator_park_oji", "text": "○○ちゃん、上手な歌が聞こえてきたよ" },
+      { "speaker": "narrator_park_oji", "text": "毎日歌の練習してるんだろうね、楽しそうで何より", "emotion": "warm" },
+      { "speaker": "mother", "text": "家でも歌ばかり歌ってまして…", "emotion": "proud" },
+      { "speaker": "narration", "text": "（お母さん、優しい笑顔）", "emotion": "happy" }
+    ],
+    "rewards": {
+      "soyouBonus": { "sensitivity": 5, "passion": 5 },
+      "renrakuchoEntry": "公園のおじいさんに歌のことを褒められました。お母さんもにこにこしていました。",
+      "memorableDay": { "emotionText": "公園のおじいさんに歌をほめられた日" }
+    }
+  },
+  {
+    "id": "pc_children_hall_share",
+    "lifeStageTag": "nursery",
+    "title": "児童館での譲り合い",
+    "trigger": {
+      "type": "enterLocation",
+      "location": "children_hall",
+      "minAge": 3,
+      "requires": { "soyouAtLeast": { "social": 50 } }
+    },
+    "dialog": [
+      { "speaker": "narration", "text": "児童館の先生が、両親に話しかけている。" },
+      { "speaker": "teacher_sakura", "text": "○○ちゃん、よくお友達のことを考えて譲り合いができていました" },
+      { "speaker": "teacher_sakura", "text": "ご家庭の関わりが、ちゃんと伝わってますね", "emotion": "warm" },
+      { "speaker": "mother", "text": "そう言っていただけて、嬉しいです", "emotion": "happy_cry" },
+      { "speaker": "narration", "text": "（お母さん、ちょっとうるうるしてる…）", "emotion": "happy_cry" }
+    ],
+    "rewards": {
+      "soyouBonus": { "social": 6, "passion": 4 },
+      "renrakuchoEntry": "児童館の先生からご家庭での関わりを褒めていただきました。",
+      "memorableDay": { "emotionText": "先生からご家庭での関わりを褒められた日" }
+    }
+  },
+  {
+    "id": "pc_neighbor_active",
+    "lifeStageTag": "nursery",
+    "title": "元気な子",
+    "trigger": {
+      "type": "enterLocation",
+      "location": "near_park",
+      "minAge": 2,
+      "requires": { "soyouAtLeast": { "body": 60 } }
+    },
+    "dialog": [
+      { "speaker": "narration", "text": "ご近所のおばさんが、ニコニコしながら声をかけてくれた。" },
+      { "speaker": "narrator_neighbor", "text": "○○ちゃん、毎日元気に走り回ってますねぇ" },
+      { "speaker": "narrator_neighbor", "text": "外で身体を使って遊ばせるって、大変だけど大事ですもんね", "emotion": "warm" },
+      { "speaker": "father", "text": "毎日が体力勝負ですよ（笑）", "emotion": "proud" }
+    ],
+    "rewards": {
+      "soyouBonus": { "body": 5, "passion": 3 },
+      "renrakuchoEntry": "ご近所さんに元気さを褒められて、お父さんが笑っていました。",
+      "memorableDay": { "emotionText": "ご近所さんに元気さをほめられた日" }
+    }
+  },
+  {
+    "id": "pc_other_parent_smile",
+    "lifeStageTag": "nursery",
+    "title": "いつもニコニコ",
+    "trigger": {
+      "type": "enterLocation",
+      "location": "big_park",
+      "minAge": 2,
+      "requires": { "soyouAtLeast": { "passion": 30 } }
+    },
+    "dialog": [
+      { "speaker": "narration", "text": "公園で、他のお母さんがやってきた。" },
+      { "speaker": "narrator_other_parent", "text": "○○ちゃん、いつも楽しそうに遊んでますよね" },
+      { "speaker": "narrator_other_parent", "text": "うちの子も○○ちゃんといると笑顔が増えるんです", "emotion": "warm" },
+      { "speaker": "mother", "text": "そんな…うちこそ、いつもありがとうございます", "emotion": "proud" },
+      { "speaker": "narration", "text": "（お母さん、温かい笑顔）", "emotion": "happy" }
+    ],
+    "rewards": {
+      "soyouBonus": { "passion": 6, "social": 4 },
+      "renrakuchoEntry": "他のお母さんに楽しそうにしていることを褒められました。",
+      "memorableDay": { "emotionText": "他のママさんから笑顔を褒められた日" }
+    }
+  }
+]
