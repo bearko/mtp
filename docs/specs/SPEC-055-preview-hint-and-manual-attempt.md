@@ -5,9 +5,9 @@
 | 仕様ID | SPEC-055 |
 | 機能名 | ミッション発動前の予告ヒント（mission-prelude）と達成時の意思確認（manualAttempt） |
 | 対応ファイル | `prototype/data/mission-scenarios.json`（previewHint 追加・manualAttempt 化）, `prototype/game.js` `renderMissionPrelude()`, `tryStartMissionAccomplish()`, `prototype/index.html` `#mission-prelude`, `#screen-mission-attempt-prompt` / `prototype/styles.css` `.mission-prelude`, `.attempt-prompt` |
-| 関連仕様 | SPEC-053（脳科学レビュー §3.1 §3.2）, SPEC-050（ストーリー型ミッション）, SPEC-052（DSL）, SPEC-048 v3（4 軸） |
+| 関連仕様 | SPEC-053（脳科学レビュー §3.1 §3.2）, SPEC-050（ストーリー型ミッション）, SPEC-052（DSL）, SPEC-048 v3（4 軸）, SPEC-056 §4（体力 0 でも挑戦可能：デザートは別腹） |
 | ステータス | **Active（PR #21〜24 を前提に追加実装）** |
-| 最終更新 | 2026-04-25 |
+| 最終更新 | 2026-04-26 |
 
 ## 0. 本 SPEC のコンセプト
 

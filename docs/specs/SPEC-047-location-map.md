@@ -5,9 +5,9 @@
 | 仕様ID | SPEC-047 |
 | 機能名 | 場所（Location）と移動（Travel）、マップ画面（S14） |
 | 対応ファイル | `prototype/data/locations.json`（新設）、`prototype/data/plays.json` の `locations` フィールド追加 / `prototype/game.js` `player.location`, `loadLocations`, `travelTo`, `renderMap` / `prototype/index.html` `#hud-location`, `#screen-travel`, `#screen-travel-result`, `#screen-map` / `prototype/styles.css` `.hud-location`, `.travel-*`, `.map-*` |
-| 関連仕様 | SPEC-002 遊び選択, SPEC-011 保育園, SPEC-014 中学校, SPEC-023 遊びツリー, SPEC-034 HUD, SPEC-042 経済, SPEC-028 マスタデータ |
+| 関連仕様 | SPEC-002 遊び選択, SPEC-011 保育園, SPEC-014 中学校, SPEC-023 遊びツリー, SPEC-034 HUD, SPEC-042 経済, SPEC-028 マスタデータ, SPEC-056（イベントモーダル）, SPEC-057（感染症と通院抽選） |
 | ステータス | Active（保育園期が実装対象、幼稚園以降は段階実装） |
-| 最終更新 | 2026-04-19 |
+| 最終更新 | 2026-04-26 |
 
 ## 1. 目的
 

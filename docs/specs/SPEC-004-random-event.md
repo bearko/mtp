@@ -5,9 +5,9 @@
 | 仕様ID | SPEC-004 |
 | 機能名 | ランダムイベント |
 | 対応ファイル | `prototype/game.js` の `EVENTS`, `rollEvent`, `renderEvent` |
-| 関連仕様 | SPEC-003, SPEC-005, SPEC-007 |
+| 関連仕様 | SPEC-003, SPEC-005, SPEC-007, SPEC-056（コメント欄追加） |
 | ステータス | Active |
-| 最終更新 | 2026-04-18 |
+| 最終更新 | 2026-04-26 |
 
 > イベントマスタ `EVENTS` は **SPEC-028** により `data/events.json` から動的に読み込まれる。`scope: "random_play"` のレコードが本仕様の対象。
 
