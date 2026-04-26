@@ -52,6 +52,7 @@
 | [SPEC-052](./SPEC-052-mission-scenario-dsl.md) | ミッションシナリオ DSL（4 幕構造の JSON 記述仕様） | Draft | `prototype/data/mission-scenarios.json` / `prototype/game.js` parseMissionScenario, triggerMissionEvent | 2026-04-19 |
 | [SPEC-053](./SPEC-053-neuroscience-review.md) | 脳科学レビュー（PR #21/#22 診断、報酬系視点での評価と改善提案） | Review | レビュー文書のみ。改善案は SPEC-054〜056 に分岐予定 | 2026-04-25 |
 | [SPEC-054](./SPEC-054-process-praise-and-compliment.md) | 過程褒め原則 + 親が褒められる場面（SPEC-053 §3.3 §3.4 対応） | Active | `prototype/data/parental-compliments.json` / `prototype/game.js` PARENTAL_COMPLIMENTS, maybeTriggerParentalCompliment | 2026-04-25 |
+| [SPEC-055](./SPEC-055-preview-hint-and-manual-attempt.md) | 予告ヒント + 能動的達成（SPEC-053 §3.1 §3.2 対応 / Tier 2） | Active | `prototype/data/mission-scenarios.json` previewHint / manualAttempt / `prototype/game.js` computePreviewHint, renderPreviewHint, tryStartMissionAccomplish, showAttemptPromptModal / `prototype/index.html` #mission-prelude, #screen-mission-attempt-prompt | 2026-04-25 |
 
 ## ライフステージ別コアタイム
 

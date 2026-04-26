@@ -64,7 +64,7 @@ async function jumpToChoose(page) {
     player.day = 8;
     player.age = 2;
     player.location = "home";
-    player._playCounts = { song: 3 };
+    player._playCounts = { song: 4 };
     const trig = findMissionsToTrigger({ type: "playCountAtLeast", playId: "song" });
     if (trig.length > 0 && trig[0].phase === "incite") {
       startMissionIncite(trig[0].mission);
@@ -106,7 +106,7 @@ async function jumpToChoose(page) {
 
   // --- 達成 ---
   await page.evaluate(() => {
-    player._playCounts.song = 10;
+    player._playCounts.song = 8;
     player.soyou.sensitivity = 40;
     player.soyou.passion = 30;
     const trig = findMissionsToTrigger({ type: "playCountAtLeast", playId: "song" });

@@ -64,6 +64,18 @@
       @spec SPEC-050 §5 ミッションバナー（HUD 直下、active ミッションを常時表示）
       折りたたみ式：summary をタップで open/close。
     -->
+    <!--
+      @spec SPEC-055 §1 予告ヒント（HUD 直下、ミッションバナーの上）
+      『何かが起きそう』の枠組みだけ伝える。具体内容はサプライズに保つ。
+    -->
+    <div class="mission-prelude" id="mission-prelude" hidden>
+      <span class="mission-prelude-icon" id="mission-prelude-icon">💭</span>
+      <div class="mission-prelude-text">
+        <div class="mission-prelude-headline" id="mission-prelude-headline">もうすぐ何か…</div>
+        <div class="mission-prelude-detail" id="mission-prelude-detail"></div>
+      </div>
+    </div>
+
     <details class="mission-banner" id="mission-banner" hidden>
       <summary class="mission-banner-summary">
         <span class="mission-banner-icon">📋</span>
@@ -87,6 +99,21 @@
           <div class="mission-modal-body" id="mission-modal-body">セリフがここに入る</div>
         </div>
         <button class="btn btn-primary btn-wide" id="btn-mission-modal-next" data-action="mission-modal-next">つぎへ</button>
+      </div>
+    </section>
+
+    <!--
+      @screen S-attempt-prompt 達成可能時の挑戦プロンプト
+      @spec   docs/specs/SPEC-055-preview-hint-and-manual-attempt.md §2
+    -->
+    <section class="screen" id="screen-mission-attempt-prompt">
+      <div class="attempt-prompt-stage">
+        <div class="attempt-prompt-icon">🎯</div>
+        <h2 class="attempt-prompt-title" id="attempt-prompt-title">もうできるかも？</h2>
+        <p class="attempt-prompt-subtitle" id="attempt-prompt-subtitle">ミッション名</p>
+        <p class="attempt-prompt-headline" id="attempt-prompt-headline">今ならできるかもしれない…挑戦してみる？</p>
+        <button class="btn btn-primary btn-wide" id="btn-attempt-prompt-yes" data-action="attempt-prompt-yes">ちょうせんしてみる</button>
+        <button class="btn btn-secondary btn-wide" id="btn-attempt-prompt-later" data-action="attempt-prompt-later">まだ、こんどにする</button>
       </div>
     </section>
 
