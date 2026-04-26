@@ -33,6 +33,9 @@ docs/
     ├─ INDEX.md                 デザイン文書索引
     ├─ DESIGN-CHARTER.md        デザイン憲章
     ├─ DESIGN-SYSTEM.md         色・余白・文体・コンポーネント指針
+    ├─ SPEC-058-design-system.md デザインシステム素案（main 由来）
+    ├─ mtp-design-system.html    デザインシステム HTML モック
+    ├─ SPEC-INDEX-diff.md        索引更新メモ
     └─ UI-IMPROVEMENT-PROPOSAL.md 現状 UI 改善提案
 ```
 

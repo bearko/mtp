@@ -13,6 +13,9 @@
 | [`DESIGN-CHARTER.md`](./DESIGN-CHARTER.md) | デザイン憲章。UI 判断で迷ったときの原則 | 新画面・新演出・大きな UI 改修の前 |
 | [`DESIGN-SYSTEM.md`](./DESIGN-SYSTEM.md) | 色・余白・タイポグラフィ・コンポーネント・文体・演出の共通ルール | 実装前、レビュー時、CSS / RN コンポーネント設計時 |
 | [`UI-IMPROVEMENT-PROPOSAL.md`](./UI-IMPROVEMENT-PROPOSAL.md) | 現状 UI の課題整理と改善提案 | 次に起こす SPEC / PR の優先順位決定時 |
+| [`SPEC-058-design-system.md`](./SPEC-058-design-system.md) | main 由来のデザインシステム & デザイン憲章 SPEC 素案 | SPEC として統合・再編するとき |
+| [`mtp-design-system.html`](./mtp-design-system.html) | デザインシステム素案の HTML モック | 視覚トーン確認時 |
+| [`SPEC-INDEX-diff.md`](./SPEC-INDEX-diff.md) | SPEC-058 素案追加時の索引更新メモ | 履歴確認時 |
 
 ---
 

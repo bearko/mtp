@@ -67,7 +67,10 @@ docs/
 │   ├─ INDEX.md                  デザイン文書索引
 │   ├─ DESIGN-CHARTER.md         デザイン判断の憲章
 │   ├─ DESIGN-SYSTEM.md          色・余白・文体・コンポーネント規約
-│   └─ UI-IMPROVEMENT-PROPOSAL.md 現状 UI の改善提案
+│   ├─ UI-IMPROVEMENT-PROPOSAL.md 現状 UI の改善提案
+│   ├─ SPEC-058-design-system.md  デザインシステム素案（main 由来）
+│   ├─ mtp-design-system.html     デザインシステム HTML モック
+│   └─ SPEC-INDEX-diff.md         SPEC-058 索引更新メモ
 └─ specs/                      機能仕様書
     ├─ SPEC-INDEX.md            仕様書索引
     ├─ SPEC-001-*.md            機能別仕様（1 機能 = 1 ファイル）

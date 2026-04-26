@@ -4,7 +4,7 @@
 
 ---
 
-| [SPEC-058](docs/specs/SPEC-058-design-system.md) | デザインシステム & デザイン憲章（カラー・タイポ・コンポーネントトークン・16原則） | Active | `prototype/styles.css`（全体）/ `prototype/index.html`（全画面）/ `docs/screens/SCREEN-DESIGN.md` | 2026-04-26 |
+| [SPEC-058](../design/SPEC-058-design-system.md) | デザインシステム & デザイン憲章（カラー・タイポ・コンポーネントトークン・16原則） | Active | `prototype/styles.css`（全体）/ `prototype/index.html`（全画面）/ `docs/screens/SCREEN-DESIGN.md` | 2026-04-26 |
 
 ---
 
@@ -42,5 +42,5 @@ docs(spec): add SPEC-058 design system and design charter
 コンポーネントトークンを SPEC-058 として定義。
 SPEC-034/035/040 に散在していた横断ルールを集約。
 
-Spec: docs/specs/SPEC-058-design-system.md (added)
+Spec: docs/design/SPEC-058-design-system.md (added)
 ```
