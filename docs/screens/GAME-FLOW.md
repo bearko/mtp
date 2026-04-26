@@ -344,6 +344,60 @@ flowchart LR
 > 「達成は身体疲労を伴わず、むしろ達成感がブースト効果として働く」
 > という物語的整合性を保ちつつ、画面競合バグも回避。
 
+## 8. SPEC-057 感染症と治癒の特殊フロー
+
+> 風邪をひいた日のフロー。S2 / コアタイムをスキップして 1 日の終わりへ直行する特殊ルート。
+
+```mermaid
+flowchart TD
+    Wake([朝起床<br/>nextDay 完了]) --> Heal[/maybeHealInfection<br/>毎晩の治癒判定/]
+
+    Heal -->|通院していた| HealClinic[100% 治癒<br/>_specialDayMode = null<br/>_infectionJustHealed = true]
+    Heal -->|残3日| StillSick3[残日数 -1<br/>_specialDayMode = infection]
+    Heal -->|残2日: 30%| StillSick2[残日数 -1<br/>_specialDayMode = infection]
+    Heal -->|残1日: 50%| StillSick1[残日数 -1<br/>_specialDayMode = infection]
+    Heal -->|残2日: 70% / 残1日: 50% で前倒し治癒| HealNatural[治癒<br/>_infectionJustHealed = true]
+
+    HealClinic --> HealedModal[#event-overlay<br/>『熱が下がった！』]
+    HealNatural --> HealedModal
+
+    StillSick3 --> ClinicRoll[/maybeResolveMorningLocation<br/>感染症中は clinic 90% / home 10%/]
+    StillSick2 --> ClinicRoll
+    StillSick1 --> ClinicRoll
+
+    ClinicRoll -->|90%| ClinicTravel[#event-overlay<br/>🏥『お医者さんに連れて行ってもらった』]
+    ClinicRoll -->|10%| HomeRest[#event-overlay<br/>🤧 風邪 / 💪 まだ熱がある]
+
+    ClinicTravel --> S15[S15 移動演出 → S16]
+    S15 --> EnterClinic[onLocationEntered clinic<br/>_visitedClinicToday = true<br/>_specialDayMode = clinic]
+    EnterClinic --> SkipS2A[goChooseFromToday<br/>_specialDayMode = clinic で即 goSleep]
+
+    HomeRest --> SkipS2B[goChooseFromToday<br/>_specialDayMode = infection で即 goSleep]
+
+    SkipS2A --> S10A[S10 連絡帳サマリ]
+    SkipS2B --> S10B[S10 連絡帳サマリ]
+
+    HealedModal --> Normal[通常の S2 遊びを選ぶ画面へ<br/>余剰時間 8h 復帰]
+
+    classDef sick fill:#ffe5e5,stroke:#c63939
+    classDef heal fill:#e5ffe5,stroke:#2a8f3a
+    classDef clinic fill:#e5f0ff,stroke:#3a6db8
+    class StillSick3,StillSick2,StillSick1,HomeRest,SkipS2B sick
+    class HealClinic,HealNatural,HealedModal,Normal heal
+    class ClinicTravel,S15,EnterClinic,SkipS2A clinic
+```
+
+### 仕組みのポイント
+
+| 要素 | 説明 |
+|---|---|
+| **S2 スキップ** | `_specialDayMode === "infection"` または `"clinic"` のとき `goChooseFromToday` 内で即 `goSleep()`。プレイヤーは「なるほど」 1 タップで 1 日が終わる |
+| **毎晩治癒判定** | 残 3 日 = 0%、残 2 日 = 30%、残 1 日 = 50% の前倒し治癒。3 日固定だった病期が平均 0.6 日縮む |
+| **clinic 抽選** | `_specialDayMode === "infection"` または `_infectionRemainingDays > 0` のとき、親遣い抽選で clinic を **90%** 選出。残日数 0（最終日）でもガード（PR #28 v2 修正） |
+| **clinic 訪問日** | `onLocationEntered("clinic")` で `_visitedClinicToday = true` をセット。その日も S2 スキップで S10 へ。**翌晩 100% 治癒** |
+| **健康な日に病院は出ない** | `parentalOutingWeekdayWeight: 0` なので通常プールに入らない |
+
 ## 改訂履歴
 - 2026-04-26 v1: 初版（SPEC-055 までの実装内容を反映、S4 ランダムイベントとミッション系の役割分担を明示）
 - 2026-04-26 v2: §7 を追加（SPEC-056 統一イベントモーダル + デザートは別腹）
+- 2026-04-26 v3: §8 を追加（SPEC-057 感染症 S2 スキップ + 通院 + 毎晩治癒判定）
