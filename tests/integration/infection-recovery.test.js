@@ -100,6 +100,40 @@ async function jumpToChoose(page) {
   });
 
   // ============================================================
+  // §3 v2 感染症中（残日数=0 最終日含む）は clinic / home 以外は絶対に出ない
+  //   PR #28 ユーザーフィードバック対応。残日数判定だけだと最終日に
+  //   通常プールから児童館・公園が抽選されてしまうバグの回帰防止
+  // ============================================================
+  const noOther = await page.evaluate(() => {
+    const tally = (setup) => {
+      const result = { clinic: 0, home: 0, other: 0 };
+      const N = 200;
+      for (let i = 0; i < N; i++) {
+        setup();
+        const wd = pickWeekdayParentalOuting();
+        const we = pickWeekendParentalOuting();
+        for (const p of [wd, we]) {
+          if (!p) continue;
+          if (p.id === "clinic") result.clinic++;
+          else if (p.id === "home") result.home++;
+          else result.other++;
+        }
+      }
+      return result;
+    };
+    return {
+      remain3: tally(() => { player._specialDayMode = "infection"; player._infectionRemainingDays = 3; }),
+      remain1: tally(() => { player._specialDayMode = "infection"; player._infectionRemainingDays = 1; }),
+      remain0: tally(() => { player._specialDayMode = "infection"; player._infectionRemainingDays = 0; }),
+    };
+  });
+  describe("SPEC-057 §3 v2 感染症中の親遣い抽選は clinic/home 限定", () => {
+    it("残3日 other=0", () => assertEq(noOther.remain3.other, 0));
+    it("残1日 other=0", () => assertEq(noOther.remain1.other, 0));
+    it("残0日（最終日）other=0  PR #28 回帰テスト", () => assertEq(noOther.remain0.other, 0));
+  });
+
+  // ============================================================
   // §3 通常時は clinic を抽選しない
   // ============================================================
   const normalDist = await page.evaluate(() => {

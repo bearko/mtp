@@ -841,14 +841,25 @@ function weightedRandomLocation(pool, weightKey) {
   return pool[pool.length - 1];
 }
 
+/**
+ * @spec SPEC-057 §3 v2 感染症中の親遣い抽選は clinic / home に厳格に限定。
+ *   バグ防止のため `_specialDayMode === "infection"` だけでなく
+ *   `_infectionRemainingDays > 0` でもガードする（OR で評価）。
+ * @returns {object|null} clinic / home が決まれば返す、感染症ではない場合は null
+ */
+function pickInfectionDayLocation() {
+  const sick = (player._specialDayMode === "infection") || (player._infectionRemainingDays > 0);
+  if (!sick) return null;
+  const clinic = LOCATIONS.find((l) => l.id === "clinic");
+  if (clinic && Math.random() < 0.9) return clinic;
+  return LOCATIONS.find((l) => l.id === "home");
+}
+
 /** @spec SPEC-047 §8.1 保育園期 平日の親遣い抽選 */
 function pickWeekdayParentalOuting() {
-  // @spec SPEC-057 §3 感染症中は clinic 専用抽選（90% 通院 / 10% 自宅療養）
-  if (player._specialDayMode === "infection" && player._infectionRemainingDays > 0) {
-    const clinic = LOCATIONS.find((l) => l.id === "clinic");
-    if (clinic && Math.random() < 0.9) return clinic;
-    return LOCATIONS.find((l) => l.id === "home");
-  }
+  // @spec SPEC-057 §3 v2 感染症中は clinic / home 以外には絶対に行かない（風邪なのに公園・児童館は禁忌）
+  const infectionLoc = pickInfectionDayLocation();
+  if (infectionLoc) return infectionLoc;
   const pool = LOCATIONS.filter((l) =>
     l.parentalOutingWeekdayWeight > 0 &&
     (l.lifeStageTag || []).includes("nursery")
@@ -858,12 +869,9 @@ function pickWeekdayParentalOuting() {
 
 /** @spec SPEC-047 §8.2 保育園期 土日祝の親遣い抽選 */
 function pickWeekendParentalOuting() {
-  // @spec SPEC-057 §3 感染症中は土日祝でも clinic 抽選を最優先
-  if (player._specialDayMode === "infection" && player._infectionRemainingDays > 0) {
-    const clinic = LOCATIONS.find((l) => l.id === "clinic");
-    if (clinic && Math.random() < 0.9) return clinic;
-    return LOCATIONS.find((l) => l.id === "home");
-  }
+  // @spec SPEC-057 §3 v2 感染症中は土日祝でも clinic / home に限定
+  const infectionLoc = pickInfectionDayLocation();
+  if (infectionLoc) return infectionLoc;
   if (Math.random() < 0.40) {
     return LOCATIONS.find((l) => l.id === "home");
   }

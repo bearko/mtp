@@ -128,27 +128,31 @@ function maybeHealInfection() {
 }
 ```
 
-### 3.2 抽選ロジック
+### 3.2 抽選ロジック（v2 修正版）
 
-`pickWeekdayParentalOuting()` / `pickWeekendParentalOuting()` を拡張：
+> **v1 のバグ**：v1 ではガード条件を `_specialDayMode === "infection" && _infectionRemainingDays > 0` の AND としていたが、感染症最終日（`maybeTriggerNurserySpecialEvent` で残日数を -1 した直後、つまり残 1 → 0 になる日）は `_specialDayMode === "infection"` のままで `_infectionRemainingDays === 0` となるため、ガードに弾かれて **通常プールから児童館・公園が抽選される** バグが発生していた。
+
+> **v2**：`_specialDayMode === "infection" || _infectionRemainingDays > 0` の OR ガードに変更。最終日でも mode が立っていれば clinic / home 限定。
 
 ```js
+function pickInfectionDayLocation() {
+  // OR で評価（mode と残日数のどちらかでも病気フラグが立っていれば）
+  const sick = (player._specialDayMode === "infection") || (player._infectionRemainingDays > 0);
+  if (!sick) return null;
+  const clinic = LOCATIONS.find((l) => l.id === "clinic");
+  if (clinic && Math.random() < 0.9) return clinic;
+  return LOCATIONS.find((l) => l.id === "home");
+}
+
 function pickWeekdayParentalOuting() {
-  // SPEC-057 §3 感染症中は clinic 専用抽選（90% 通院 / 10% 自宅療養）
-  if (player._specialDayMode === "infection") {
-    if (Math.random() < 0.9) {
-      return LOCATIONS.find((l) => l.id === "clinic");
-    }
-    return LOCATIONS.find((l) => l.id === "home");
-  }
+  const infectionLoc = pickInfectionDayLocation();
+  if (infectionLoc) return infectionLoc;
   // 通常抽選
-  const pool = LOCATIONS.filter((l) =>
-    l.parentalOutingWeekdayWeight > 0 &&
-    (l.lifeStageTag || []).includes("nursery")
-  );
-  return weightedRandomLocation(pool, "parentalOutingWeekdayWeight");
+  ...
 }
 ```
+
+ヘルパ関数 `pickInfectionDayLocation()` に切り出し、平日・週末両方で参照することで条件分岐の漏れを排除。
 
 ### 3.3 通院フロー
 
@@ -251,4 +255,7 @@ function pickWeekdayParentalOuting() {
 - 大人になってから医療費イベントは別途 SPEC-042（経済）で扱う
 
 ## 8. 改訂履歴
-- 2026-04-26 初版（PR #27 後のユーザーフィードバック対応）
+- 2026-04-26 v1: 初版（PR #27 後のユーザーフィードバック対応）
+- 2026-04-26 v2: §3.2 抽選ガードを OR 条件に修正（PR #28 ユーザーフィードバック対応）。
+  v1 では感染症最終日に `_infectionRemainingDays = 0` になり、ガードを抜けて児童館・公園などに連れて行かれるバグがあった。
+  ヘルパ関数 `pickInfectionDayLocation()` に切り出して厳格化。回帰テスト 3 ケース追加。
