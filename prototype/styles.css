@@ -2404,3 +2404,147 @@ body {
 #screen-mission-attempt-prompt .btn {
   margin: 4px 0;
 }
+
+/* ==========================================================================
+   @spec SPEC-056 §1 統一イベントモーダル
+   朝の発火イベント（感染症・遠出）の演出統一用。
+   既存 .interrupt-overlay と棲み分け：影響リスト + コメントを持つ。
+   ========================================================================== */
+.event-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(2px);
+  animation: event-overlay-fade 0.25s ease-out;
+}
+@keyframes event-overlay-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.event-modal {
+  background: linear-gradient(180deg, #fffaf0 0%, #fff3dd 100%);
+  border: 2px solid #d8c8a8;
+  border-radius: 16px;
+  padding: 22px 18px 18px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  animation: event-modal-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes event-modal-pop {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+.event-modal-art {
+  font-size: 76px;
+  line-height: 1;
+  margin: 4px 0 12px;
+  animation: event-art-bounce 1.6s ease-in-out infinite;
+}
+@keyframes event-art-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-4px) scale(1.04); }
+}
+.event-modal-title {
+  font-size: 19px;
+  font-weight: 800;
+  color: #3a2810;
+  margin: 0 0 8px;
+}
+.event-modal-desc {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #4d3818;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0 0 12px;
+  text-align: left;
+}
+.event-modal-effects {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin: 0 0 12px;
+  border: 1px solid #e8d8b0;
+}
+.event-modal-effects-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6e5230;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+  text-align: left;
+}
+.event-modal-effects-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+.event-modal-effects-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #2a1f08;
+}
+.event-modal-effects-list .effect-delta {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.event-modal-effects-list .effect-delta.up    { color: #2a8f3a; }
+.event-modal-effects-list .effect-delta.down  { color: #c63939; }
+.event-modal-effects-list .effect-delta.flat  { color: #8a7858; }
+.event-modal-comment {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #2a1f08;
+  background: rgba(255, 244, 220, 0.7);
+  border-left: 3px solid #d8a060;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0 0 14px;
+  text-align: left;
+}
+.event-modal-comment-speaker {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a5e1e;
+  margin-bottom: 2px;
+  letter-spacing: 0.06em;
+}
+.event-modal-comment-body { display: block; }
+
+/* ==========================================================================
+   @spec SPEC-056 §3 S4 ランダムイベント画面のコメント欄
+   既存 #screen-event 内に追加されたオプショナルなコメント表示。
+   ========================================================================== */
+.event-comment-card {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  background: rgba(255, 244, 220, 0.85);
+  border-left: 3px solid #d8a060;
+  border-radius: 6px;
+  padding: 8px 10px;
+  text-align: left;
+}
+.event-comment-card .speaker {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a5e1e;
+  margin-bottom: 2px;
+  letter-spacing: 0.06em;
+}

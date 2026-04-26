@@ -218,6 +218,23 @@
     "category": "fullday_trip"
   },
   {
+    "id": "clinic",
+    "name": "お医者さん",
+    "shortName": "病院",
+    "icon": "🏥",
+    "type": "institution",
+    "travelTime": 0.5,
+    "travelFare": 0,
+    "accessibleFromHome": true,
+    "lifeStageTag": ["nursery", "kindergarten", "elementary", "juniorhigh", "highschool"],
+    "description": "風邪などをみてもらえる病院。お薬をもらえる。",
+    "specialBuffs": { "healInfection": true },
+    "parentalOutingWeekdayWeight": 0,
+    "parentalOutingWeekendWeight": 0,
+    "infectionPriorityWeight": 90,
+    "category": "everyday"
+  },
+  {
     "id": "nursery_school",
     "name": "保育園",
     "shortName": "保育園",
