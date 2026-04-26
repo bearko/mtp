@@ -5,7 +5,7 @@
 | 仕様ID | SPEC-009 |
 | 機能名 | UIレイアウト規約 |
 | 対応ファイル | `prototype/styles.css`, `prototype/index.html` |
-| 関連仕様 | 全画面共通 |
+| 関連仕様 | 全画面共通, SPEC-058 |
 | ステータス | Active |
 | 最終更新 | 2026-04-18 |
 

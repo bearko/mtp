@@ -5,7 +5,7 @@
 | 仕様ID | SPEC-035 |
 | 機能名 | 結果画面（S3）・日サマリ（S10）・週サマリ（S9）の UI 刷新 |
 | 対応ファイル | `prototype/index.html` #screen-playing / #screen-day-summary / #screen-highlight / `prototype/game.js` renderResult / renderDaySummary / showHighlight / renderSoyouResultList / renderSkillLines / `prototype/styles.css` .soyou-result-* |
-| 関連仕様 | SPEC-002, SPEC-003, SPEC-021, SPEC-024, SPEC-025, SPEC-027, SPEC-033, SPEC-034 |
+| 関連仕様 | SPEC-002, SPEC-003, SPEC-021, SPEC-024, SPEC-025, SPEC-027, SPEC-033, SPEC-034, SPEC-058 |
 | ステータス | Active |
 | 最終更新 | 2026-04-19 |
 

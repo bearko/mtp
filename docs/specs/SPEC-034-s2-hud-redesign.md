@@ -5,7 +5,7 @@
 | 仕様ID | SPEC-034 |
 | 機能名 | S2 遊び選択画面リデザイン |
 | 対応ファイル | `prototype/index.html` #hud, #screen-choose / `prototype/game.js` renderHUD/renderChooseScreen/renderPlayPreview / `prototype/styles.css` .hud-*, .soyou-card |
-| 関連仕様 | SPEC-002（遊び選択）, SPEC-009（UIレイアウト）, SPEC-021（ゲージ/時計円盤UI）, SPEC-033（素養モデル） |
+| 関連仕様 | SPEC-002（遊び選択）, SPEC-009（UIレイアウト）, SPEC-021（ゲージ/時計円盤UI）, SPEC-033（素養モデル）, SPEC-058（デザインシステム） |
 | ステータス | Active |
 | 最終更新 | 2026-04-19 |
 

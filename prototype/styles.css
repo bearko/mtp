@@ -28,6 +28,49 @@
   --actions-h: auto;
 }
 
+/*
+  @spec docs/SPEC-058-design-system.md
+  デザインシステム素案のトークン。既存コンポーネントは下部の
+  "SPEC-058 design-system draft adapter" で段階的にマッピングする。
+*/
+:root {
+  --c-bg:        #0f0c1a;
+  --c-hud:       #1a1535;
+  --c-card:      rgba(30,25,60,0.92);
+  --c-dock:      rgba(10,8,25,0.97);
+  --c-border:    rgba(160,140,255,0.22);
+  --c-border-hi: rgba(167,139,250,0.55);
+  --c-purple:    #a78bfa;
+  --c-gold:      #f5c842;
+  --c-green:     #4ade80;
+  --c-red:       #f87171;
+  --c-sky:       #38bdf8;
+  --c-orange:    #fb923c;
+  --c-pink:      #f472b6;
+  --c-text:      #f0eeff;
+  --c-text2:     rgba(210,200,255,0.72);
+  --c-text3:     rgba(160,150,220,0.5);
+  --font: "M PLUS Rounded 1c", sans-serif;
+
+  /* 既存トークンへの段階的マッピング */
+  --bg: var(--c-bg);
+  --fg: var(--c-text);
+  --muted: var(--c-text2);
+  --accent: var(--c-purple);
+  --accent-2: var(--c-gold);
+  --card-bg: var(--c-card);
+  --card-border: var(--c-border);
+  --primary: var(--c-purple);
+  --primary-fg: var(--c-text);
+  --secondary: rgba(56,189,248,0.12);
+  --hud-bg: var(--c-hud);
+  --hud-fg: var(--c-text);
+  --good: var(--c-green);
+  --bad: var(--c-red);
+  --radius: 8px;
+  --shadow: 0 10px 24px rgba(0, 0, 0, 0.28), 0 0 18px rgba(100, 60, 255, 0.08);
+}
+
 * { box-sizing: border-box; }
 
 /*
