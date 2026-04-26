@@ -2,6 +2,7 @@
 
 > 本プロジェクトのドキュメントは **画面設計書（Screen）** と **機能仕様書（Spec）** の 2 種類に大別される。
 > - 画面設計書：[`./SCREEN-DESIGN.md`](./SCREEN-DESIGN.md)（ワイヤーフレーム・画面IDの一覧・コアループ遷移図）
+> - **ゲームフロー全体図**：[`./GAME-FLOW.md`](./GAME-FLOW.md)（Mermaid で繰り返し・ランダム・分岐を可視化）
 > - 機能仕様書：[`../specs/SPEC-INDEX.md`](../specs/SPEC-INDEX.md)（機能別の詳細仕様）
 > - 開発ルール：[`../DEVELOPMENT_RULES.md`](../DEVELOPMENT_RULES.md)
 
