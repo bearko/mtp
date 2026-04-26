@@ -12,7 +12,7 @@
   各機能の詳細仕様は docs/specs/SPEC-INDEX.md を参照。
 -->
 <body>
-  <div class="phone-frame theme-picturebook">
+  <div class="phone-frame theme-gamehud">
 
     <!--
       @spec docs/specs/SPEC-001-life-stage.md  共通HUDに表示するプレイヤー状態
@@ -131,18 +131,6 @@
         <div class="title-actions">
           <button class="title-btn primary" id="btn-title-start" data-action="title-start">はじめから</button>
           <button class="title-btn" id="btn-title-continue" disabled>続きから（近日対応）</button>
-        </div>
-        <!--
-          @spec docs/specs/SPEC-058-ui-design-prototypes.md §4
-          絵本寄り / ゲームHUD寄りの 2 種類を同一プロトタイプ内で比較する。
-        -->
-        <div class="design-toggle" role="group" aria-label="UIデザインの比較">
-          <button class="design-toggle-btn active" id="btn-design-picturebook" data-action="set-design-theme" data-theme="picturebook">
-            📖 絵本
-          </button>
-          <button class="design-toggle-btn" id="btn-design-gamehud" data-action="set-design-theme" data-theme="gamehud">
-            🎮 HUD
-          </button>
         </div>
         <p class="title-footer">© カネとジカンとジョウネツと</p>
       </div>
@@ -263,12 +251,6 @@
       <div class="scene choose-scene-v2">
         <!-- 将来拡張用ターンヒント（SPEC-034 §5.5） -->
         <div class="turn-hint" id="turn-hint" data-turn-hint="" hidden></div>
-
-        <!-- @spec docs/specs/SPEC-058-ui-design-prototypes.md §4 S2 上でも比較テーマを切替可能にする -->
-        <div class="design-toggle design-toggle-inline" role="group" aria-label="UIデザインの比較">
-          <button class="design-toggle-btn active" data-action="set-design-theme" data-theme="picturebook">📖 絵本</button>
-          <button class="design-toggle-btn" data-action="set-design-theme" data-theme="gamehud">🎮 HUD</button>
-        </div>
 
         <!--
           @spec docs/specs/SPEC-058-ui-design-prototypes.md §5

@@ -735,7 +735,6 @@ const SEASON_LABEL = { spring: "春", summer: "夏", autumn: "秋", winter: "冬
 // 状態
 // =========================================================================
 let player = structuredClone(DEFAULT_PLAYER);
-let designTheme = "picturebook";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -744,22 +743,6 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-/**
- * @spec docs/specs/SPEC-058-ui-design-prototypes.md §4
- * 絵本寄り / ゲームHUD寄りの比較テーマを .phone-frame に反映する。
- */
-function setDesignTheme(theme) {
-  designTheme = theme === "gamehud" ? "gamehud" : "picturebook";
-  const frame = document.querySelector(".phone-frame");
-  if (frame) {
-    frame.classList.toggle("theme-picturebook", designTheme === "picturebook");
-    frame.classList.toggle("theme-gamehud", designTheme === "gamehud");
-  }
-  for (const btn of document.querySelectorAll(".design-toggle-btn")) {
-    btn.classList.toggle("active", btn.dataset.theme === designTheme);
-  }
 }
 
 /**
@@ -5626,9 +5609,6 @@ document.addEventListener("click", (e) => {
   if (!t || t.disabled) return;
   const a = t.dataset.action;
   switch (a) {
-    case "set-design-theme":
-      setDesignTheme(t.dataset.theme);
-      break;
     case "close-coretime":
       closeCoreTime();
       break;
@@ -5976,7 +5956,6 @@ function finishIsekaiIntro() {
     loadMessageMasters(),
   ]);
 
-  setDesignTheme(designTheme);
   renderHUD();
 
   // 介入モーダルの閉じるボタンは dom-load 後に配線

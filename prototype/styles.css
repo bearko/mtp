@@ -30,24 +30,8 @@
 
 /*
   @spec docs/specs/SPEC-058-ui-design-prototypes.md
-  絵本寄り / ゲームHUD寄りの比較用デザイントークン。
-  JS が .phone-frame に theme-picturebook / theme-gamehud を付与する。
+  PR #30 の HUD 案を本線化するため、比較テーマではなく gamehud 固定トークンとして扱う。
 */
-.phone-frame.theme-picturebook {
-  --bg: #fbf4df;
-  --fg: #33281f;
-  --muted: #856f58;
-  --accent: #de7b4b;
-  --accent-2: #e8b55c;
-  --card-bg: #fffaf0;
-  --card-border: #ead8b5;
-  --primary: #d96f42;
-  --secondary: #eadcbd;
-  --hud-bg: #7b5f42;
-  --hud-fg: #fff7e8;
-  --shadow: 0 8px 18px rgba(100, 70, 35, 0.12);
-}
-
 .phone-frame.theme-gamehud {
   --bg: #edf3f7;
   --fg: #172333;
@@ -1384,33 +1368,6 @@ body {
   gap: 10px;
   margin-top: 12px;
 }
-.design-toggle {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
-  padding: 5px;
-}
-.design-toggle-btn {
-  appearance: none;
-  -webkit-appearance: none;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: #d5ded9;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 9px 10px;
-  cursor: pointer;
-}
-.design-toggle-btn.active {
-  background: #f5efe0;
-  color: #2c2a26;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
-}
 .title-btn {
   appearance: none;
   -webkit-appearance: none;
@@ -1810,26 +1767,6 @@ body {
   flex-direction: column;
 }
 
-.choose-design-toggle {
-  align-self: flex-end;
-  display: inline-grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.05);
-}
-.choose-design-toggle .design-toggle-btn {
-  font-size: 11px;
-  padding: 5px 8px;
-  color: var(--muted);
-}
-.choose-design-toggle .design-toggle-btn.active {
-  background: var(--card-bg);
-  color: var(--fg);
-  box-shadow: var(--shadow);
-}
-
 .turn-hint {
   display: inline-block;
   align-self: flex-start;
@@ -1924,12 +1861,6 @@ body {
 .dock-badge.badge-favorite { background: #ffd6e2; color: #8c3150; }
 .dock-badge.badge-new { background: #cfefc8; color: #2c6936; }
 .dock-badge.badge-tired { background: #ffd2a8; color: #8a4d15; }
-.theme-picturebook .daily-focus-card {
-  border-style: dashed;
-  background:
-    radial-gradient(circle at 12px 12px, rgba(255, 255, 255, 0.85) 0 2px, transparent 3px),
-    var(--card-bg);
-}
 .theme-gamehud .daily-focus-card {
   border-left: 5px solid var(--accent);
   border-radius: 14px;

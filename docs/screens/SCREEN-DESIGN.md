@@ -102,7 +102,7 @@
 
 オーバーレイ系（`#mission-prelude`, `#mission-banner`, `#event-overlay`, `#interrupt-overlay`, S-mission-modal, S-attempt-prompt, parental compliment modal）は **横断的に S2/S3/S10 から発火** する。詳細は [`GAME-FLOW.md`](./GAME-FLOW.md) §3 を参照。
 
-デザイン比較プロトタイプ（SPEC-058）では、S0 / S2 から `絵本` / `HUD` の UI トーンを切り替えられる。画面 ID と遷移は変えず、`body[data-design-tone]` のテーマ差分として扱う。
+HUD 案採用プロトタイプ（SPEC-058）では、S2 をゲーム HUD 寄りの情報設計で固定し、毎日表示の焦点カードと `🌱 きろく` 導線を追加する。画面 ID と遷移は変えない。
 
 ---
 
