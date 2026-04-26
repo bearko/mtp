@@ -51,6 +51,8 @@ async function jumpToChoose(page) {
     paramLabelCount: document.querySelectorAll("#param-strip-labels .param-strip-label").length,
     paramValueCount: document.querySelectorAll("#param-strip-values .param-strip-value").length,
     intellectParam: [...document.querySelectorAll("#param-strip-values .param-strip-value")][1]?.textContent.replace(/\s+/g, " "),
+    intellectGradeDisplay: getComputedStyle([...document.querySelectorAll("#param-strip-values .param-strip-grade")][1]).display,
+    intellectNumDisplay: getComputedStyle([...document.querySelectorAll("#param-strip-values .param-strip-num")][1]).display,
     paramVisible: !document.getElementById("param-strip")?.hidden,
     skillTags: document.getElementById("soyou-skill-tags")?.innerHTML,
     selected: document.querySelector('.dock-icon[data-play-id="picturebook"]')?.classList.contains("selected"),
@@ -84,6 +86,10 @@ async function jumpToChoose(page) {
     });
     it("知性にプレビュー +10 が表示される", () =>
       assert(preview.intellectParam.includes("+10"), preview.intellectParam));
+    it("グレードと数値は縦積み表示", () => {
+      assertEq(preview.intellectGradeDisplay, "block");
+      assertEq(preview.intellectNumDisplay, "block");
+    });
   });
 
   // 遊ぶ

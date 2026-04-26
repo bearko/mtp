@@ -138,11 +138,11 @@ body {
   line-height: 1.2;
 }
 .param-strip-values {
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--fg);
   font-size: 12px;
   font-weight: 900;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 .param-strip-label,
 .param-strip-value {
@@ -152,17 +152,20 @@ body {
   white-space: nowrap;
 }
 .param-strip-grade {
+  display: block;
   font-size: 16px;
   letter-spacing: 0.02em;
 }
 .param-strip-num {
+  display: block;
+  margin-top: 1px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
 }
 .param-strip-delta {
   display: inline-flex;
-  margin-left: 2px;
+  margin-top: 2px;
   padding: 1px 4px;
   border-radius: 999px;
   background: rgba(76, 175, 122, 0.15);
@@ -1210,10 +1213,10 @@ body {
 .play-dock::-webkit-scrollbar { display: none; }
 
 .dock-icon {
-  width: 68px;
-  height: 64px;
-  min-width: 68px;
-  border-radius: 16px;
+  width: 78px;
+  height: 72px;
+  min-width: 78px;
+  border-radius: 18px;
   background: var(--card-bg);
   border: 2px solid transparent;
   display: inline-flex;
@@ -1221,7 +1224,7 @@ body {
   justify-content: center;
   flex-direction: column;
   gap: 3px;
-  font-size: 28px;
+  font-size: 32px;
   cursor: pointer;
   font-family: inherit;
   padding: 6px 5px 5px;
@@ -1237,7 +1240,7 @@ body {
 }
 .dock-main-icon {
   display: block;
-  font-size: 28px;
+  font-size: 32px;
   line-height: 1;
 }
 .dock-label {
@@ -1281,61 +1284,62 @@ body {
 
 /*
   @spec docs/specs/SPEC-002-play-selection.md §5.1.3
-  S2 の操作は 1 行ドックへ統合する。遊びの後ろに休む、ツリー、今日おわる、
-  きろく、完走を小さなナビアイコンとして並べる。
+  遊び以外の操作は右下固定ハンバーガーに退避する。
 */
-.dock-icon.dock-action,
-.dock-icon.dock-tree,
-.dock-icon.dock-record,
-.dock-icon.dock-life-digest {
-  border-color: rgba(23, 35, 51, 0.12);
-}
-.dock-icon.dock-rest {
-  background: #fff8e6;
-  color: #6b4b18;
-}
-.dock-icon.dock-tree {
-  margin-left: 8px;
-  background: #3d6b4a;
-  color: #ffffff;
-  border-color: #2f5437;
-  box-shadow: 0 2px 6px rgba(61, 107, 74, 0.35);
-}
-.dock-icon.dock-tree::before {
-  content: "";
+.s2-menu-fab {
   position: absolute;
-  left: -8px;
-  top: 8px;
-  bottom: 8px;
-  width: 1px;
-  background: var(--card-border);
+  right: 14px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 30;
 }
-.dock-icon.dock-tree .dock-label {
+.s2-menu-button {
+  width: 54px;
+  height: 54px;
+  border: 0;
+  border-radius: 50%;
+  background: #172333;
   color: #ffffff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  font-size: 26px;
+  font-weight: 900;
+  cursor: pointer;
 }
-.dock-icon.dock-record .dock-label,
-.dock-icon.dock-life-digest .dock-label,
-.dock-icon.dock-rest .dock-label,
-.dock-icon.dock-sleep .dock-label {
-  color: currentColor;
+.s2-menu {
+  position: absolute;
+  right: 0;
+  bottom: 64px;
+  width: 178px;
+  padding: 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 34px rgba(35, 70, 120, 0.22);
 }
-.dock-icon.dock-sleep {
-  background: #eef2ff;
-  color: #263a77;
+.s2-menu[hidden] { display: none !important; }
+.s2-menu-list {
+  display: grid;
+  gap: 6px;
 }
-.dock-icon.dock-action[disabled] {
-  opacity: 0.45;
-  cursor: not-allowed;
+.s2-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 12px;
+  background: #edf3f7;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: left;
+  cursor: pointer;
 }
-.dock-icon.dock-record {
-  background: #fff7df;
-  color: #6b4b18;
-  border-color: #e6c36c;
-}
-.dock-icon.dock-life-digest {
-  background: #f1ebff;
-  color: #51358c;
-  border-color: #c8b6ff;
+.s2-menu-item-icon {
+  width: 24px;
+  text-align: center;
+  font-size: 19px;
 }
 
 #screen-choose .actions { display: none; }

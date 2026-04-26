@@ -2637,7 +2637,8 @@ function renderParamStrip(screenId, preview = null) {
     return `
       <div class="param-strip-value">
         <span class="param-strip-grade grade-${escapeHtml(afterGrade)}">${escapeHtml(gradeText)}</span>
-        <span class="param-strip-num">${afterValue}</span>${delta}
+        <span class="param-strip-num">${afterValue}</span>
+        ${delta}
       </div>
     `;
   }).join("");
@@ -3442,67 +3443,7 @@ function renderChooseScreen() {
     dock.appendChild(btn);
   });
 
-  // @spec SPEC-002 §5.1.3 S2 の操作はドックに統合する。休むは遊びの右端、ツリーの左隣。
-  const restBtn = document.createElement("button");
-  restBtn.className = "dock-icon dock-action dock-rest";
-  restBtn.innerHTML = `
-    <span class="dock-main-icon">☕</span>
-    <span class="dock-label">1h休む</span>
-  `;
-  restBtn.setAttribute("aria-label", "1時間休む");
-  restBtn.dataset.action = "do-nothing";
-  dock.appendChild(restBtn);
-
-  // @spec SPEC-002 §5.1.1 §5.1.2 / SPEC-023 §5.1 ドック右側に 🌳 遊びツリーアイコン
-  // 遊びアイコンではなく「画面遷移ナビ」として、色とラベルで差別化する。
-  const treeBtn = document.createElement("button");
-  treeBtn.className = "dock-icon dock-tree";
-  treeBtn.innerHTML = `
-    <span class="dock-main-icon dock-tree-icon">🌳</span>
-    <span class="dock-label dock-tree-label">ツリー</span>
-  `;
-  treeBtn.setAttribute("aria-label", "遊びツリー画面へ遷移");
-  treeBtn.addEventListener("click", () => {
-    renderPlayTreeScreen();
-    showScreen("screen-tree");
-  });
-  dock.appendChild(treeBtn);
-
-  // @spec SPEC-002 §5.1.3 今日おわるはツリーの右隣に置く。
-  const sleepBtn = document.createElement("button");
-  sleepBtn.className = "dock-icon dock-action dock-sleep";
-  sleepBtn.innerHTML = `
-    <span class="dock-main-icon">🌙</span>
-    <span class="dock-label">今日おわる</span>
-  `;
-  sleepBtn.setAttribute("aria-label", "今日を終わる");
-  sleepBtn.dataset.action = "go-sleep";
-  dock.appendChild(sleepBtn);
-
-  // @spec SPEC-058 §6 プロフィール導線名は「きろく」。SPEC-051 本実装前の簡易記録画面へ遷移。
-  const recordBtn = document.createElement("button");
-  recordBtn.className = "dock-icon dock-record";
-  recordBtn.innerHTML = `
-    <span class="dock-main-icon dock-record-icon">🌱</span>
-    <span class="dock-label dock-record-label">きろく</span>
-  `;
-  recordBtn.setAttribute("aria-label", "きろく画面へ遷移");
-  recordBtn.addEventListener("click", () => {
-    renderRecordScreen();
-    showScreen("screen-record");
-  });
-  dock.appendChild(recordBtn);
-
-  // @spec SPEC-059 §6 S2 入口は大きなカードではなく、全アイコンの右端の小さなナビにする。
-  const lifeBtn = document.createElement("button");
-  lifeBtn.className = "dock-icon dock-life-digest";
-  lifeBtn.innerHTML = `
-    <span class="dock-main-icon">📚</span>
-    <span class="dock-label">完走</span>
-  `;
-  lifeBtn.setAttribute("aria-label", "人生ダイジェスト完走モードへ遷移");
-  lifeBtn.dataset.action = "start-life-digest";
-  dock.appendChild(lifeBtn);
+  renderS2Menu();
 
   // @spec SPEC-034 §5.1 §5.3 初期状態：プレビューは非表示、ヘッダーゴーストもクリア
   const wh = byId("wakeup-header"); if (wh) wh.hidden = true;
@@ -3520,6 +3461,67 @@ function renderChooseScreen() {
 
   renderDailyFocusCard();
   renderHUD();
+}
+
+/**
+ * @spec docs/specs/SPEC-002-play-selection.md §5.1.3
+ * 遊び以外の操作を右下固定ハンバーガーメニューへ退避する。
+ */
+function renderS2Menu() {
+  const list = byId("s2-menu-list");
+  if (!list) return;
+  closeS2Menu();
+  const items = [
+    { icon: "☕", label: "1h休む", action: "do-nothing" },
+    { icon: "🌳", label: "ツリー", onClick: () => { renderPlayTreeScreen(); showScreen("screen-tree"); } },
+    { icon: "🌙", label: "今日おわる", action: "go-sleep" },
+    { icon: "🌱", label: "きろく", onClick: () => { renderRecordScreen(); showScreen("screen-record"); } },
+    { icon: "📚", label: "完走", action: "start-life-digest" },
+  ];
+  list.innerHTML = "";
+  for (const item of items) {
+    const btn = document.createElement("button");
+    btn.className = "s2-menu-item";
+    btn.type = "button";
+    btn.innerHTML = `<span class="s2-menu-item-icon">${item.icon}</span><span>${escapeHtml(item.label)}</span>`;
+    if (item.action) btn.dataset.menuAction = item.action;
+    if (item.onClick) btn.addEventListener("click", item.onClick);
+    list.appendChild(btn);
+  }
+  closeS2Menu();
+}
+
+function toggleS2Menu() {
+  const menu = byId("s2-menu");
+  const btn = byId("btn-s2-menu");
+  if (!menu || !btn) return;
+  const nextOpen = menu.hidden;
+  menu.hidden = !nextOpen;
+  btn.setAttribute("aria-expanded", nextOpen ? "true" : "false");
+}
+
+function closeS2Menu() {
+  const menu = byId("s2-menu");
+  const btn = byId("btn-s2-menu");
+  if (menu) menu.hidden = true;
+  if (btn) btn.setAttribute("aria-expanded", "false");
+}
+
+function handleS2MenuAction(action) {
+  closeS2Menu();
+  switch (action) {
+    case "do-nothing":
+      doNothing();
+      break;
+    case "go-sleep":
+      goSleep();
+      break;
+    case "start-life-digest":
+      startLifeDigest();
+      break;
+    default:
+      break;
+  }
 }
 
 /**
@@ -6033,6 +6035,12 @@ function consumeWeeklyHighlightIfPending() {
 // =========================================================================
 
 document.addEventListener("click", (e) => {
+  const menuItem = e.target.closest("[data-menu-action]");
+  if (menuItem && !menuItem.disabled) {
+    handleS2MenuAction(menuItem.dataset.menuAction);
+    return;
+  }
+
   const t = e.target.closest("[data-action]");
   if (!t || t.disabled) return;
   const a = t.dataset.action;
@@ -6047,6 +6055,20 @@ document.addEventListener("click", (e) => {
     case "close-record":
       // @spec docs/specs/SPEC-058-ui-design-prototypes.md §6 S17 → S2
       goChooseFromToday();
+      break;
+    case "toggle-s2-menu":
+      // @spec docs/specs/SPEC-002-play-selection.md §5.1.3 S2 ハンバーガーメニュー開閉
+      toggleS2Menu();
+      break;
+    case "open-tree":
+      closeS2Menu();
+      renderPlayTreeScreen();
+      showScreen("screen-tree");
+      break;
+    case "open-record":
+      closeS2Menu();
+      renderRecordScreen();
+      showScreen("screen-record");
       break;
     case "start-life-digest":
       // @spec docs/specs/SPEC-059-whole-life-digest.md §5.2 S2 → S18

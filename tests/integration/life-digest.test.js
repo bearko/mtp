@@ -38,17 +38,31 @@ async function jumpToChoose(page) {
   const entry = await page.evaluate(() => ({
     active: document.querySelector(".screen.active")?.id,
     entryCard: !!document.getElementById("life-digest-entry"),
-    buttonText: document.querySelector(".dock-life-digest .dock-label")?.textContent,
-    isLastDockItem: document.querySelector("#play-dock .dock-icon:last-child")?.classList.contains("dock-life-digest"),
+    dockLifeIcon: !!document.querySelector(".dock-life-digest"),
+    menuExpanded: document.getElementById("btn-s2-menu")?.getAttribute("aria-expanded"),
+    menuHidden: document.getElementById("s2-menu")?.hidden,
   }));
   describe("SPEC-059 §5.2 S2 入口", () => {
     it("screen-choose に完走モード入口がある", () => assertEq(entry.active, "screen-choose"));
     it("大きな入口カードは表示しない", () => assertEq(entry.entryCard, false));
-    it("完走モードはドック右端アイコン", () => assertEq(entry.isLastDockItem, true));
-    it("アイコン文言 = 完走", () => assertEq(entry.buttonText, "完走"));
+    it("完走モードは遊びドックに直接出さない", () => assertEq(entry.dockLifeIcon, false));
+    it("サブメニューは初期状態で閉じている", () => {
+      assertEq(entry.menuExpanded, "false");
+      assertEq(entry.menuHidden, true);
+    });
   });
 
-  await page.click(".dock-life-digest");
+  await page.click("#btn-s2-menu");
+  await new Promise(r => setTimeout(r, 100));
+  const opened = await page.evaluate(() => ({
+    hidden: document.getElementById("s2-menu")?.hidden,
+    labels: [...document.querySelectorAll(".s2-menu-item")].map((b) => b.textContent.replace(/\s+/g, "")),
+  }));
+  describe("SPEC-059 §5.2 サブメニュー内の完走", () => {
+    it("サブメニューが開く", () => assertEq(opened.hidden, false));
+    it("完走がサブメニュー内にある", () => assert(opened.labels.includes("📚完走"), opened.labels.join(",")));
+  });
+  await page.click('.s2-menu-item[data-menu-action="start-life-digest"]');
   await new Promise(r => setTimeout(r, 150));
   const first = await page.evaluate(() => ({
     active: document.querySelector(".screen.active")?.id,
