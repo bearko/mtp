@@ -16,6 +16,23 @@
     "comment": { "speaker": "father", "body": "焦らず、ゆっくりね" }
   },
   {
+    "id": "morning_infection_healed",
+    "category": "infection_healed",
+    "art": "🌟",
+    "title": "熱が下がった！",
+    "desc": "昨日まで熱があったけど、今日はすっかり元気。やっと外で遊べるよ！",
+    "comment": { "speaker": "mother", "body": "もう大丈夫そうね、よかった" }
+  },
+  {
+    "id": "morning_clinic_visit",
+    "category": "clinic",
+    "linkedLocationId": "clinic",
+    "art": "🏥",
+    "title": "お医者さんに連れて行ってもらった",
+    "desc": "おかあさんがお医者さんに連れて行ってくれた。お薬をもらって、ゆっくり休めば明日には元気になりそう。",
+    "comment": { "speaker": "mother", "body": "明日には元気になるよ、頑張ったね" }
+  },
+  {
     "id": "morning_outing_zoo",
     "category": "fullday_trip",
     "linkedLocationId": "zoo",
