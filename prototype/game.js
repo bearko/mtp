@@ -709,7 +709,9 @@ const DEFAULT_PLAYER = {
   /** @spec SPEC-054 §2.3 parental_compliment の cooldown（30 日に 1 回まで） */
   _lastParentalComplimentDay: 0,
   /** @spec SPEC-011 §10.1 §10.3 Issue #14 保育園特別イベントモード */
-  _specialDayMode: null,      // null | "outing" | "infection"
+  _specialDayMode: null,      // null | "outing" | "infection" | "clinic"
+  _visitedClinicToday: false, // SPEC-057 §3 通院フラグ。夜の治癒判定で消費
+  _infectionJustHealed: false,// SPEC-057 §2 治癒した直後フラグ。朝モーダルで使う
   _pendingOuting: null,       // 今日発動した遠出イベントオブジェクト
   _infectionRemainingDays: 0, // 感染症の残日数
 };
@@ -839,8 +841,25 @@ function weightedRandomLocation(pool, weightKey) {
   return pool[pool.length - 1];
 }
 
+/**
+ * @spec SPEC-057 §3 v2 感染症中の親遣い抽選は clinic / home に厳格に限定。
+ *   バグ防止のため `_specialDayMode === "infection"` だけでなく
+ *   `_infectionRemainingDays > 0` でもガードする（OR で評価）。
+ * @returns {object|null} clinic / home が決まれば返す、感染症ではない場合は null
+ */
+function pickInfectionDayLocation() {
+  const sick = (player._specialDayMode === "infection") || (player._infectionRemainingDays > 0);
+  if (!sick) return null;
+  const clinic = LOCATIONS.find((l) => l.id === "clinic");
+  if (clinic && Math.random() < 0.9) return clinic;
+  return LOCATIONS.find((l) => l.id === "home");
+}
+
 /** @spec SPEC-047 §8.1 保育園期 平日の親遣い抽選 */
 function pickWeekdayParentalOuting() {
+  // @spec SPEC-057 §3 v2 感染症中は clinic / home 以外には絶対に行かない（風邪なのに公園・児童館は禁忌）
+  const infectionLoc = pickInfectionDayLocation();
+  if (infectionLoc) return infectionLoc;
   const pool = LOCATIONS.filter((l) =>
     l.parentalOutingWeekdayWeight > 0 &&
     (l.lifeStageTag || []).includes("nursery")
@@ -850,6 +869,9 @@ function pickWeekdayParentalOuting() {
 
 /** @spec SPEC-047 §8.2 保育園期 土日祝の親遣い抽選 */
 function pickWeekendParentalOuting() {
+  // @spec SPEC-057 §3 v2 感染症中は土日祝でも clinic / home に限定
+  const infectionLoc = pickInfectionDayLocation();
+  if (infectionLoc) return infectionLoc;
   if (Math.random() < 0.40) {
     return LOCATIONS.find((l) => l.id === "home");
   }
@@ -1289,6 +1311,12 @@ function evaluateTitleAutoTriggers() {
  * 場所到着時のミッショントリガ呼び出し（completeTravel / maybeResolveMorningLocation 後に呼ぶ）
  */
 function onLocationEntered(locationId) {
+  // @spec SPEC-057 §3 clinic 訪問は感染症治癒フラグを立てる（夜の判定で消費）
+  if (locationId === "clinic") {
+    player._visitedClinicToday = true;
+    player._specialDayMode = "clinic";  // S2 スキップは継続
+  }
+
   const triggers = findMissionsToTrigger({ type: "enterLocation", location: locationId });
   // 達成トリガが優先（発端より先に処理）
   const accTrig = triggers.find((x) => x.phase === "accomplish");
@@ -3640,6 +3668,14 @@ function goChooseFromToday() {
   // @spec SPEC-047 §7 親遣いの移動演出が発動する日はここで画面遷移を引き受ける
   if (maybeStartParentalOutingTravel()) return;
 
+  // @spec SPEC-057 §1 感染症中（または通院後）は遊び選択もコアタイムも飛ばして直接 1 日の終わりへ
+  //   - "infection" : 自宅療養中
+  //   - "clinic"    : 通院から帰宅した後、その日も安静
+  if (player._specialDayMode === "infection" || player._specialDayMode === "clinic") {
+    goSleep();
+    return;
+  }
+
   // @spec SPEC-050 §9 ミッションバナーの更新（ここで毎朝呼ぶのが確実）
   try { renderMissionBanner(); } catch (e) { /* noop */ }
   // @spec SPEC-055 §1 予告ヒント（HUD 直下）も毎朝再計算
@@ -4201,16 +4237,45 @@ function nextDay(sleepMode) {
   else if (!sched && sleepMode === "latenight") toast("夜更かしで生活リズムが乱れた…");
   else if (!sched && sleepMode === "early") toast("早寝でリズム回復！");
 
-  // @spec SPEC-047 §7 §8 保育園期の親遣い抽選（起床時）
-  //   - 平日：pickWeekdayParentalOuting で家・近くの公園・大きな公園・児童館・図書館から重み抽選
-  //   - 土日祝：pickWeekendParentalOuting で 40%家／60%遠出
-  //   - phase0（初週）は安定運用のため常に自宅
-  maybeResolveMorningLocation();
-  // @spec SPEC-011 §10 保育園「貯める」ギミック（Issue #14 反映）
-  // - 感染症イベントの月別確率抽選（場所抽選とは別の演出軸）
-  // - 親遣い遠出は SPEC-047 で実装済みなので、こちらは互換のため残置
-  if (typeof maybeTriggerNurserySpecialEvent === "function") {
-    try { maybeTriggerNurserySpecialEvent(); } catch (e) { /* noop */ }
+  // @spec SPEC-057 §2 感染症の治癒判定（朝起床時 = 前日の夜の判定として処理）
+  //   通院していたら 100% 治癒、そうでなければ残日数別の確率で前倒し治癒
+  let justHealed = false;
+  if (typeof maybeHealInfection === "function") {
+    try { justHealed = maybeHealInfection(); } catch (e) { /* noop */ }
+  }
+  if (justHealed) {
+    // 治癒した日は通常の余剰時間に戻す（spareHours は既に通常値で計算されているのでそのまま）
+    enqueueMorningEventModal({
+      art: "🌟",
+      title: "熱が下がった！",
+      desc: "昨日まで熱があったけど、今日はすっかり元気。やっと外で遊べるよ！",
+      effects: [
+        { label: "余剰時間", delta: +Math.floor(player.spareHours), unit: "h" },
+      ],
+      comment: { speaker: "mother", body: "もう大丈夫そうね、よかった" },
+    });
+    player._infectionJustHealed = false;
+  }
+
+  // @spec SPEC-011 §10 / SPEC-057 §3 感染症フラグの更新と clinic 抽選を先に行う
+  //   maybeTriggerNurserySpecialEvent 内で感染症発動 + maybeResolveMorningLocation を呼んで
+  //   clinic に行く判定をする。感染症無しなら何もしない（次の親遣い抽選に進む）
+  let infectionHandled = false;
+  if (!justHealed && typeof maybeTriggerNurserySpecialEvent === "function") {
+    try {
+      maybeTriggerNurserySpecialEvent();
+      infectionHandled = (player._specialDayMode === "infection");
+    } catch (e) { /* noop */ }
+  }
+
+  // @spec SPEC-047 §7 §8 保育園期の親遣い抽選（起床時、感染症が無い時のみ）
+  //   感染症中は既に maybeTriggerNurserySpecialEvent 内で clinic / home が決定されている
+  if (!infectionHandled) {
+    maybeResolveMorningLocation();
+  }
+  // 治癒した日はその日は健康なので、余剰時間を回復
+  if (justHealed) {
+    player.spareHours = player.spareHoursMax || 8;
   }
 
   // @spec SPEC-002 §1.1 翌日も S2 に直行（起床ヘッダーで状態を表示）
@@ -4381,6 +4446,43 @@ function flushMorningEventModalsThen(then) {
  *   - 感染症中は朝の余剰時間ゼロ＆体力回復鈍化を既に reflect 済み
  *   - 親遣い遠出の「その日は1イベントだけで即S10」は将来実装
  */
+/**
+ * @spec SPEC-057 §2 §3 感染症の治癒判定（毎晩実行）
+ *
+ * 通院した日は確定治癒。
+ * 通常時は残日数別の確率で前倒し治癒：
+ *   残 3 日 → 0%（初日は確実に休む）
+ *   残 2 日 → 30%
+ *   残 1 日 → 50%
+ *   残 0 日 → 自動的に治る（このパス自体が呼ばれない）
+ *
+ * @returns {boolean} 今夜治ったかどうか
+ */
+function maybeHealInfection() {
+  const r = player._infectionRemainingDays || 0;
+  if (r <= 0) return false;
+
+  // 通院した日は確定治癒
+  if (player._visitedClinicToday) {
+    player._infectionRemainingDays = 0;
+    player._specialDayMode = null;
+    player._visitedClinicToday = false;
+    player._infectionJustHealed = true;
+    return true;
+  }
+
+  // 残日数別の自然治癒確率
+  const probTable = { 3: 0.00, 2: 0.30, 1: 0.50 };
+  const prob = (typeof probTable[r] === "number") ? probTable[r] : 0.0;
+  if (Math.random() < prob) {
+    player._infectionRemainingDays = 0;
+    player._specialDayMode = null;
+    player._infectionJustHealed = true;
+    return true;
+  }
+  return false;
+}
+
 function maybeTriggerNurserySpecialEvent() {
   const stage = resolveLifeStage(player.age);
   if (!stage || stage.id !== "nursery") {
@@ -4394,50 +4496,67 @@ function maybeTriggerNurserySpecialEvent() {
     return;
   }
 
-  // すでに感染症期間中（残日数 >0）なら継続処理
-  if (player._infectionRemainingDays && player._infectionRemainingDays > 0) {
-    player._infectionRemainingDays -= 1;
-    player._specialDayMode = "infection";
-    player.spareHours = 0;
-    // @spec SPEC-056 §2 トースト → モーダル化
-    enqueueMorningEventModal({
-      art: "💪",
-      title: "風邪、まだ完全には治らない",
-      desc: `まだ熱があるみたい。今日もおうちでお休みだ…（残り ${player._infectionRemainingDays + 1}日）`,
-      effects: [
-        { label: "余剰時間", delta: -8, unit: "h" },
-      ],
-      comment: { speaker: "father", body: "焦らず、ゆっくりね" },
-    });
-    return;
-  }
-
   // 曜日判定（日=0, 土=6）
   const dow = fakeDateForDay(player.day).getUTCDay();
   const isWeekend = (dow === 0 || dow === 6);
-
   // 月別感染症確率（month は 0-indexed）
   const month = fakeDateForDay(player.day).getUTCMonth();
   const highSeason = (month >= 3 && month <= 5) || month >= 10 || month <= 1; // 4-6月 or 11-2月
   const infectionRate = highSeason ? 0.15 : 0.03;
 
-  // 1. 感染症抽選
-  if (Math.random() < infectionRate) {
+  // すでに感染症期間中（残日数 >0）なら継続処理
+  let isInfectionContinuation = false;
+  let isInfectionFirstDay = false;
+  if (player._infectionRemainingDays && player._infectionRemainingDays > 0) {
+    player._infectionRemainingDays -= 1;
+    player._specialDayMode = "infection";
+    player.spareHours = 0;
+    isInfectionContinuation = true;
+  } else if (Math.random() < infectionRate) {
+    // 1. 感染症新規発動
     const durationDays = 3 + Math.floor(Math.random() * 3); // 3-5 日
     player._infectionRemainingDays = durationDays;
     player._specialDayMode = "infection";
     player.spareHours = 0;
-    // @spec SPEC-056 §2 トースト → モーダル化
-    enqueueMorningEventModal({
-      art: "🤧",
-      title: "風邪をひいてしまった",
-      desc: `保育園で風邪をもらってきたみたい。${durationDays}日間はおうちでゆっくり…`,
-      effects: [
-        { label: "余剰時間",    delta: -8,            unit: "h" },
-        { label: "感染症日数",  delta: durationDays,  unit: "日" },
-      ],
-      comment: { speaker: "mother", body: "ゆっくり休もうね、すぐ良くなるよ" },
-    });
+    isInfectionFirstDay = true;
+  }
+
+  if (isInfectionContinuation || isInfectionFirstDay) {
+    // @spec SPEC-057 §3 感染症中は clinic 抽選を先に走らせ、行く予定があれば通院モーダルに切り替え
+    //   maybeResolveMorningLocation は clinic 抽選分岐で _parentalOutingToday を設定する
+    try { maybeResolveMorningLocation(); } catch (e) { /* noop */ }
+    if (player._parentalOutingToday === "clinic") {
+      enqueueMorningEventModal({
+        art: "🏥",
+        title: "お医者さんに連れて行ってもらった",
+        desc: "おかあさんがお医者さんに連れて行ってくれた。お薬をもらって、ゆっくり休めば明日には元気になりそう。",
+        comment: { speaker: "mother", body: "明日には元気になるよ、頑張ったね" },
+      });
+      return;
+    }
+    // 自宅療養：発動初日 / 継続日でモーダルを使い分け
+    if (isInfectionFirstDay) {
+      enqueueMorningEventModal({
+        art: "🤧",
+        title: "風邪をひいてしまった",
+        desc: `保育園で風邪をもらってきたみたい。${player._infectionRemainingDays}日間はおうちでゆっくり…`,
+        effects: [
+          { label: "余剰時間",    delta: -8,                              unit: "h" },
+          { label: "感染症日数",  delta: player._infectionRemainingDays,  unit: "日" },
+        ],
+        comment: { speaker: "mother", body: "ゆっくり休もうね、すぐ良くなるよ" },
+      });
+    } else {
+      enqueueMorningEventModal({
+        art: "💪",
+        title: "風邪、まだ完全には治らない",
+        desc: `まだ熱があるみたい。今日もおうちでお休みだ…（残り ${player._infectionRemainingDays + 1}日）`,
+        effects: [
+          { label: "余剰時間", delta: -8, unit: "h" },
+        ],
+        comment: { speaker: "father", body: "焦らず、ゆっくりね" },
+      });
+    }
     return;
   }
 
