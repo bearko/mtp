@@ -642,6 +642,30 @@
       </div>
     </div>
 
+    <!--
+      @screen  S-event-modal 統一イベントモーダル
+      @spec    docs/specs/SPEC-056-event-modal-unified.md §1
+      朝の発火イベント（感染症・親遣い遠出）と、将来 S4 ランダムイベントの
+      表示形式を共通化するためのモーダル。イラスト + タイトル + 説明 +
+      影響リスト + NPC コメント + ボタンで構成。
+    -->
+    <div id="event-overlay" class="event-overlay" hidden>
+      <div class="event-modal">
+        <div class="event-modal-art" id="event-modal-art">🎒</div>
+        <h3 class="event-modal-title" id="event-modal-title">タイトル</h3>
+        <p class="event-modal-desc" id="event-modal-desc">情景の説明</p>
+        <div class="event-modal-effects" id="event-modal-effects" hidden>
+          <div class="event-modal-effects-title">影響</div>
+          <ul class="event-modal-effects-list" id="event-modal-effects-list"></ul>
+        </div>
+        <p class="event-modal-comment" id="event-modal-comment" hidden>
+          <span class="event-modal-comment-speaker" id="event-modal-comment-speaker">お母さん</span>
+          <span class="event-modal-comment-body" id="event-modal-comment-body">セリフ</span>
+        </p>
+        <button class="btn btn-primary btn-wide" id="btn-event-modal-close" data-action="event-modal-close">なるほど</button>
+      </div>
+    </div>
+
     <div id="toast" class="toast" hidden></div>
   </div>
 

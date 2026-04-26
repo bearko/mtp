@@ -424,6 +424,8 @@ let TITLES = [];
 let PARENTAL_COMPLIMENTS = [];
 /** @spec SPEC-011 §10.1 親遣い遠出（Issue #14 反映） */
 let EVENTS_PARENTAL_OUTING = [];
+/** @spec SPEC-056 §2 朝の発火イベントマスタ（感染症・遠出・ふだんの場所） */
+let MORNING_EVENTS = [];
 
 /* =========================================================================
  * @spec SPEC-031 / SPEC-032 転生イントロのシーン定義とランダム名マスタ
@@ -510,6 +512,11 @@ async function loadMasters() {
       const pc = await fetch("./data/parental-compliments.json").then((r) => r.ok ? r.json() : []);
       if (Array.isArray(pc)) PARENTAL_COMPLIMENTS = pc;
     } catch (e) { console.warn("[master] parental-compliments optional", e); }
+    // @spec SPEC-056 §2 morning event マスタ（感染症・親遣い遠出など朝の演出）
+    try {
+      const me = await fetch("./data/morning-events.json").then((r) => r.ok ? r.json() : []);
+      if (Array.isArray(me)) MORNING_EVENTS = me;
+    } catch (e) { console.warn("[master] morning-events optional", e); }
     if (Array.isArray(locs) && locs.length > 0) LOCATIONS = locs;
     if (Array.isArray(missions)) MISSION_SCENARIOS = missions;
     if (Array.isArray(titles)) TITLES = titles;
@@ -667,6 +674,10 @@ const DEFAULT_PLAYER = {
   _tutorialBoundariesSeen: { day8: false, day15: false },
   /** @spec SPEC-026 §5.2.1 チュートリアル発見の保留キュー（finalizePlay 後に通知） */
   _pendingTutorialInterrupts: [],
+  /** @spec SPEC-056 §2.1 朝の発火イベントモーダルキュー（goChooseFromToday 冒頭で flush） */
+  _pendingMorningEventModals: [],
+  /** @spec SPEC-056 §4 ミッション中に体力 0 になった場合、モーダル閉じ時に handleStaminaDepleted を発動 */
+  _pendingStaminaDepleted: false,
   /** @spec SPEC-025 §7.2.0 週境界に到達したかどうか。S10 閉じる時に S9 へ分岐するために使う */
   _pendingWeeklyHighlight: false,
   /** @spec SPEC-025 §7.2.0 スキップ中に S9 経由 → 続けるで sleep に戻るフラグ */
@@ -1054,6 +1065,13 @@ function onAttemptPromptYes() {
 function onAttemptPromptLater() {
   // S2 へ。ミッションは ACCEPTED のまま、再訪時に再度プロンプトが出る
   _attemptPromptMission = null;
+  // @spec SPEC-056 §4 「まだ」を選んだ場合は別腹扱いをしないので、保留中の強制就寝があればここで消化
+  // ただし isMissionModalActive() は現在 attempt-prompt を含むので、いったんプロンプト active 判定を外して呼ぶ
+  if (player._pendingStaminaDepleted && player.stamina <= 0) {
+    player._pendingStaminaDepleted = false;
+    try { handleStaminaDepleted(); } catch (e) { console.warn("[stamina] depleted error", e); }
+    return;
+  }
   goChooseFromToday();
 }
 
@@ -1486,6 +1504,9 @@ function showNextMissionDialog() {
       // callback で再度 showMissionModal が呼ばれていれば、screen-mission-modal が active のまま
       if (document.querySelector(".screen.active")?.id === "screen-mission-modal") return;
     }
+    // @spec SPEC-056 §4 デザートは別腹：達成・触媒モーダルを閉じる時に
+    //   保留中の handleStaminaDepleted があればここで消化する
+    if (consumePendingStaminaDepleted()) return;
     // モーダルを閉じる → S2 に戻る
     goChooseFromToday();
     return;
@@ -3087,7 +3108,13 @@ function renderEvent() {
   const rows = Object.entries(pendingEvent.effect)
     .map(([k, v]) => `<li><span>${effectLabel(k)}</span><b class="${v > 0 ? "up" : "down"}">${v > 0 ? "+" : ""}${v}</b></li>`)
     .join("");
-  byId("event-effects").innerHTML = `<div class="card-title">変化</div><ul class="kv-list">${rows}</ul>`;
+  // @spec SPEC-056 §3 コメント欄（events.json に comment があれば表示）
+  let commentHtml = "";
+  if (pendingEvent.comment && pendingEvent.comment.body) {
+    const speaker = speakerDisplay(pendingEvent.comment.speaker || "narration");
+    commentHtml = `<div class="event-comment-card"><span class="speaker">${speaker}</span><span>${pendingEvent.comment.body}</span></div>`;
+  }
+  byId("event-effects").innerHTML = `<div class="card-title">変化</div><ul class="kv-list">${rows}</ul>${commentHtml}`;
 }
 
 function effectLabel(key) {
@@ -3259,10 +3286,15 @@ function finalizePlay() {
   // @spec SPEC-050 §4 §9 / SPEC-051 §4.5
   try { onPlayFinalized(play); } catch (e) { console.warn("[mission] onPlayFinalized error", e); }
 
-  // ---- ⑨ 体力ゼロ判定（SPEC-019 §5.4）----
+  // ---- ⑨ 体力ゼロ判定（SPEC-019 §5.4 / SPEC-056 §4 デザートは別腹）----
+  // ミッション系モーダルが立ち上がっている間は強制就寝を遅延させる。
+  // 「達成は体力に左右されない」という設計（SPEC-056 §4）。
   if (player.stamina <= 0) {
+    if (isMissionModalActive()) {
+      player._pendingStaminaDepleted = true;
+      return;  // モーダル閉じ時に消化される
+    }
     handleStaminaDepleted();
-    // handleStaminaDepleted 内で画面遷移・ボタン制御が行われるため、以降の処理は行わない
     return;
   }
 
@@ -3595,6 +3627,15 @@ function goChooseFromToday() {
   //   起床時に 1 回だけ初期化する（auto モードの runAutoTurn と同じタイミング）。
   initDaySnapshotIfNeeded();
   initAutoHighlightIfNeeded();
+
+  // @spec SPEC-056 §2.1 朝の発火イベント（感染症・親遣い遠出）のモーダルを先に消化する
+  if (player._pendingMorningEventModals && player._pendingMorningEventModals.length > 0) {
+    flushMorningEventModalsThen(() => {
+      // モーダル消化後、改めて朝の処理に進む（再帰）
+      goChooseFromToday();
+    });
+    return;
+  }
 
   // @spec SPEC-047 §7 親遣いの移動演出が発動する日はここで画面遷移を引き受ける
   if (maybeStartParentalOutingTravel()) return;
@@ -4192,6 +4233,143 @@ function nextDay(sleepMode) {
   }
 }
 
+/* =========================================================================
+ * @spec SPEC-056 §4 ミッションモーダル中の体力ゼロ遅延（デザートは別腹）
+ *   - 達成プロンプト / 発端 / 触媒 / 達成シーンが表示中なら handleStaminaDepleted を遅らせる
+ *   - モーダル閉じ時に消化（消化先は consumePendingStaminaDepleted）
+ * ========================================================================= */
+function isMissionModalActive() {
+  const active = document.querySelector(".screen.active");
+  if (!active) return false;
+  return active.id === "screen-mission-modal" ||
+         active.id === "screen-mission-attempt-prompt";
+}
+
+function consumePendingStaminaDepleted() {
+  if (!player._pendingStaminaDepleted) return false;
+  if (isMissionModalActive()) return false;  // まだミッション中
+  // 体力が他経路で回復している可能性をチェック
+  if (player.stamina > 0) {
+    player._pendingStaminaDepleted = false;
+    return false;
+  }
+  player._pendingStaminaDepleted = false;
+  try { handleStaminaDepleted(); } catch (e) { console.warn("[stamina] depleted error", e); }
+  return true;
+}
+
+/* =========================================================================
+ * @spec SPEC-056 §1 統一イベントモーダル
+ *   showEventModal({ art, title, desc, effects, comment, buttonLabel, onClose })
+ *   - 朝の発火イベント（感染症、親遣い遠出）と将来の S4 統合に使う共通モーダル
+ *   - effects/comment は省略可
+ * ========================================================================= */
+let _eventModalOnClose = null;
+function showEventModal(opt) {
+  const root = byId("event-overlay");
+  if (!root) {
+    // フォールバック：オーバーレイが無い場合は toast に降格
+    if (opt.title && typeof toast === "function") toast(opt.title);
+    if (typeof opt.onClose === "function") opt.onClose();
+    return;
+  }
+
+  const artEl     = byId("event-modal-art");
+  const titleEl   = byId("event-modal-title");
+  const descEl    = byId("event-modal-desc");
+  const effectsEl = byId("event-modal-effects");
+  const listEl    = byId("event-modal-effects-list");
+  const commentEl = byId("event-modal-comment");
+  const speakerEl = byId("event-modal-comment-speaker");
+  const bodyEl    = byId("event-modal-comment-body");
+  const btnEl     = byId("btn-event-modal-close");
+
+  if (artEl)   artEl.textContent   = opt.art   || "✨";
+  if (titleEl) titleEl.textContent = opt.title || "";
+  if (descEl)  descEl.textContent  = opt.desc  || "";
+  if (btnEl)   btnEl.textContent   = opt.buttonLabel || "なるほど";
+
+  // ----- 影響リスト -----
+  if (Array.isArray(opt.effects) && opt.effects.length > 0) {
+    if (listEl) {
+      listEl.innerHTML = opt.effects.map((e) => {
+        const v = Number(e.delta || 0);
+        const cls = v > 0 ? "up" : (v < 0 ? "down" : "flat");
+        const sign = v > 0 ? "+" : "";
+        const unit = e.unit ? `<span class="effect-unit">${e.unit}</span>` : "";
+        return `<li><span>${e.label || ""}</span><b class="effect-delta ${cls}">${sign}${v}${unit ? " " + e.unit : ""}</b></li>`;
+      }).join("");
+    }
+    if (effectsEl) effectsEl.hidden = false;
+  } else {
+    if (effectsEl) effectsEl.hidden = true;
+  }
+
+  // ----- コメント -----
+  if (opt.comment && opt.comment.body) {
+    if (speakerEl) speakerEl.textContent = speakerDisplay(opt.comment.speaker || "narration");
+    if (bodyEl)    bodyEl.textContent    = opt.comment.body;
+    if (commentEl) commentEl.hidden = false;
+  } else {
+    if (commentEl) commentEl.hidden = true;
+  }
+
+  _eventModalOnClose = (typeof opt.onClose === "function") ? opt.onClose : null;
+  root.hidden = false;
+}
+
+function closeEventModal() {
+  const root = byId("event-overlay");
+  if (root) root.hidden = true;
+  const cb = _eventModalOnClose;
+  _eventModalOnClose = null;
+  if (cb) {
+    try { cb(); } catch (e) { console.warn("[event-modal] onClose error", e); }
+  }
+}
+
+/**
+ * @spec SPEC-056 §2.1 morning-events.json から ID を引いてモーダル化
+ *   linkedLocationId が一致する fullday_trip / outing_play から探すヘルパも提供
+ */
+function findMorningEventById(id) {
+  return MORNING_EVENTS.find((m) => m.id === id) || null;
+}
+function findMorningEventByLocation(locId, category) {
+  return MORNING_EVENTS.find((m) =>
+    m.linkedLocationId === locId &&
+    (!category || m.category === category)
+  ) || null;
+}
+
+/**
+ * @spec SPEC-056 §2.1 朝のイベントモーダルキュー
+ *   nextDay 内で複数のイベントが立ち上がる可能性を考慮し、配列で蓄積し、
+ *   goChooseFromToday の冒頭でフラッシュする。
+ */
+function enqueueMorningEventModal(opt) {
+  player._pendingMorningEventModals = player._pendingMorningEventModals || [];
+  player._pendingMorningEventModals.push(opt);
+}
+
+function flushMorningEventModalsThen(then) {
+  const queue = (player._pendingMorningEventModals || []).slice();
+  player._pendingMorningEventModals = [];
+  if (queue.length === 0) {
+    if (typeof then === "function") then();
+    return;
+  }
+  const next = () => {
+    const head = queue.shift();
+    if (!head) {
+      if (typeof then === "function") then();
+      return;
+    }
+    showEventModal({ ...head, onClose: next });
+  };
+  next();
+}
+
 /**
  * @spec SPEC-011 §10 保育園期の特別イベント抽選（Issue #14 反映）
  *   - 親遣い遠出：土日祝 40% / 平日 2%。発動した日は dock 経由の自由遊び不可
@@ -4221,7 +4399,16 @@ function maybeTriggerNurserySpecialEvent() {
     player._infectionRemainingDays -= 1;
     player._specialDayMode = "infection";
     player.spareHours = 0;
-    toast("まだ熱がある…今日も一日お休み", 2400);
+    // @spec SPEC-056 §2 トースト → モーダル化
+    enqueueMorningEventModal({
+      art: "💪",
+      title: "風邪、まだ完全には治らない",
+      desc: `まだ熱があるみたい。今日もおうちでお休みだ…（残り ${player._infectionRemainingDays + 1}日）`,
+      effects: [
+        { label: "余剰時間", delta: -8, unit: "h" },
+      ],
+      comment: { speaker: "father", body: "焦らず、ゆっくりね" },
+    });
     return;
   }
 
@@ -4240,7 +4427,17 @@ function maybeTriggerNurserySpecialEvent() {
     player._infectionRemainingDays = durationDays;
     player._specialDayMode = "infection";
     player.spareHours = 0;
-    toast(`保育園で風邪をもらってきた…${durationDays}日間お休み`, 2800);
+    // @spec SPEC-056 §2 トースト → モーダル化
+    enqueueMorningEventModal({
+      art: "🤧",
+      title: "風邪をひいてしまった",
+      desc: `保育園で風邪をもらってきたみたい。${durationDays}日間はおうちでゆっくり…`,
+      effects: [
+        { label: "余剰時間",    delta: -8,            unit: "h" },
+        { label: "感染症日数",  delta: durationDays,  unit: "日" },
+      ],
+      comment: { speaker: "mother", body: "ゆっくり休もうね、すぐ良くなるよ" },
+    });
     return;
   }
 
@@ -4259,17 +4456,24 @@ function maybeTriggerNurserySpecialEvent() {
     }
     player._specialDayMode = "outing";
     player._pendingOuting = picked;
-    toast(`${picked.icon || "🎒"} ${picked.text || picked.name}`, 3000);
-    // 素養加算を即時適用
+    // 素養加算を即時適用（朝のうちに先取り。実体験は親遣いとして提示）
+    const effects = [];
     if (picked.effect) {
       for (const [k, v] of Object.entries(normalizeGainToSoyou(picked.effect))) {
         if (SOYOU_KEYS.includes(k)) {
           player.soyou[k] = (player.soyou[k] || 0) + v;
+          effects.push({ label: SOYOU_META[k]?.name || k, delta: v });
         }
       }
     }
-    // 今日は1イベントだけで即 S10 にしたいが、プロト実装は「自由遊びもできる」緩和版
-    // 将来は spareHours=0 にして dock を閉じる
+    // @spec SPEC-056 §2 トースト → モーダル化
+    enqueueMorningEventModal({
+      art: picked.icon || "🎒",
+      title: picked.name ? `${picked.name}に行ってきた！` : (picked.text || "今日は遠出！"),
+      desc: picked.text || "おとうさん・おかあさんと一緒に出かけた一日",
+      effects,
+      comment: { speaker: "father", body: "今日はたくさん見つけられたね" },
+    });
     return;
   }
 
@@ -5203,6 +5407,10 @@ document.addEventListener("click", (e) => {
       break;
     case "close-event":
       finalizePlay();
+      break;
+    case "event-modal-close":
+      // @spec SPEC-056 §1 統一イベントモーダル close
+      closeEventModal();
       break;
     case "choose-next":
       goChooseFromToday();

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "morning_infection_cold",
+    "category": "infection",
+    "art": "🤧",
+    "title": "風邪をひいてしまった",
+    "desc": "保育園で風邪をもらってきたみたい。熱があるから、しばらくおうちでゆっくり…",
+    "comment": { "speaker": "mother", "body": "ゆっくり休もうね、すぐ良くなるよ" }
+  },
+  {
+    "id": "morning_infection_recover",
+    "category": "infection_recover",
+    "art": "💪",
+    "title": "風邪、まだ完全には治らない",
+    "desc": "まだ少し熱がある。今日もおうちでお休みだ…",
+    "comment": { "speaker": "father", "body": "焦らず、ゆっくりね" }
+  },
+  {
+    "id": "morning_outing_zoo",
+    "category": "fullday_trip",
+    "linkedLocationId": "zoo",
+    "art": "🦁",
+    "title": "動物園に行くことになった！",
+    "desc": "今日はパパもママもお休み。動物園に連れて行ってくれるって！",
+    "comment": { "speaker": "father", "body": "今日は思いっきり楽しもう" }
+  },
+  {
+    "id": "morning_outing_aquarium",
+    "category": "fullday_trip",
+    "linkedLocationId": "aquarium",
+    "art": "🐠",
+    "title": "水族館に行くことになった！",
+    "desc": "今日は家族みんなで水族館。大きな水槽が楽しみ！",
+    "comment": { "speaker": "mother", "body": "イルカショーも見れるかな" }
+  },
+  {
+    "id": "morning_outing_museum",
+    "category": "fullday_trip",
+    "linkedLocationId": "museum",
+    "art": "🏛️",
+    "title": "博物館に行くことになった！",
+    "desc": "おじいちゃんが博物館に連れて行ってくれるって！",
+    "comment": { "speaker": "narration", "body": "知らないものがいっぱいあるかな" }
+  },
+  {
+    "id": "morning_outing_bigpark",
+    "category": "outing_play",
+    "linkedLocationId": "big_park",
+    "art": "🏞️",
+    "title": "大きな公園に行こう！",
+    "desc": "今日はパパが遠くの大きな公園に連れて行ってくれるみたい",
+    "comment": { "speaker": "father", "body": "いっぱい走ろうね" }
+  },
+  {
+    "id": "morning_outing_children_hall",
+    "category": "outing_play",
+    "linkedLocationId": "children_hall",
+    "art": "🎪",
+    "title": "児童館に行こう！",
+    "desc": "今日は児童館でお友達と遊べるよ",
+    "comment": { "speaker": "mother", "body": "新しいお友達ができるといいね" }
+  },
+  {
+    "id": "morning_outing_library",
+    "category": "outing_play",
+    "linkedLocationId": "library",
+    "art": "📚",
+    "title": "図書館に行こう！",
+    "desc": "今日は図書館で絵本をたくさん読もう",
+    "comment": { "speaker": "mother", "body": "好きな本、見つけられるかな" }
+  }
+]
