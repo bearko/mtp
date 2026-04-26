@@ -4,6 +4,7 @@
 > - 画面設計書：[`./SCREEN-DESIGN.md`](./SCREEN-DESIGN.md)（ワイヤーフレーム・画面 ID の一覧・コアループ遷移図）
 > - **ゲームフロー全体図**：[`./GAME-FLOW.md`](./GAME-FLOW.md)（Mermaid で繰り返し・ランダム・分岐を可視化）
 > - 機能仕様書：[`../specs/SPEC-INDEX.md`](../specs/SPEC-INDEX.md)（機能別の詳細仕様）
+> - デザイン文書：[`../design/INDEX.md`](../design/INDEX.md)（デザイン憲章・デザインシステム・UI 改善提案）
 > - 開発ルール：[`../DEVELOPMENT_RULES.md`](../DEVELOPMENT_RULES.md)
 
 > 最終更新: 2026-04-26（SPEC-057 まで反映）
@@ -52,7 +53,7 @@
 | `#mission-prelude` | 予告ヒント「💭 もうすぐ何か…」 | SPEC-055 §1 |
 | `#mission-banner` | 挑戦中ミッション一覧 | SPEC-050 §5 |
 
-## ドキュメントの 2 階層構造
+## ドキュメントの 3 系統構造
 
 ```
 docs/
@@ -61,6 +62,11 @@ docs/
 │   ├─ INDEX.md                  本ファイル（画面索引）
 │   ├─ SCREEN-DESIGN.md          画面 ID と遷移先（詳細は対応 SPEC へ）
 │   └─ GAME-FLOW.md              Mermaid のフロー図
+├─ design/                     デザイン文書
+│   ├─ INDEX.md                  デザイン文書索引
+│   ├─ DESIGN-CHARTER.md         デザイン判断の憲章
+│   ├─ DESIGN-SYSTEM.md          色・余白・文体・コンポーネント規約
+│   └─ UI-IMPROVEMENT-PROPOSAL.md 現状 UI の改善提案
 └─ specs/                      機能仕様書
     ├─ SPEC-INDEX.md            仕様書索引
     ├─ SPEC-001-*.md            機能別仕様（1 機能 = 1 ファイル）
@@ -85,9 +91,15 @@ docs/
 - UI コンポーネントの挙動（タップで何が起きるか）
 - Why not（採用しなかった選択肢）
 
+### デザイン文書（Design）が担当するもの
+- UI 判断の原則（デザイン憲章）
+- 色・余白・タイポグラフィ・文体・演出の共通ルール
+- 現状 UI の課題整理と改善提案
+
 ## 相互参照のルール
 
 - 画面設計書 → 仕様書：各画面のセクションで `対応：SPEC-XXX` を明記
 - 仕様書 → 画面設計書：UI に関わる仕様には画面 ID `Sn` を参照
+- UI の見た目・文体・演出を変える場合：デザイン文書の該当章を参照
 - コード側：`@spec` / `@screens` / `@screen` 注釈で双方向リンク（`DEVELOPMENT_RULES.md` §3.1）
-- **横断系の変更**（画面追加・遷移変更・グローバル状態追加）は **3 つすべて** 更新する（`DEVELOPMENT_RULES.md` §6 チェックリスト）
+- **横断系の変更**（画面追加・遷移変更・グローバル状態追加）は、画面設計 / GAME-FLOW / SPEC / デザイン文書の影響範囲を確認する（`DEVELOPMENT_RULES.md` §6 チェックリスト）

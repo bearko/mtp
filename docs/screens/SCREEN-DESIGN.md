@@ -8,6 +8,7 @@
 > - 仕様書索引: [`../specs/SPEC-INDEX.md`](../specs/SPEC-INDEX.md)
 > - 画面索引: [`./INDEX.md`](./INDEX.md)
 > - **ゲームフロー図**: [`./GAME-FLOW.md`](./GAME-FLOW.md)（Mermaid 形式の繰り返し / ランダム / 分岐の可視化）
+> - **デザイン文書**: [`../design/INDEX.md`](../design/INDEX.md)（デザイン憲章 / デザインシステム / UI 改善提案）
 
 > 最終更新: 2026-04-26（SPEC-057 まで反映）
 
