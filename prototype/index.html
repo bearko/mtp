@@ -61,6 +61,17 @@
     </header>
 
     <!--
+      @screen 共通パラメーターバー
+      @spec docs/specs/SPEC-034-s2-hud-redesign.md §5.2
+      @spec docs/specs/SPEC-035-result-summary-ui.md §4.4
+      S2/S3/S4/S10/S9 で同じ位置に固定表示し、常に素養を意識できるようにする。
+    -->
+    <section class="param-strip" id="param-strip" aria-label="現在の素養" hidden>
+      <div class="param-strip-row param-strip-labels" id="param-strip-labels"></div>
+      <div class="param-strip-row param-strip-values" id="param-strip-values"></div>
+    </section>
+
+    <!--
       @spec SPEC-050 §5 ミッションバナー（HUD 直下、active ミッションを常時表示）
       折りたたみ式：summary をタップで open/close。
     -->
@@ -269,9 +280,10 @@
         </section>
 
         <!--
-          @spec SPEC-033 §3 / SPEC-034 §5.2 素養カード 5 枚（固定表示）
+          @spec SPEC-033 §3 / SPEC-034 §5.2
+          旧 S2 内 5 行表示。現在は共通 #param-strip に置き換えたため互換 DOM として残す。
         -->
-        <div class="soyou-list" id="soyou-list">
+        <div class="soyou-list" id="soyou-list" hidden>
           <!-- renderSoyouList() で動的描画 -->
         </div>
 
@@ -350,7 +362,7 @@
         -->
         <div id="result-panel" class="result-panel result-panel-v2" hidden>
           <!-- 獲得した素養（グレードベース / +N / 旧→新 / Lv発光） -->
-          <div class="card card-tight">
+          <div class="card card-tight" id="result-soyou-card" hidden>
             <div class="card-title">🌱 獲得した素養</div>
             <div class="soyou-result-list" id="result-soyou-list"></div>
           </div>

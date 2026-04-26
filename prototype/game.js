@@ -2330,6 +2330,7 @@ function showScreen(id) {
   if (hud) {
     hud.hidden = (id === "screen-title" || id === "screen-isekai");
   }
+  renderParamStrip(id);
 }
 
 /**
@@ -2582,42 +2583,64 @@ function renderHUD() {
     const loc = currentLocation();
     locEl.innerHTML = `${loc.icon || "📍"} <span>${loc.shortName || loc.name}</span>`;
   }
+  renderParamStrip();
 }
 
 /**
  * @spec SPEC-034 §5.2 素養カード 5 枚を描画
  * preview（プレビュー中の加算量）が渡されたら (+N) とグレードアップを重ねて表示する。
  */
-function renderSoyouList(preview) {
+function renderSoyouList(preview = null) {
   const host = byId("soyou-list");
+  renderParamStrip(undefined, preview);
   if (!host) return;
-  const cur = player.soyou || {};
   host.innerHTML = "";
-  for (const key of SOYOU_KEYS) {
+}
+
+const PARAM_STRIP_SCREEN_IDS = new Set([
+  "screen-choose",
+  "screen-playing",
+  "screen-event",
+  "screen-day-summary",
+  "screen-highlight",
+]);
+
+/**
+ * @spec docs/specs/SPEC-034-s2-hud-redesign.md §5.2
+ * @spec docs/specs/SPEC-035-result-summary-ui.md §4.4
+ * 5素養を HUD 直下に 2行×5列で固定表示する。
+ */
+function renderParamStrip(screenId, preview = null) {
+  const strip = byId("param-strip");
+  if (!strip) return;
+  const activeId = screenId || document.querySelector(".screen.active")?.id;
+  const visible = PARAM_STRIP_SCREEN_IDS.has(activeId);
+  strip.hidden = !visible;
+  if (!visible) return;
+
+  const labels = byId("param-strip-labels");
+  const values = byId("param-strip-values");
+  if (!labels || !values) return;
+  const cur = player.soyou || {};
+  labels.innerHTML = SOYOU_KEYS.map((key) => {
     const meta = SOYOU_META[key];
+    return `<div class="param-strip-label">${meta.icon} ${escapeHtml(meta.label)}</div>`;
+  }).join("");
+  values.innerHTML = SOYOU_KEYS.map((key) => {
     const value = Math.floor(cur[key] || 0);
     const grade = soyouGrade(value);
     const deltaRaw = preview && preview[key] ? Math.max(0, Math.round(preview[key])) : 0;
     const afterValue = value + deltaRaw;
     const afterGrade = soyouGrade(afterValue);
-    const gradeUp = deltaRaw > 0 && afterGrade !== grade;
-    const row = document.createElement("div");
-    row.className = "soyou-row"
-      + (deltaRaw > 0 ? " has-delta" : "")
-      + (gradeUp ? " grade-up" : "");
-    const valueHtml = deltaRaw > 0
-      ? `${value}<span class="soyou-value-arrow">→</span><span class="soyou-value-after">${afterValue}</span>`
-      : `${value}`;
-    const deltaHtml = deltaRaw > 0 ? `<span class="soyou-delta">+${deltaRaw}</span>` : `<span class="soyou-delta"></span>`;
-    row.innerHTML = `
-      <div class="soyou-icon">${meta.icon}</div>
-      <div class="soyou-label">${meta.label}</div>
-      <div class="soyou-grade grade-${gradeUp ? afterGrade : grade}">${gradeUp ? (grade + "→" + afterGrade) : grade}</div>
-      ${deltaHtml}
-      <div class="soyou-value">${valueHtml}</div>
+    const gradeText = deltaRaw > 0 && afterGrade !== grade ? `${grade}→${afterGrade}` : grade;
+    const delta = deltaRaw > 0 ? `<span class="param-strip-delta">+${deltaRaw}</span>` : "";
+    return `
+      <div class="param-strip-value">
+        <span class="param-strip-grade grade-${escapeHtml(afterGrade)}">${escapeHtml(gradeText)}</span>
+        <span class="param-strip-num">${afterValue}</span>${delta}
+      </div>
     `;
-    host.appendChild(row);
-  }
+  }).join("");
 }
 
 /**
@@ -4079,8 +4102,10 @@ function handleStaminaDepleted() {
 function renderResultPanel(before) {
   byId("result-panel").hidden = false;
 
-  // @spec SPEC-035 §7.1 素養カード形式で描画（差分ありのみ表示、グレードアップ演出）
+  // @spec SPEC-035 §4.4 素養は共通パラメーターバーへ集約する
   renderSoyouResultList(byId("result-soyou-list"), before.exp || {}, player.soyou || {});
+  const resultSoyouCard = byId("result-soyou-card");
+  if (resultSoyouCard) resultSoyouCard.hidden = true;
 
   // @spec SPEC-035 §6 スキル行（1 行 × N）
   const cats = (before.skillBefore && Object.keys(before.skillBefore)) || [];
@@ -5669,7 +5694,7 @@ function showHighlight() {
   // @spec SPEC-035 §7.3 遊んだ回数をピル形式で
   renderPlayPills(byId("highlight-play-pills"), h.playsById || {});
 
-  // @spec SPEC-035 §7.3 素養カード
+  // @spec SPEC-035 §4.4 素養は共通パラメーターバーに固定表示する。
   renderSoyouResultList(byId("highlight-soyou-list"), h.expBefore || {}, player.soyou || {});
   const hlSoyouCard = byId("highlight-soyou-card");
   if (hlSoyouCard) {

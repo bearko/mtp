@@ -46,8 +46,12 @@ async function jumpToChoose(page) {
   const preview = await page.evaluate(() => ({
     hours: document.getElementById("hud-hours")?.textContent,
     ghostPct: document.getElementById("hud-stamina-bar-ghost")?.style.width,
-    intellectRow: [...document.querySelectorAll(".soyou-row")]
-      .find(r => r.textContent.includes("知性"))?.textContent.replace(/\s+/g, " "),
+    paramLabels: document.getElementById("param-strip-labels")?.textContent.replace(/\s+/g, " "),
+    paramValues: document.getElementById("param-strip-values")?.textContent.replace(/\s+/g, " "),
+    paramLabelCount: document.querySelectorAll("#param-strip-labels .param-strip-label").length,
+    paramValueCount: document.querySelectorAll("#param-strip-values .param-strip-value").length,
+    intellectParam: [...document.querySelectorAll("#param-strip-values .param-strip-value")][1]?.textContent.replace(/\s+/g, " "),
+    paramVisible: !document.getElementById("param-strip")?.hidden,
     skillTags: document.getElementById("soyou-skill-tags")?.innerHTML,
     selected: document.querySelector('.dock-icon[data-play-id="picturebook"]')?.classList.contains("selected"),
     confirmBtnVisible: !!document.getElementById("btn-confirm-play") && getComputedStyle(document.getElementById("btn-confirm-play")).display !== "none",
@@ -58,8 +62,14 @@ async function jumpToChoose(page) {
       const pct = parseFloat(preview.ghostPct);
       assert(pct > 0, `ghostPct=${preview.ghostPct}`);
     });
-    it("素養カード『知性』に +10", () => {
-      assert(preview.intellectRow.includes("+10"), preview.intellectRow);
+    it("共通パラメーターバーが表示される", () => assertEq(preview.paramVisible, true));
+    it("共通パラメーターバーに5素養が横並び", () => {
+      assert(preview.paramLabels.includes("身体"), preview.paramLabels);
+      assert(preview.paramLabels.includes("知性"), preview.paramLabels);
+      assert(preview.paramLabels.includes("情熱"), preview.paramLabels);
+    });
+    it("共通パラメーターバー『知性』に +10", () => {
+      assert(preview.paramValues.includes("+10"), preview.paramValues);
     });
     it("スキルタグが #読書 #文字 #感受性", () => {
       assert(preview.skillTags.includes("読書"), preview.skillTags);
@@ -67,6 +77,13 @@ async function jumpToChoose(page) {
     });
     it("絵本アイコンが選択状態", () => assertEq(preview.selected, true));
     it("旧『遊ぶ』ボタンは廃止", () => assertEq(preview.confirmBtnVisible, false));
+    it("共通パラメーターバーが 2行×5列で表示される", () => {
+      assertEq(preview.paramVisible, true);
+      assertEq(preview.paramLabelCount, 5);
+      assertEq(preview.paramValueCount, 5);
+    });
+    it("知性にプレビュー +10 が表示される", () =>
+      assert(preview.intellectParam.includes("+10"), preview.intellectParam));
   });
 
   // 遊ぶ

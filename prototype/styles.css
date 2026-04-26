@@ -112,6 +112,66 @@ body {
   flex-shrink: 0;
 }
 
+/*
+  @spec SPEC-034 §5.2 / SPEC-035 §4.4
+  共通パラメーターバー：HUD直下に固定し、対象画面で常に同じ位置に表示する。
+*/
+.param-strip {
+  flex-shrink: 0;
+  background: #ffffff;
+  border-bottom: 1px solid var(--card-border);
+  box-shadow: 0 6px 14px rgba(35, 70, 120, 0.08);
+  padding: 6px 8px 7px;
+  z-index: 9;
+}
+.param-strip[hidden] { display: none !important; }
+.param-strip-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  text-align: center;
+}
+.param-strip-labels {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+.param-strip-values {
+  margin-top: 3px;
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+.param-strip-label,
+.param-strip-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.param-strip-grade {
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+.param-strip-num {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+.param-strip-delta {
+  display: inline-flex;
+  margin-left: 2px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: rgba(76, 175, 122, 0.15);
+  color: #2f7d52;
+  font-size: 10px;
+  font-weight: 900;
+  vertical-align: middle;
+}
+
 .hud-row {
   display: flex;
   justify-content: space-between;
@@ -369,10 +429,12 @@ body {
 .actions {
   display: flex;
   gap: 8px;
+  min-height: calc(74px + env(safe-area-inset-bottom));
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
   background: var(--bg);
   border-top: 1px solid var(--card-border);
   flex-shrink: 0;
+  align-items: center;
 }
 /* @spec SPEC-003 §5.8 文脈別フッターの排他表示：hidden 属性で必ず display:none が勝つようにする */
 .actions[hidden] { display: none !important; }
