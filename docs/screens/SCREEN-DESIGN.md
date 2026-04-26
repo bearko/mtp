@@ -37,6 +37,7 @@
 | **S5** | 就寝（大人モード） | 就寝モード選択（10 歳以上） / 自動就寝（1〜9 歳） | SPEC-006, SPEC-008, SPEC-020 |
 | **S6** | コアタイム | 学び / 仕事の時間消化 + 発見で遊び解禁 | SPEC-010, SPEC-011〜018 |
 | **S7** | 遊びツリー | 解放条件のツリー表示 + 探索 | SPEC-022, SPEC-023, SPEC-024 |
+| **S17** | きろく | 目標・できたこと・好きな遊び・思い出を簡易表示 | SPEC-051, SPEC-058 |
 | **S9** | 週末ハイライト | 日曜の夜に 1 週間の振り返り | SPEC-025 §7.2, SPEC-035 |
 | **S10** | 連絡帳サマリ（1 日の終わり） | 保育園・幼稚園期は連絡帳形式、それ以降は日サマリ | SPEC-027, SPEC-035 |
 
@@ -100,6 +101,8 @@
 ```
 
 オーバーレイ系（`#mission-prelude`, `#mission-banner`, `#event-overlay`, `#interrupt-overlay`, S-mission-modal, S-attempt-prompt, parental compliment modal）は **横断的に S2/S3/S10 から発火** する。詳細は [`GAME-FLOW.md`](./GAME-FLOW.md) §3 を参照。
+
+デザイン比較プロトタイプ（SPEC-058）では、S0 / S2 から `絵本` / `HUD` の UI トーンを切り替えられる。画面 ID と遷移は変えず、`body[data-design-tone]` のテーマ差分として扱う。
 
 ---
 
@@ -188,6 +191,11 @@ z-index:
 ### S7 遊びツリー
 - **対応**: [SPEC-022](../specs/SPEC-022-play-category.md), [SPEC-023](../specs/SPEC-023-play-tree.md), [SPEC-024](../specs/SPEC-024-skill.md)
 - 寄り道画面。S2 ドック右端 🌳 から遷移。
+- **遷移先**: S2
+
+### S17 きろく
+- **対応**: [SPEC-051](../specs/SPEC-051-profile-screen.md), [SPEC-058](../specs/SPEC-058-ui-design-prototypes.md)
+- S2 ドック右端 `🌱 きろく` から遷移。目標・できたこと・好きな遊び・思い出の簡易プロトタイプを表示。
 - **遷移先**: S2
 
 ### S8 情熱プロファイル選択

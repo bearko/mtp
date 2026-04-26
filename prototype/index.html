@@ -12,7 +12,7 @@
   各機能の詳細仕様は docs/specs/SPEC-INDEX.md を参照。
 -->
 <body>
-  <div class="phone-frame">
+  <div class="phone-frame theme-picturebook">
 
     <!--
       @spec docs/specs/SPEC-001-life-stage.md  共通HUDに表示するプレイヤー状態
@@ -131,6 +131,18 @@
         <div class="title-actions">
           <button class="title-btn primary" id="btn-title-start" data-action="title-start">はじめから</button>
           <button class="title-btn" id="btn-title-continue" disabled>続きから（近日対応）</button>
+        </div>
+        <!--
+          @spec docs/specs/SPEC-058-ui-design-prototypes.md §4
+          絵本寄り / ゲームHUD寄りの 2 種類を同一プロトタイプ内で比較する。
+        -->
+        <div class="design-toggle" role="group" aria-label="UIデザインの比較">
+          <button class="design-toggle-btn active" id="btn-design-picturebook" data-action="set-design-theme" data-theme="picturebook">
+            📖 絵本
+          </button>
+          <button class="design-toggle-btn" id="btn-design-gamehud" data-action="set-design-theme" data-theme="gamehud">
+            🎮 HUD
+          </button>
         </div>
         <p class="title-footer">© カネとジカンとジョウネツと</p>
       </div>
@@ -251,6 +263,28 @@
       <div class="scene choose-scene-v2">
         <!-- 将来拡張用ターンヒント（SPEC-034 §5.5） -->
         <div class="turn-hint" id="turn-hint" data-turn-hint="" hidden></div>
+
+        <!-- @spec docs/specs/SPEC-058-ui-design-prototypes.md §4 S2 上でも比較テーマを切替可能にする -->
+        <div class="design-toggle design-toggle-inline" role="group" aria-label="UIデザインの比較">
+          <button class="design-toggle-btn active" data-action="set-design-theme" data-theme="picturebook">📖 絵本</button>
+          <button class="design-toggle-btn" data-action="set-design-theme" data-theme="gamehud">🎮 HUD</button>
+        </div>
+
+        <!--
+          @spec docs/specs/SPEC-058-ui-design-prototypes.md §5
+          毎日表示する「今日の焦点カード」。ミッション有無にかかわらず、次に何を試すとよいかを一文で示す。
+        -->
+        <section class="daily-focus-card" id="daily-focus-card" aria-live="polite">
+          <div class="daily-focus-kicker" id="daily-focus-kicker">きょうのめあて</div>
+          <div class="daily-focus-main">
+            <div class="daily-focus-icon" id="daily-focus-icon">🌱</div>
+            <div class="daily-focus-copy">
+              <h3 id="daily-focus-title">今日は何をして遊ぼう？</h3>
+              <p id="daily-focus-body">気になる遊びをひとつ選んで、できることを増やしてみよう。</p>
+            </div>
+          </div>
+          <div class="daily-focus-chips" id="daily-focus-chips"></div>
+        </section>
 
         <!--
           @spec SPEC-033 §3 / SPEC-034 §5.2 素養カード 5 枚（固定表示）
@@ -426,6 +460,44 @@
       </div>
       <footer class="actions">
         <button class="btn btn-primary" data-action="close-tree">遊び選択に戻る</button>
+      </footer>
+    </section>
+
+    <!--
+      @screen S17 きろく
+      @spec   docs/specs/SPEC-058-ui-design-prototypes.md §6
+      @spec   docs/specs/SPEC-051-profile-screen.md
+      「自分」ではなく幼少期向けの言葉として「きろく」を使う簡易プロトタイプ。
+    -->
+    <section class="screen" id="screen-record">
+      <div class="scene record-scene">
+        <div class="scene-art">🌱</div>
+        <h2 class="scene-title">きろく</h2>
+        <p class="scene-sub">できたこと、すきな遊び、思い出をここに残す。</p>
+
+        <div class="record-tabs" role="tablist" aria-label="きろくの種類">
+          <button class="record-tab active" type="button">できた</button>
+          <button class="record-tab" type="button">すき</button>
+          <button class="record-tab" type="button">思い出</button>
+        </div>
+
+        <div class="card record-card">
+          <div class="card-title">🏆 できるようになったこと</div>
+          <ul class="record-list" id="record-achievements"></ul>
+        </div>
+
+        <div class="card record-card">
+          <div class="card-title">💖 だいすきな遊び</div>
+          <div class="record-favorites" id="record-favorites"></div>
+        </div>
+
+        <div class="card record-card">
+          <div class="card-title">📖 思い出</div>
+          <ul class="record-list" id="record-memories"></ul>
+        </div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-primary" data-action="close-record">遊び選択に戻る</button>
       </footer>
     </section>
 

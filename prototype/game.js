@@ -735,6 +735,32 @@ const SEASON_LABEL = { spring: "春", summer: "夏", autumn: "秋", winter: "冬
 // 状態
 // =========================================================================
 let player = structuredClone(DEFAULT_PLAYER);
+let designTheme = "picturebook";
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * @spec docs/specs/SPEC-058-ui-design-prototypes.md §4
+ * 絵本寄り / ゲームHUD寄りの比較テーマを .phone-frame に反映する。
+ */
+function setDesignTheme(theme) {
+  designTheme = theme === "gamehud" ? "gamehud" : "picturebook";
+  const frame = document.querySelector(".phone-frame");
+  if (frame) {
+    frame.classList.toggle("theme-picturebook", designTheme === "picturebook");
+    frame.classList.toggle("theme-gamehud", designTheme === "gamehud");
+  }
+  for (const btn of document.querySelectorAll(".design-toggle-btn")) {
+    btn.classList.toggle("active", btn.dataset.theme === designTheme);
+  }
+}
 
 /**
  * @spec SPEC-033 §5 §6 素養モデルの互換層
@@ -1578,6 +1604,134 @@ function renderMissionBanner() {
         </li>
       `;
     }).join("");
+  }
+}
+
+function activeAcceptedMissionWithProgress() {
+  const active = (player.activeMissions || [])
+    .filter((m) => m.state === "ACCEPTED")
+    .map((ms) => {
+      const mission = MISSION_SCENARIOS.find((x) => x.id === ms.id);
+      if (!mission) return null;
+      const req = mission.accomplish?.trigger?.requires;
+      const progress = evaluateMissionCondition(req);
+      return { mission, progress: progress.progress || 0 };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.progress - a.progress);
+  return active[0] || null;
+}
+
+function strongestSoyouKey() {
+  const soyou = player.soyou || {};
+  return SOYOU_KEYS.slice().sort((a, b) => (soyou[b] || 0) - (soyou[a] || 0))[0] || "passion";
+}
+
+function suggestedPlaysForSoyou(key, limit = 2) {
+  return PLAYS
+    .map((play) => ({ play, avail: isPlayAvailable(play), gain: normalizeGainToSoyou(play.gain || {}) }))
+    .filter(({ avail, gain }) => !avail.isHidden && avail.ok && (gain[key] || 0) > 0)
+    .sort((a, b) => (b.gain[key] || 0) - (a.gain[key] || 0))
+    .slice(0, limit)
+    .map(({ play }) => play);
+}
+
+/**
+ * @screen S2
+ * @spec docs/specs/SPEC-058-ui-design-prototypes.md §5
+ * 毎日表示する「今日の焦点カード」。ミッションがある日は進行中目標、
+ * ない日は今いちばん伸びている素養に関連する遊びを促す。
+ */
+function renderDailyFocusCard() {
+  const card = byId("daily-focus-card");
+  if (!card) return;
+  const iconEl = byId("daily-focus-icon");
+  const titleEl = byId("daily-focus-title");
+  const bodyEl = byId("daily-focus-body");
+  const chipsEl = byId("daily-focus-chips");
+
+  const activeMission = activeAcceptedMissionWithProgress();
+  if (activeMission) {
+    const { mission, progress } = activeMission;
+    const pct = Math.round(progress * 100);
+    if (iconEl) iconEl.textContent = "🎯";
+    if (titleEl) titleEl.textContent = mission.title;
+    if (bodyEl) bodyEl.textContent = `${mission.subtitle || "いま進めている目標"}。いま ${pct}% くらい近づいているよ。`;
+    if (chipsEl) {
+      chipsEl.innerHTML = `<span class="daily-focus-chip is-goal">めあて</span><span class="daily-focus-chip">もうすぐ ${pct}%</span>`;
+    }
+    return;
+  }
+
+  const key = strongestSoyouKey();
+  const meta = SOYOU_META[key] || SOYOU_META.passion;
+  const suggestions = suggestedPlaysForSoyou(key);
+  if (iconEl) iconEl.textContent = meta.icon;
+  if (titleEl) titleEl.textContent = `今日は「${meta.label}」が育ちそう`;
+  if (bodyEl) {
+    bodyEl.textContent = suggestions.length > 0
+      ? `${suggestions.map((p) => p.name).join("、")}で、今の「すき」をもう少し伸ばしてみよう。`
+      : "気になる遊びをひとつ選んで、できることを増やしてみよう。";
+  }
+  if (chipsEl) {
+    const chips = suggestions.length > 0
+      ? suggestions.map((p) => `<button class="daily-focus-chip as-button" type="button" data-play-id="${escapeHtml(p.id)}">${p.icon} ${escapeHtml(p.name)}</button>`)
+      : [`<span class="daily-focus-chip">すきな遊び</span>`];
+    chipsEl.innerHTML = chips.join("");
+  }
+}
+
+function dailyFocusPlayIds() {
+  const chipsEl = byId("daily-focus-chips");
+  if (!chipsEl) return new Set();
+  return new Set(Array.from(chipsEl.querySelectorAll("[data-play-id]")).map((el) => el.dataset.playId));
+}
+
+function playBadgeLabel(play, avail, focusIds) {
+  if (avail.isLowStamina) return "つかれる";
+  if (focusIds && focusIds.has(play.id)) return "めあて";
+  const count = (player._playCounts || {})[play.id] || 0;
+  if (count >= 3) return "好き";
+  if (count === 0) return "新しい";
+  return "";
+}
+
+/**
+ * @screen S17 きろく
+ * @spec docs/specs/SPEC-058-ui-design-prototypes.md §6
+ * SPEC-051 の本実装前に、幼少期向けの「きろく」導線を確認する簡易プロトタイプ。
+ */
+function renderRecordScreen() {
+  const achievements = byId("record-achievements");
+  const favorites = byId("record-favorites");
+  const memories = byId("record-memories");
+
+  if (achievements) {
+    const titles = (player.titles || []).slice(-5).reverse();
+    achievements.innerHTML = titles.length > 0
+      ? titles.map((t) => `<li>🎀 ${escapeHtml(t.id)} <small>Day ${t.acquiredDay || t.awardedDay || player.day}</small></li>`).join("")
+      : `<li>🌱 まだこれから。はじめての「できた」を待っているよ。</li>`;
+  }
+
+  if (favorites) {
+    const counts = Object.entries(player._playCounts || {})
+      .map(([id, count]) => ({ play: PLAYS.find((p) => p.id === id), count }))
+      .filter((x) => x.play)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    favorites.innerHTML = counts.length > 0
+      ? counts.map(({ play, count }) => `<span class="record-favorite-pill">${play.icon} ${escapeHtml(play.name)} <b>${count}回</b></span>`).join("")
+      : `<span class="record-empty">まだ、だいすきな遊びを探しているところ。</span>`;
+  }
+
+  if (memories) {
+    const entries = [
+      ...(player.renrakuchoHighlights || []).map((x) => ({ icon: "💬", text: x.text || x.body || "", day: x.day })),
+      ...(player.memorableDays || []).map((x) => ({ icon: "📖", text: x.emotionText || x.type || "", day: x.day })),
+    ].filter((x) => x.text).slice(0, 6);
+    memories.innerHTML = entries.length > 0
+      ? entries.map((x) => `<li>${x.icon} ${escapeHtml(x.text)} <small>Day ${x.day || player.day}</small></li>`).join("")
+      : `<li>📖 今日の思い出が、ここにたまっていくよ。</li>`;
   }
 }
 
@@ -2932,6 +3086,20 @@ function renderChooseScreen() {
   });
   dock.appendChild(treeBtn);
 
+  // @spec SPEC-058 §6 プロフィール導線名は「きろく」。SPEC-051 本実装前の簡易記録画面へ遷移。
+  const recordBtn = document.createElement("button");
+  recordBtn.className = "dock-icon dock-record";
+  recordBtn.innerHTML = `
+    <span class="dock-record-icon">🌱</span>
+    <span class="dock-record-label">きろく</span>
+  `;
+  recordBtn.setAttribute("aria-label", "きろく画面へ遷移");
+  recordBtn.addEventListener("click", () => {
+    renderRecordScreen();
+    showScreen("screen-record");
+  });
+  dock.appendChild(recordBtn);
+
   // @spec SPEC-034 §5.1 §5.3 初期状態：プレビューは非表示、ヘッダーゴーストもクリア
   const wh = byId("wakeup-header"); if (wh) wh.hidden = true;
   const cp = byId("choose-prompt"); if (cp) cp.hidden = true;
@@ -2945,6 +3113,7 @@ function renderChooseScreen() {
   if (autoProg) autoProg.hidden = true;
   byId("btn-confirm-play").textContent = "遊ぶ";
 
+  renderDailyFocusCard();
   renderHUD();
 }
 
@@ -5457,11 +5626,18 @@ document.addEventListener("click", (e) => {
   if (!t || t.disabled) return;
   const a = t.dataset.action;
   switch (a) {
+    case "set-design-theme":
+      setDesignTheme(t.dataset.theme);
+      break;
     case "close-coretime":
       closeCoreTime();
       break;
     case "close-tree":
       // @spec docs/specs/SPEC-023-play-tree.md §5.1 S7 → S2
+      goChooseFromToday();
+      break;
+    case "close-record":
+      // @spec docs/specs/SPEC-058-ui-design-prototypes.md §6 S17 → S2
       goChooseFromToday();
       break;
     case "confirm-passion":
@@ -5800,6 +5976,7 @@ function finishIsekaiIntro() {
     loadMessageMasters(),
   ]);
 
+  setDesignTheme(designTheme);
   renderHUD();
 
   // 介入モーダルの閉じるボタンは dom-load 後に配線
