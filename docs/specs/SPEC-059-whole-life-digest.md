@@ -4,7 +4,7 @@
 |---|---|
 | 仕様ID | SPEC-059 |
 | 機能名 | 人生ダイジェスト完走モード |
-| 対応ファイル | `prototype/index.html` (`#screen-life-digest`, `#screen-life-ending`, `#btn-start-life-digest`), `prototype/game.js` (`LIFE_DIGEST_CHAPTERS`, `startLifeDigest()`, `chooseLifeDigest()`, `renderLifeEndingScreen()`), `prototype/styles.css` (`.life-digest-*`, `.life-ending-*`) |
+| 対応ファイル | `prototype/index.html` (`#screen-life-digest`, `#screen-life-ending`), `prototype/game.js` (`LIFE_DIGEST_CHAPTERS`, `startLifeDigest()`, `chooseLifeDigest()`, `renderLifeEndingScreen()`, `.dock-life-digest` 生成), `prototype/styles.css` (`.life-digest-*`, `.life-ending-*`, `.dock-life-digest`) |
 | 関連仕様 | SPEC-001, SPEC-025, SPEC-033, SPEC-046, SPEC-051, SPEC-053, SPEC-058 |
 | ステータス | Active |
 | 最終更新 | 2026-04-26 |
@@ -21,7 +21,7 @@
 
 ## 3. 入力（Input）
 
-- S2 の `#btn-start-life-digest` 押下。
+- S2 ドック右端の `.dock-life-digest` 押下。
 - 各章での `data-action="choose-life-digest"` 押下。
 - `player.soyou`, `player.money`, `player.age`, `player.lifeDigest`。
 
@@ -45,7 +45,7 @@
 
 ### 5.2 開始
 
-1. S2 の「完走モード」を押す。
+1. S2 ドック右端の「📚 完走」を押す。
 2. `player.lifeDigest` を `{ index: 0, money: 0, memories: [] }` で初期化する。
 3. S18 を表示する。
 
@@ -64,7 +64,7 @@ S18 の「いつもの1日に戻る」を押すと `player.lifeDigest` を破棄
 
 ## 6. UIへの反映
 
-- S2：今日の焦点カード下に、人生全体を試す入口カードを置く。
+- S2：人生全体を試す入口は大きなカードではなく、ドック全体の右端に `📚 完走` アイコンとして置く。
 - S18：1画面に章タイトル、資源3点、選択肢3つを表示する。
 - S19：ジョウネツ、思い出数、残ったカネと、年齢順の思い出リストを表示する。
 - S17：完走後の直近思い出と称号を表示できる。

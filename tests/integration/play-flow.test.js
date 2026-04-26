@@ -49,7 +49,8 @@ async function jumpToChoose(page) {
     intellectRow: [...document.querySelectorAll(".soyou-row")]
       .find(r => r.textContent.includes("知性"))?.textContent.replace(/\s+/g, " "),
     skillTags: document.getElementById("soyou-skill-tags")?.innerHTML,
-    confirmBtnDisabled: document.getElementById("btn-confirm-play")?.disabled,
+    selected: document.querySelector('.dock-icon[data-play-id="picturebook"]')?.classList.contains("selected"),
+    confirmBtnVisible: !!document.getElementById("btn-confirm-play") && getComputedStyle(document.getElementById("btn-confirm-play")).display !== "none",
   }));
   describe("SPEC-002 §5.3.1 絵本選択時のプレビュー", () => {
     it("時間表示が『8→6』", () => assertEq(preview.hours, "8→6"));
@@ -64,11 +65,12 @@ async function jumpToChoose(page) {
       assert(preview.skillTags.includes("読書"), preview.skillTags);
       assert(preview.skillTags.includes("文字"), preview.skillTags);
     });
-    it("『遊ぶ』ボタンが有効", () => assertEq(preview.confirmBtnDisabled, false));
+    it("絵本アイコンが選択状態", () => assertEq(preview.selected, true));
+    it("旧『遊ぶ』ボタンは廃止", () => assertEq(preview.confirmBtnVisible, false));
   });
 
   // 遊ぶ
-  await page.click("#btn-confirm-play");
+  await page.click('.dock-icon[data-play-id="picturebook"]');
   await new Promise(r => setTimeout(r, 250));
   await page.click("#btn-skip-play");
   await new Promise(r => setTimeout(r, 500));

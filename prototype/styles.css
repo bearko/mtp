@@ -512,77 +512,6 @@ body {
   box-shadow: var(--shadow);
 }
 /*
-  @spec docs/specs/SPEC-002-play-selection.md §5.1.2 遊びツリーアイコンの視覚差別化
-  「遊びアイコン」ではなく「画面遷移ナビ」であることを一目で伝えるため、
-  他の遊びアイコンと **別のデザイン言語（ピル型・濃緑・ラベル併記）** を採用する。
-*/
-.dock-icon.dock-tree {
-  width: auto;
-  min-width: 72px;
-  padding: 6px 12px;
-  border-radius: 26px;           /* ピル型 */
-  background: #3d6b4a;           /* 濃い緑 */
-  color: #ffffff;
-  border: 2px solid #2f5437;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 0;
-  line-height: 1;
-  margin-left: 8px;              /* 他アイコンとの間に区切り感を出す */
-  box-shadow: 0 2px 6px rgba(61, 107, 74, 0.35);
-  position: relative;
-}
-.dock-icon.dock-tree::before {
-  /* 他の遊びアイコンとの境界を示す左側の縦棒 */
-  content: "";
-  position: absolute;
-  left: -8px;
-  top: 8px;
-  bottom: 8px;
-  width: 1px;
-  background: var(--card-border);
-}
-.dock-icon.dock-tree .dock-tree-icon {
-  font-size: 22px;
-  line-height: 1;
-}
-.dock-icon.dock-tree .dock-tree-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: #ffffff;
-  margin-top: 2px;
-}
-.dock-icon.dock-tree:active {
-  transform: scale(0.95);
-}
-
-.dock-icon.dock-record {
-  width: auto;
-  min-width: 72px;
-  padding: 6px 12px;
-  border-radius: 26px;
-  background: #fff7df;
-  color: #6b4b18;
-  border: 2px solid #e6c36c;
-  flex-direction: column;
-  gap: 0;
-  line-height: 1;
-  box-shadow: var(--shadow);
-}
-.dock-icon.dock-record .dock-record-icon {
-  font-size: 22px;
-  line-height: 1;
-}
-.dock-icon.dock-record .dock-record-label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  margin-top: 2px;
-}
-
-/*
   @spec docs/specs/SPEC-027-renrakucho.md 連絡帳サマリ（保育園・幼稚園）
   手書きノート風の罫線カード。先生・家庭コメントを 2 段で表示。
 */
@@ -1219,27 +1148,54 @@ body {
 .play-dock::-webkit-scrollbar { display: none; }
 
 .dock-icon {
-  width: 52px;
-  height: 52px;
-  min-width: 52px;
-  border-radius: 14px;
+  width: 68px;
+  height: 64px;
+  min-width: 68px;
+  border-radius: 16px;
   background: var(--card-bg);
   border: 2px solid transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
+  gap: 3px;
   font-size: 28px;
   cursor: pointer;
   font-family: inherit;
-  padding: 0;
+  padding: 6px 5px 5px;
   position: relative;
   transition: transform 100ms ease, border-color 150ms ease;
   box-shadow: var(--shadow);
+  line-height: 1;
 }
 .dock-icon:active { transform: scale(0.93); }
 .dock-icon.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(232, 109, 60, 0.25), var(--shadow);
+}
+.dock-main-icon {
+  display: block;
+  font-size: 28px;
+  line-height: 1;
+}
+.dock-label {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  color: var(--fg);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-empty {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 18px 8px;
+  color: var(--muted);
+  font-size: 12px;
 }
 .dock-icon.locked {
   opacity: 0.55;
@@ -1261,16 +1217,66 @@ body {
   box-shadow: var(--shadow);
 }
 
-/* 遊び選択画面のフッター：3ボタン対応 */
-#screen-choose .actions .btn-sm-inline {
-  flex: 0 0 auto;
-  padding: 12px 10px;
-  min-height: 52px;
-  font-size: 13px;
+/*
+  @spec docs/specs/SPEC-002-play-selection.md §5.1.3
+  S2 の操作は 1 行ドックへ統合する。遊びの後ろに休む、ツリー、今日おわる、
+  きろく、完走を小さなナビアイコンとして並べる。
+*/
+.dock-icon.dock-action,
+.dock-icon.dock-tree,
+.dock-icon.dock-record,
+.dock-icon.dock-life-digest {
+  border-color: rgba(23, 35, 51, 0.12);
 }
-#screen-choose .actions .btn-primary {
-  flex: 1 1 auto;
+.dock-icon.dock-rest {
+  background: #fff8e6;
+  color: #6b4b18;
 }
+.dock-icon.dock-tree {
+  margin-left: 8px;
+  background: #3d6b4a;
+  color: #ffffff;
+  border-color: #2f5437;
+  box-shadow: 0 2px 6px rgba(61, 107, 74, 0.35);
+}
+.dock-icon.dock-tree::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--card-border);
+}
+.dock-icon.dock-tree .dock-label {
+  color: #ffffff;
+}
+.dock-icon.dock-record .dock-label,
+.dock-icon.dock-life-digest .dock-label,
+.dock-icon.dock-rest .dock-label,
+.dock-icon.dock-sleep .dock-label {
+  color: currentColor;
+}
+.dock-icon.dock-sleep {
+  background: #eef2ff;
+  color: #263a77;
+}
+.dock-icon.dock-action[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.dock-icon.dock-record {
+  background: #fff7df;
+  color: #6b4b18;
+  border-color: #e6c36c;
+}
+.dock-icon.dock-life-digest {
+  background: #f1ebff;
+  color: #51358c;
+  border-color: #c8b6ff;
+}
+
+#screen-choose .actions { display: none; }
 
 /* =========================================================================
  * @spec docs/specs/SPEC-003-play-execution.md S3 結果フェーズ：2段フッター

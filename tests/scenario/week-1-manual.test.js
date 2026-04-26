@@ -19,11 +19,8 @@ async function playOneRoundOf(page, playId) {
   if (!found) return false;
   await page.click(`.dock-icon[data-play-id="${playId}"]`);
   await new Promise(r => setTimeout(r, 200));
-  // 遊ぶボタン or 同じアイコン再タップ
-  await page.evaluate(() => {
-    const b = document.getElementById("btn-confirm-play");
-    if (b && !b.disabled) b.click();
-  });
+  // SPEC-002 §5.3: S2 操作はドックへ統合。選択後は同じアイコン再タップで遊ぶ。
+  await page.click(`.dock-icon[data-play-id="${playId}"]`);
   await new Promise(r => setTimeout(r, 200));
   // スキップ
   await page.evaluate(() => {

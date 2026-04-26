@@ -37,16 +37,18 @@ async function jumpToChoose(page) {
 
   const entry = await page.evaluate(() => ({
     active: document.querySelector(".screen.active")?.id,
-    visible: !!document.getElementById("life-digest-entry"),
-    buttonText: document.getElementById("btn-start-life-digest")?.textContent,
+    entryCard: !!document.getElementById("life-digest-entry"),
+    buttonText: document.querySelector(".dock-life-digest .dock-label")?.textContent,
+    isLastDockItem: document.querySelector("#play-dock .dock-icon:last-child")?.classList.contains("dock-life-digest"),
   }));
   describe("SPEC-059 §5.2 S2 入口", () => {
     it("screen-choose に完走モード入口がある", () => assertEq(entry.active, "screen-choose"));
-    it("入口ボタンが表示される", () => assert(entry.visible, "life digest entry missing"));
-    it("ボタン文言 = 完走モード", () => assertEq(entry.buttonText, "完走モード"));
+    it("大きな入口カードは表示しない", () => assertEq(entry.entryCard, false));
+    it("完走モードはドック右端アイコン", () => assertEq(entry.isLastDockItem, true));
+    it("アイコン文言 = 完走", () => assertEq(entry.buttonText, "完走"));
   });
 
-  await page.click("#btn-start-life-digest");
+  await page.click(".dock-life-digest");
   await new Promise(r => setTimeout(r, 150));
   const first = await page.evaluate(() => ({
     active: document.querySelector(".screen.active")?.id,

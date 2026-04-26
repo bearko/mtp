@@ -3398,13 +3398,19 @@ function renderChooseScreen() {
     .sort((a, b) => (b.avail.ok ? 1 : 0) - (a.avail.ok ? 1 : 0));
 
   if (candidates.length === 0) {
-    dock.innerHTML = `<p style="color:var(--muted);padding:14px;">今できる遊びがありません</p>`;
+    const empty = document.createElement("p");
+    empty.className = "dock-empty";
+    empty.textContent = "今できる遊びがありません";
+    dock.appendChild(empty);
   }
 
   candidates.forEach(({ play, avail }) => {
     const btn = document.createElement("button");
     btn.className = "dock-icon" + (avail.isLowStamina ? " low-stamina" : "");
-    btn.textContent = play.icon;
+    btn.innerHTML = `
+      <span class="dock-main-icon">${play.icon}</span>
+      <span class="dock-label">${escapeHtml(play.name)}</span>
+    `;
     btn.setAttribute("aria-label", `${play.name}, ${play.timeCost}時間, ${
       Object.entries(play.gain).map(([k, v]) => `${LABELS[k]}+${v}`).join(", ")
     }`);
@@ -3413,13 +3419,24 @@ function renderChooseScreen() {
     dock.appendChild(btn);
   });
 
-  // @spec SPEC-002 §5.1.1 §5.1.2 / SPEC-023 §5.1 ドック最右端に 🌳 遊びツリーアイコン
-  // 遊びアイコンではなく「画面遷移ナビ」として、ピル型＋濃緑＋ラベルで差別化する。
+  // @spec SPEC-002 §5.1.3 S2 の操作はドックに統合する。休むは遊びの右端、ツリーの左隣。
+  const restBtn = document.createElement("button");
+  restBtn.className = "dock-icon dock-action dock-rest";
+  restBtn.innerHTML = `
+    <span class="dock-main-icon">☕</span>
+    <span class="dock-label">1h休む</span>
+  `;
+  restBtn.setAttribute("aria-label", "1時間休む");
+  restBtn.dataset.action = "do-nothing";
+  dock.appendChild(restBtn);
+
+  // @spec SPEC-002 §5.1.1 §5.1.2 / SPEC-023 §5.1 ドック右側に 🌳 遊びツリーアイコン
+  // 遊びアイコンではなく「画面遷移ナビ」として、色とラベルで差別化する。
   const treeBtn = document.createElement("button");
   treeBtn.className = "dock-icon dock-tree";
   treeBtn.innerHTML = `
-    <span class="dock-tree-icon">🌳</span>
-    <span class="dock-tree-label">ツリー</span>
+    <span class="dock-main-icon dock-tree-icon">🌳</span>
+    <span class="dock-label dock-tree-label">ツリー</span>
   `;
   treeBtn.setAttribute("aria-label", "遊びツリー画面へ遷移");
   treeBtn.addEventListener("click", () => {
@@ -3428,12 +3445,23 @@ function renderChooseScreen() {
   });
   dock.appendChild(treeBtn);
 
+  // @spec SPEC-002 §5.1.3 今日おわるはツリーの右隣に置く。
+  const sleepBtn = document.createElement("button");
+  sleepBtn.className = "dock-icon dock-action dock-sleep";
+  sleepBtn.innerHTML = `
+    <span class="dock-main-icon">🌙</span>
+    <span class="dock-label">今日おわる</span>
+  `;
+  sleepBtn.setAttribute("aria-label", "今日を終わる");
+  sleepBtn.dataset.action = "go-sleep";
+  dock.appendChild(sleepBtn);
+
   // @spec SPEC-058 §6 プロフィール導線名は「きろく」。SPEC-051 本実装前の簡易記録画面へ遷移。
   const recordBtn = document.createElement("button");
   recordBtn.className = "dock-icon dock-record";
   recordBtn.innerHTML = `
-    <span class="dock-record-icon">🌱</span>
-    <span class="dock-record-label">きろく</span>
+    <span class="dock-main-icon dock-record-icon">🌱</span>
+    <span class="dock-label dock-record-label">きろく</span>
   `;
   recordBtn.setAttribute("aria-label", "きろく画面へ遷移");
   recordBtn.addEventListener("click", () => {
@@ -3442,18 +3470,30 @@ function renderChooseScreen() {
   });
   dock.appendChild(recordBtn);
 
+  // @spec SPEC-059 §6 S2 入口は大きなカードではなく、全アイコンの右端の小さなナビにする。
+  const lifeBtn = document.createElement("button");
+  lifeBtn.className = "dock-icon dock-life-digest";
+  lifeBtn.innerHTML = `
+    <span class="dock-main-icon">📚</span>
+    <span class="dock-label">完走</span>
+  `;
+  lifeBtn.setAttribute("aria-label", "人生ダイジェスト完走モードへ遷移");
+  lifeBtn.dataset.action = "start-life-digest";
+  dock.appendChild(lifeBtn);
+
   // @spec SPEC-034 §5.1 §5.3 初期状態：プレビューは非表示、ヘッダーゴーストもクリア
   const wh = byId("wakeup-header"); if (wh) wh.hidden = true;
   const cp = byId("choose-prompt"); if (cp) cp.hidden = true;
   byId("preview").hidden = true;
   byId("preview-placeholder").hidden = true;
-  byId("btn-confirm-play").disabled = true;
+  const confirmBtn = byId("btn-confirm-play");
+  if (confirmBtn) confirmBtn.disabled = true;
   setStaminaGhostPreview(0);
   setHoursGhostPreview(0);
   // @spec SPEC-025 自動進行バナーは手動モード初期ではリセット
   const autoProg = byId("auto-progress");
   if (autoProg) autoProg.hidden = true;
-  byId("btn-confirm-play").textContent = "遊ぶ";
+  if (confirmBtn) confirmBtn.textContent = "遊ぶ";
 
   renderDailyFocusCard();
   renderHUD();
@@ -3516,16 +3556,20 @@ function selectPlay(id) {
     toast(`⚠ ${avail.reasons[0]}`);
   }
 
-  // 「遊ぶ」ボタンの enable/disable
+  // 旧「遊ぶ」ボタンは DOM 互換用。S2 の主操作は同じ遊びアイコンの再タップ。
   const confirmBtn = byId("btn-confirm-play");
   if (avail.ok) {
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = avail.isLowStamina
-      ? `⚠ 無理して ${play.icon} ${play.name}`
-      : `🎮 ${play.icon} ${play.name}`;
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = avail.isLowStamina
+        ? `⚠ 無理して ${play.icon} ${play.name}`
+        : `🎮 ${play.icon} ${play.name}`;
+    }
   } else {
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = "できない";
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = "できない";
+    }
   }
 }
 

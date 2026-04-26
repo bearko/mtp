@@ -269,19 +269,6 @@
         </section>
 
         <!--
-          @screen S18 人生ダイジェストへの入口
-          @spec docs/specs/SPEC-059-whole-life-digest.md
-          通常の保育園ループとは別に、1歳〜100歳の資源ジレンマを薄く通す縦スライス。
-        -->
-        <section class="life-digest-entry" id="life-digest-entry">
-          <div>
-            <strong>人生を最後まで見てみる</strong>
-            <p>節目だけ選んで、時間・カネ・ジョウネツの移り変わりを体験する。</p>
-          </div>
-          <button class="btn btn-secondary btn-sm-inline" data-action="start-life-digest" id="btn-start-life-digest">完走モード</button>
-        </section>
-
-        <!--
           @spec SPEC-033 §3 / SPEC-034 §5.2 素養カード 5 枚（固定表示）
         -->
         <div class="soyou-list" id="soyou-list">
@@ -324,20 +311,11 @@
 
       <!-- ドック（アイコン行） -->
       <div id="play-dock" class="play-dock"></div>
-
-      <footer class="actions actions-stack">
-        <div class="actions-row">
-          <button class="btn btn-secondary btn-sm-inline" data-action="do-nothing">1h休む</button>
-          <button class="btn btn-ghost btn-sm-inline" data-action="go-sleep">今日おわる</button>
-          <button class="btn btn-primary" data-action="confirm-play" id="btn-confirm-play" disabled>遊ぶ</button>
-        </div>
-        <!--
-          @screen S18 人生ダイジェスト
-          @spec   docs/specs/SPEC-059-whole-life-digest.md §6
-          現行の1日ループとは別に、1歳〜100歳の資源ジレンマを薄く通す縦スライスへ入る。
-        -->
-        <button class="btn btn-secondary btn-wide" data-action="start-life-digest" id="btn-start-life-digest">人生を通しで見る</button>
-      </footer>
+      <!--
+        @spec docs/specs/SPEC-002-play-selection.md §5.3
+        旧フッターの「遊ぶ」ボタンは非表示互換 DOM として残す。実操作は dock アイコン再タップで確定。
+      -->
+      <button data-action="confirm-play" id="btn-confirm-play" hidden disabled>遊ぶ</button>
     </section>
 
     <!--
