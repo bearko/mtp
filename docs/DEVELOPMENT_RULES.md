@@ -16,7 +16,7 @@
 
 ## 1. ディレクトリ構成
 
-ドキュメントは **画面設計書（Screens）** と **機能仕様書（Specs）** の 2 カテゴリに明確に分ける。
+ドキュメントは **画面設計書（Screens）**・**機能仕様書（Specs）**・**デザイン文書（Design）** の 3 カテゴリに明確に分ける。
 
 ```
 docs/
@@ -24,26 +24,35 @@ docs/
 ├─ screens/                   ← 画面設計書（How it looks）
 │   ├─ INDEX.md                 画面索引
 │   └─ SCREEN-DESIGN.md         全画面のワイヤーフレーム・IPO・遷移
-└─ specs/                     ← 機能仕様書（How it behaves）
-    ├─ SPEC-INDEX.md            仕様書の索引
-    ├─ SPEC-001-life-stage.md
-    ├─ SPEC-002-play-selection.md
-    └─ ...                      1機能=1ファイル
+├─ specs/                     ← 機能仕様書（How it behaves）
+│   ├─ SPEC-INDEX.md            仕様書の索引
+│   ├─ SPEC-001-life-stage.md
+│   ├─ SPEC-002-play-selection.md
+│   └─ ...                      1機能=1ファイル
+└─ design/                    ← デザイン文書（How it feels / how it should be expressed）
+    ├─ INDEX.md                 デザイン文書索引
+    ├─ DESIGN-CHARTER.md        デザイン憲章
+    ├─ DESIGN-SYSTEM.md         色・余白・文体・コンポーネント指針
+    ├─ SPEC-058-design-system.md デザインシステム素案（main 由来）
+    ├─ mtp-design-system.html    デザインシステム HTML モック
+    ├─ SPEC-INDEX-diff.md        索引更新メモ
+    └─ UI-IMPROVEMENT-PROPOSAL.md 現状 UI 改善提案
 ```
 
-### 1.1 画面設計書 vs 機能仕様書 vs ゲームフロー図
+### 1.1 画面設計書 vs 機能仕様書 vs ゲームフロー図 vs デザイン文書
 
-| 観点 | 画面設計書（Screens） | ゲームフロー図 | 機能仕様書（Specs） |
-|---|---|---|---|
-| 答えるもの | **どう見えるか・どう遷移するか** | **いつ・どんな順番で・どんな分岐で起こるか** | **何が起こるか・どう計算するか** |
-| 代表要素 | ワイヤーフレーム、画面ID、HUD レイアウト | Mermaid 図、ランダム発火・繰り返し・分岐 | データモデル、計算式、閾値、挙動フロー |
-| 粒度 | 画面単位（S0, S2, …）と全体俯瞰 | フロー単位（コアループ / イベント系統） | 機能単位（SPEC-001, SPEC-002, …） |
-| ファイル | `docs/screens/SCREEN-DESIGN.md`, `docs/screens/INDEX.md` | `docs/screens/GAME-FLOW.md` | `docs/specs/SPEC-XXX-*.md` |
-| 相互参照 | 対応する `SPEC-XXX` を各セクション冒頭で明記 | コアループの全体像で SPEC ID を参照 | `## 6. UIへの反映` で画面 ID `Sn` を参照 |
+| 観点 | 画面設計書（Screens） | ゲームフロー図 | 機能仕様書（Specs） | デザイン文書（Design） |
+|---|---|---|---|---|
+| 答えるもの | **どう見えるか・どう遷移するか** | **いつ・どんな順番で・どんな分岐で起こるか** | **何が起こるか・どう計算するか** | **どんな感情を支え、どう表現するか** |
+| 代表要素 | ワイヤーフレーム、画面ID、HUD レイアウト | Mermaid 図、ランダム発火・繰り返し・分岐 | データモデル、計算式、閾値、挙動フロー | デザイン憲章、色・余白・文体、コンポーネント指針、UI改善提案 |
+| 粒度 | 画面単位（S0, S2, …）と全体俯瞰 | フロー単位（コアループ / イベント系統） | 機能単位（SPEC-001, SPEC-002, …） | 横断指針 / 改善提案単位 |
+| ファイル | `docs/screens/SCREEN-DESIGN.md`, `docs/screens/INDEX.md` | `docs/screens/GAME-FLOW.md` | `docs/specs/SPEC-XXX-*.md` | `docs/design/*.md` |
+| 相互参照 | 対応する `SPEC-XXX` を各セクション冒頭で明記 | コアループの全体像で SPEC ID を参照 | `## 6. UIへの反映` で画面 ID `Sn` を参照 | 実装 SPEC / 画面設計更新時の判断基準として参照 |
 
 - **1 機能 = 1 仕様書**。ファイル名は `SPEC-{連番}-{機能名}.md`。
-- 仕様書の索引は `docs/specs/SPEC-INDEX.md`、画面設計書の索引は `docs/screens/INDEX.md` に一覧化する。
+- 仕様書の索引は `docs/specs/SPEC-INDEX.md`、画面設計書の索引は `docs/screens/INDEX.md`、デザイン文書の索引は `docs/design/INDEX.md` に一覧化する。
 - **ゲームフロー図** は SPEC を横断する「動的な一覧」。画面追加だけでなく、新しいランダム発火・分岐・モード（自動 / スキップ / 病気など）を追加する際は必ず更新する。
+- UI の見た目・トーン・コンポーネント・文体を変更する場合は、対応 SPEC と画面設計書に加えて `docs/design/DESIGN-SYSTEM.md` との整合を確認する。
 
 ---
 
@@ -183,22 +192,24 @@ Spec: docs/specs/SPEC-XXX-xxx.md (updated|added|none)
   - 特に **発火タイミング** が変わるとき（朝 / 遊び後 / 累計達成 / 場所到着）は §3 の 4 系統表を更新
   - 自動モード / スキップ / チュートリアルなどの **特殊フロー** に影響するときは §4 / §5 / §8 を更新
 - [ ] **`docs/specs/SPEC-INDEX.md`**：新規 SPEC を追加したら一覧表に行追加。既存 SPEC の最終更新日も更新。
+- [ ] **`docs/design/INDEX.md` / `docs/design/*.md`**：UI の見た目・文体・コンポーネント・体験原則に影響するときは最新か？
 - [ ] **`docs/DEVELOPMENT_RULES.md`**：開発ルール自体に影響するとき（新ジャンルの SPEC・新カテゴリのドキュメントを追加したとき）は §1 / §6.2 を更新。
 - [ ] **`prototype/index.html`** の HTML コメントの `@screen` / `@spec` リンクは最新か？
 - [ ] **`prototype/game.js`** の関数 JSDoc の `@spec` 注釈は最新か？
 
 ### 6.3 横断的に影響する変更類型と更新先
 
-| 変更類型 | INDEX | SCREEN-DESIGN | GAME-FLOW | SPEC-INDEX | DEVELOPMENT_RULES |
-|---|:-:|:-:|:-:|:-:|:-:|
-| 新画面追加（`screen-*`） | ✅ | ✅ | ✅ | ✅（新 SPEC） | – |
-| 新オーバーレイ追加（`#xxx-overlay`） | ✅ | ✅ | ✅ | ✅（新 SPEC） | – |
-| 既存画面の遷移先変更 | – | ✅ | ✅ | ✅（該当 SPEC） | – |
-| 新ランダム発火イベント | – | – | ✅（§3 系統表） | ✅（新 or 既存 SPEC） | – |
-| 新モード（自動 / スキップ / 病気） | – | ✅（§1.4） | ✅（§4 / §5 / §8） | ✅（新 SPEC） | – |
-| 新グローバル `player.*` フィールド | – | ✅（§6 データモデル） | – | ✅（該当 SPEC） | – |
-| 新カテゴリの SPEC 群 | – | – | – | ✅ | ✅（§1） |
-| ドキュメント運用ルール変更 | – | – | – | – | ✅ |
+| 変更類型 | INDEX | SCREEN-DESIGN | GAME-FLOW | SPEC-INDEX | DESIGN | DEVELOPMENT_RULES |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| 新画面追加（`screen-*`） | ✅ | ✅ | ✅ | ✅（新 SPEC） | 必要に応じて | – |
+| 新オーバーレイ追加（`#xxx-overlay`） | ✅ | ✅ | ✅ | ✅（新 SPEC） | ✅（トーン定義） | – |
+| 既存画面の遷移先変更 | – | ✅ | ✅ | ✅（該当 SPEC） | 必要に応じて | – |
+| 新ランダム発火イベント | – | – | ✅（§3 系統表） | ✅（新 or 既存 SPEC） | 必要に応じて | – |
+| 新モード（自動 / スキップ / 病気） | – | ✅（§1.4） | ✅（§4 / §5 / §8） | ✅（新 SPEC） | 必要に応じて | – |
+| 新グローバル `player.*` フィールド | – | ✅（§6 データモデル） | – | ✅（該当 SPEC） | – | – |
+| UI トーン / 文体 / コンポーネント規約 | – | 必要に応じて | – | 必要に応じて | ✅ | – |
+| 新カテゴリの SPEC / ドキュメント群 | – | – | – | ✅ | ✅（該当時） | ✅（§1） |
+| ドキュメント運用ルール変更 | – | – | – | – | 必要に応じて | ✅ |
 
 ### 6.4 PR 本文の最低要件
 

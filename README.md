@@ -32,7 +32,7 @@ python3 -m http.server --directory prototype 8000
 
 ### 📚 ドキュメント
 
-本プロジェクトのドキュメントは **画面設計書** と **機能仕様書** の 2 系統に分けて管理されています。
+本プロジェクトのドキュメントは **画面設計書**・**機能仕様書**・**デザイン文書** の 3 系統に分けて管理されています。
 
 - **画面設計書**
   - 索引：[`docs/screens/INDEX.md`](./docs/screens/INDEX.md)
@@ -40,6 +40,11 @@ python3 -m http.server --directory prototype 8000
 - **機能仕様書**
   - 索引：[`docs/specs/SPEC-INDEX.md`](./docs/specs/SPEC-INDEX.md)
   - 実例：`docs/specs/SPEC-*.md`（1機能=1ファイル）
+- **デザイン文書**
+  - 索引：[`docs/design/INDEX.md`](./docs/design/INDEX.md)
+  - デザイン憲章：[`docs/design/DESIGN-CHARTER.md`](./docs/design/DESIGN-CHARTER.md)
+  - デザインシステム：[`docs/design/DESIGN-SYSTEM.md`](./docs/design/DESIGN-SYSTEM.md)
+  - UI改善提案：[`docs/design/UI-IMPROVEMENT-PROPOSAL.md`](./docs/design/UI-IMPROVEMENT-PROPOSAL.md)
 - **開発ルール（仕様駆動開発）**：[`docs/DEVELOPMENT_RULES.md`](./docs/DEVELOPMENT_RULES.md)
 
 > ⚠ **開発者向け重要事項**

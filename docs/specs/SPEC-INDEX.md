@@ -55,6 +55,7 @@
 | [SPEC-055](./SPEC-055-preview-hint-and-manual-attempt.md) | 予告ヒント + 能動的達成（SPEC-053 §3.1 §3.2 対応 / Tier 2） | Active | `prototype/data/mission-scenarios.json` previewHint / manualAttempt / `prototype/game.js` computePreviewHint, renderPreviewHint, tryStartMissionAccomplish, showAttemptPromptModal / `prototype/index.html` #mission-prelude, #screen-mission-attempt-prompt | 2026-04-25 |
 | [SPEC-056](./SPEC-056-event-modal-unified.md) | 統一イベントモーダル + ミッション体力 0 許容（デザートは別腹） | Active | `prototype/data/morning-events.json`, `events.json` comment 拡張 / `prototype/game.js` showEventModal, enqueueMorningEventModal, isMissionModalActive, consumePendingStaminaDepleted / `prototype/index.html` #event-overlay | 2026-04-26 |
 | [SPEC-057](./SPEC-057-infection-recovery.md) | 感染症と治癒システム（毎晩判定 + 通院ショートカット） | Active | `prototype/data/locations.json` clinic, `morning-events.json` clinic シナリオ / `prototype/game.js` maybeHealInfection, pickWeekdayParentalOuting clinic 抽選, goChooseFromToday 感染症スキップ | 2026-04-26 |
+| [SPEC-058](./SPEC-058-ui-design-prototypes.md) | ゲーム HUD 案 UI プロトタイプ（今日の焦点カード + きろく導線） | Active | `prototype/index.html` #daily-focus-card, #screen-record / `prototype/game.js` renderDailyFocusCard, renderRecordScreen / `prototype/styles.css` .theme-gamehud, .daily-focus-*, .record-* | 2026-04-26 |
 
 ## ライフステージ別コアタイム
 

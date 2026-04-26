@@ -28,6 +28,25 @@
   --actions-h: auto;
 }
 
+/*
+  @spec docs/specs/SPEC-058-ui-design-prototypes.md
+  PR #30 の HUD 案を本線化するため、比較テーマではなく gamehud 固定トークンとして扱う。
+*/
+.phone-frame.theme-gamehud {
+  --bg: #edf3f7;
+  --fg: #172333;
+  --muted: #5f7185;
+  --accent: #2f5cff;
+  --accent-2: #18b6a7;
+  --card-bg: #ffffff;
+  --card-border: #cbd9ea;
+  --primary: #2f5cff;
+  --secondary: #d8e4f2;
+  --hud-bg: #172333;
+  --hud-fg: #f4f8ff;
+  --shadow: 0 10px 24px rgba(35, 70, 120, 0.14);
+}
+
 * { box-sizing: border-box; }
 
 /*
@@ -536,6 +555,30 @@ body {
 }
 .dock-icon.dock-tree:active {
   transform: scale(0.95);
+}
+
+.dock-icon.dock-record {
+  width: auto;
+  min-width: 72px;
+  padding: 6px 12px;
+  border-radius: 26px;
+  background: #fff7df;
+  color: #6b4b18;
+  border: 2px solid #e6c36c;
+  flex-direction: column;
+  gap: 0;
+  line-height: 1;
+  box-shadow: var(--shadow);
+}
+.dock-icon.dock-record .dock-record-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.dock-icon.dock-record .dock-record-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
 }
 
 /*
@@ -1733,6 +1776,168 @@ body {
   padding: 3px 10px;
   border-radius: 12px;
   font-weight: 700;
+}
+
+/* @spec SPEC-058 §5 毎日表示する「今日の焦点カード」 */
+.daily-focus-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: calc(var(--radius) + 4px);
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+.daily-focus-kicker {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.daily-focus-main {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.daily-focus-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(232, 169, 60, 0.18);
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.daily-focus-copy h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.daily-focus-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.daily-focus-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.daily-focus-chip {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(232, 169, 60, 0.18);
+  color: #7a5a1e;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 9px;
+}
+.daily-focus-chip.as-button { cursor: pointer; }
+.daily-focus-chip.is-goal {
+  background: rgba(255, 200, 60, 0.28);
+  color: #8a5d00;
+}
+.dock-badge {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  transform: translateX(-50%);
+  max-width: 54px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--accent-2);
+  color: #3a2810;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+}
+.dock-badge.badge-goal { background: #f7ce55; color: #4a3300; }
+.dock-badge.badge-favorite { background: #ffd6e2; color: #8c3150; }
+.dock-badge.badge-new { background: #cfefc8; color: #2c6936; }
+.dock-badge.badge-tired { background: #ffd2a8; color: #8a4d15; }
+.theme-gamehud .daily-focus-card {
+  border-left: 5px solid var(--accent);
+  border-radius: 14px;
+}
+.theme-gamehud .daily-focus-kicker {
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.theme-gamehud .daily-focus-icon {
+  background: linear-gradient(135deg, rgba(47,92,255,0.18), rgba(24,182,167,0.18));
+}
+
+/* @spec SPEC-058 §6 簡易「きろく」画面 */
+.record-scene {
+  padding: 14px 14px 18px;
+}
+.record-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 8px 0 10px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 999px;
+}
+.record-tab {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-weight: 800;
+  padding: 8px 6px;
+}
+.record-tab.active {
+  background: var(--card-bg);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+}
+.record-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.record-list li {
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--card-border);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.record-list li:last-child { border-bottom: 0; }
+.record-list small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+.record-favorites {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.record-favorite-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(232, 169, 60, 0.16);
+  font-size: 13px;
+}
+.record-favorite-pill b {
+  color: var(--accent);
+}
+.record-empty {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .soyou-list {
