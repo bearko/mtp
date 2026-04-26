@@ -269,6 +269,19 @@
         </section>
 
         <!--
+          @screen S18 人生ダイジェストへの入口
+          @spec docs/specs/SPEC-059-whole-life-digest.md
+          通常の保育園ループとは別に、1歳〜100歳の資源ジレンマを薄く通す縦スライス。
+        -->
+        <section class="life-digest-entry" id="life-digest-entry">
+          <div>
+            <strong>人生を最後まで見てみる</strong>
+            <p>節目だけ選んで、時間・カネ・ジョウネツの移り変わりを体験する。</p>
+          </div>
+          <button class="btn btn-secondary btn-sm-inline" data-action="start-life-digest" id="btn-start-life-digest">完走モード</button>
+        </section>
+
+        <!--
           @spec SPEC-033 §3 / SPEC-034 §5.2 素養カード 5 枚（固定表示）
         -->
         <div class="soyou-list" id="soyou-list">
@@ -312,10 +325,18 @@
       <!-- ドック（アイコン行） -->
       <div id="play-dock" class="play-dock"></div>
 
-      <footer class="actions">
-        <button class="btn btn-secondary btn-sm-inline" data-action="do-nothing">1h休む</button>
-        <button class="btn btn-ghost btn-sm-inline" data-action="go-sleep">今日おわる</button>
-        <button class="btn btn-primary" data-action="confirm-play" id="btn-confirm-play" disabled>遊ぶ</button>
+      <footer class="actions actions-stack">
+        <div class="actions-row">
+          <button class="btn btn-secondary btn-sm-inline" data-action="do-nothing">1h休む</button>
+          <button class="btn btn-ghost btn-sm-inline" data-action="go-sleep">今日おわる</button>
+          <button class="btn btn-primary" data-action="confirm-play" id="btn-confirm-play" disabled>遊ぶ</button>
+        </div>
+        <!--
+          @screen S18 人生ダイジェスト
+          @spec   docs/specs/SPEC-059-whole-life-digest.md §6
+          現行の1日ループとは別に、1歳〜100歳の資源ジレンマを薄く通す縦スライスへ入る。
+        -->
+        <button class="btn btn-secondary btn-wide" data-action="start-life-digest" id="btn-start-life-digest">人生を通しで見る</button>
       </footer>
     </section>
 
@@ -480,6 +501,46 @@
       </div>
       <footer class="actions">
         <button class="btn btn-primary" data-action="close-record">遊び選択に戻る</button>
+      </footer>
+    </section>
+
+    <!--
+      @screen S18 人生ダイジェスト
+      @spec   docs/specs/SPEC-059-whole-life-digest.md
+      ライフステージごとに1つの遊び方を選ぶ、全人生の薄い縦スライス。
+    -->
+    <section class="screen" id="screen-life-digest">
+      <div class="scene life-digest-scene">
+        <div class="life-digest-kicker" id="life-digest-progress">人生 1/8</div>
+        <div class="scene-art" id="life-digest-icon">🌱</div>
+        <h2 class="scene-title" id="life-digest-title">節目</h2>
+        <p class="scene-sub" id="life-digest-body">この時期、何を大事にする？</p>
+
+        <div class="life-resource-card" id="life-digest-resources"></div>
+        <div class="life-choice-list" id="life-digest-choices"></div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-ghost" data-action="cancel-life-digest">いつもの1日に戻る</button>
+      </footer>
+    </section>
+
+    <!--
+      @screen S19 人生アルバム
+      @spec   docs/specs/SPEC-059-whole-life-digest.md
+      完走モードの最後に、選択と思い出をスコアではなくアルバムとして表示する。
+    -->
+    <section class="screen" id="screen-life-ending">
+      <div class="scene life-ending-scene">
+        <div class="scene-art">📚</div>
+        <h2 class="scene-title">人生アルバム</h2>
+        <p class="scene-sub" id="life-ending-summary">あなたの遊びの軌跡。</p>
+
+        <div class="life-ending-score" id="life-ending-score"></div>
+        <ol class="life-album-list" id="life-album-list"></ol>
+      </div>
+      <footer class="actions actions-stack">
+        <button class="btn btn-primary btn-wide" data-action="restart-life-digest">もう一度、別の人生で遊ぶ</button>
+        <button class="btn btn-ghost btn-wide" data-action="finish-life-digest">きろくに残して戻る</button>
       </footer>
     </section>
 

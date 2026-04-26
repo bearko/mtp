@@ -461,6 +461,7 @@ body {
   border-radius: 999px;
   font-size: 13px;
   z-index: 100;
+  pointer-events: none;
   animation: toast-in 200ms ease-out;
 }
 
@@ -1841,6 +1842,29 @@ body {
   background: rgba(255, 200, 60, 0.28);
   color: #8a5d00;
 }
+.life-digest-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 12px;
+  border: 1px solid rgba(47, 92, 255, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(47, 92, 255, 0.10), rgba(24, 182, 167, 0.10));
+  box-shadow: var(--shadow);
+}
+.life-digest-entry strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 14px;
+}
+.life-digest-entry p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
 .dock-badge {
   position: absolute;
   left: 50%;
@@ -1938,6 +1962,116 @@ body {
 .record-empty {
   color: var(--muted);
   font-size: 13px;
+}
+
+/* @spec SPEC-059 人生ダイジェスト（章選択 + 人生アルバム） */
+.life-digest-scene,
+.life-ending-scene {
+  padding: 16px 14px 18px;
+}
+.life-digest-kicker {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-bottom: 8px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(47, 92, 255, 0.12);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+}
+.life-resource-card,
+.life-ending-score {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+.life-resource-stat,
+.life-ending-stat {
+  padding: 10px 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.life-resource-stat span,
+.life-ending-stat span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.life-resource-stat b,
+.life-ending-stat b {
+  display: block;
+  margin-top: 3px;
+  font-size: 18px;
+}
+.life-choice-list {
+  display: grid;
+  gap: 10px;
+}
+.life-choice-card {
+  width: 100%;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 12px;
+  background: var(--card-bg);
+  color: var(--fg);
+  font-family: inherit;
+  text-align: left;
+  box-shadow: var(--shadow);
+}
+.life-choice-card:active {
+  transform: translateY(1px);
+}
+.life-choice-card strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+.life-choice-card p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.life-choice-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.life-choice-effects span {
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: rgba(24, 182, 167, 0.13);
+  color: #0f7169;
+  font-size: 11px;
+  font-weight: 900;
+}
+.life-album-list {
+  margin: 12px 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+.life-album-list li {
+  margin-bottom: 10px;
+  padding: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+}
+.life-album-list b {
+  display: block;
+  margin-bottom: 4px;
+}
+.life-album-list small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .soyou-list {

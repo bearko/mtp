@@ -23,6 +23,11 @@ flowchart TD
     Title -->|つづきから| ChooseLoop
 
     Isekai -->|入力 or ランダム| ChooseLoop
+    ChooseLoop -->|完走モード| LifeDigest(S18 人生ダイジェスト<br/>節目選択)
+    LifeDigest -->|章を選ぶ| LifeDigest
+    LifeDigest -->|100歳到達| LifeEnding(S19 人生アルバム)
+    LifeEnding -->|きろくに残す| Record(S17 きろく)
+    LifeDigest -->|キャンセル| ChooseLoop
 
     %% --- メインの 1 日ループ ---
     subgraph DayLoop[1 日ループ]
