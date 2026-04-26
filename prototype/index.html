@@ -61,6 +61,17 @@
     </header>
 
     <!--
+      @screen 共通パラメーターバー
+      @spec docs/specs/SPEC-034-s2-hud-redesign.md §5.2
+      @spec docs/specs/SPEC-035-result-summary-ui.md §4.4
+      S2/S3/S4/S10/S9 で同じ位置に固定表示し、常に素養を意識できるようにする。
+    -->
+    <section class="param-strip" id="param-strip" aria-label="現在の素養" hidden>
+      <div class="param-strip-row param-strip-labels" id="param-strip-labels"></div>
+      <div class="param-strip-row param-strip-values" id="param-strip-values"></div>
+    </section>
+
+    <!--
       @spec SPEC-050 §5 ミッションバナー（HUD 直下、active ミッションを常時表示）
       折りたたみ式：summary をタップで open/close。
     -->
@@ -269,9 +280,10 @@
         </section>
 
         <!--
-          @spec SPEC-033 §3 / SPEC-034 §5.2 素養カード 5 枚（固定表示）
+          @spec SPEC-033 §3 / SPEC-034 §5.2
+          旧 S2 内 5 行表示。現在は共通 #param-strip に置き換えたため互換 DOM として残す。
         -->
-        <div class="soyou-list" id="soyou-list">
+        <div class="soyou-list" id="soyou-list" hidden>
           <!-- renderSoyouList() で動的描画 -->
         </div>
 
@@ -311,12 +323,21 @@
 
       <!-- ドック（アイコン行） -->
       <div id="play-dock" class="play-dock"></div>
-
-      <footer class="actions">
-        <button class="btn btn-secondary btn-sm-inline" data-action="do-nothing">1h休む</button>
-        <button class="btn btn-ghost btn-sm-inline" data-action="go-sleep">今日おわる</button>
-        <button class="btn btn-primary" data-action="confirm-play" id="btn-confirm-play" disabled>遊ぶ</button>
-      </footer>
+      <!--
+        @spec docs/specs/SPEC-002-play-selection.md §5.1.3
+        遊び以外の操作は誤タップ防止のため右下固定メニューにまとめる。
+      -->
+      <div class="s2-menu-fab" id="s2-menu-fab">
+        <button class="s2-menu-button" id="btn-s2-menu" data-action="toggle-s2-menu" aria-label="サブメニューを開く" aria-expanded="false">☰</button>
+        <div class="s2-menu" id="s2-menu" hidden>
+          <div class="s2-menu-list" id="s2-menu-list"></div>
+        </div>
+      </div>
+      <!--
+        @spec docs/specs/SPEC-002-play-selection.md §5.3
+        旧フッターの「遊ぶ」ボタンは非表示互換 DOM として残す。実操作は dock アイコン再タップで確定。
+      -->
+      <button data-action="confirm-play" id="btn-confirm-play" hidden disabled>遊ぶ</button>
     </section>
 
     <!--
@@ -351,7 +372,7 @@
         -->
         <div id="result-panel" class="result-panel result-panel-v2" hidden>
           <!-- 獲得した素養（グレードベース / +N / 旧→新 / Lv発光） -->
-          <div class="card card-tight">
+          <div class="card card-tight" id="result-soyou-card" hidden>
             <div class="card-title">🌱 獲得した素養</div>
             <div class="soyou-result-list" id="result-soyou-list"></div>
           </div>
@@ -480,6 +501,46 @@
       </div>
       <footer class="actions">
         <button class="btn btn-primary" data-action="close-record">遊び選択に戻る</button>
+      </footer>
+    </section>
+
+    <!--
+      @screen S18 人生ダイジェスト
+      @spec   docs/specs/SPEC-059-whole-life-digest.md
+      ライフステージごとに1つの遊び方を選ぶ、全人生の薄い縦スライス。
+    -->
+    <section class="screen" id="screen-life-digest">
+      <div class="scene life-digest-scene">
+        <div class="life-digest-kicker" id="life-digest-progress">人生 1/8</div>
+        <div class="scene-art" id="life-digest-icon">🌱</div>
+        <h2 class="scene-title" id="life-digest-title">節目</h2>
+        <p class="scene-sub" id="life-digest-body">この時期、何を大事にする？</p>
+
+        <div class="life-resource-card" id="life-digest-resources"></div>
+        <div class="life-choice-list" id="life-digest-choices"></div>
+      </div>
+      <footer class="actions">
+        <button class="btn btn-ghost" data-action="cancel-life-digest">いつもの1日に戻る</button>
+      </footer>
+    </section>
+
+    <!--
+      @screen S19 人生アルバム
+      @spec   docs/specs/SPEC-059-whole-life-digest.md
+      完走モードの最後に、選択と思い出をスコアではなくアルバムとして表示する。
+    -->
+    <section class="screen" id="screen-life-ending">
+      <div class="scene life-ending-scene">
+        <div class="scene-art">📚</div>
+        <h2 class="scene-title">人生アルバム</h2>
+        <p class="scene-sub" id="life-ending-summary">あなたの遊びの軌跡。</p>
+
+        <div class="life-ending-score" id="life-ending-score"></div>
+        <ol class="life-album-list" id="life-album-list"></ol>
+      </div>
+      <footer class="actions actions-stack">
+        <button class="btn btn-primary btn-wide" data-action="restart-life-digest">もう一度、別の人生で遊ぶ</button>
+        <button class="btn btn-ghost btn-wide" data-action="finish-life-digest">きろくに残して戻る</button>
       </footer>
     </section>
 

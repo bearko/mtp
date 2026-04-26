@@ -40,7 +40,7 @@ const { describe, it, assert, assertEq } = require("../lib/assert.js");
   await page.evaluate(() => { player.stamina = 3; renderHUD(); });
   await page.click('.dock-icon[data-play-id="picturebook"]');
   await new Promise(r => setTimeout(r, 200));
-  await page.click("#btn-confirm-play");
+  await page.click('.dock-icon[data-play-id="picturebook"]');
   await new Promise(r => setTimeout(r, 200));
   await page.click("#btn-skip-play");
   await new Promise(r => setTimeout(r, 700));

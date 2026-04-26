@@ -112,6 +112,69 @@ body {
   flex-shrink: 0;
 }
 
+/*
+  @spec SPEC-034 §5.2 / SPEC-035 §4.4
+  共通パラメーターバー：HUD直下に固定し、対象画面で常に同じ位置に表示する。
+*/
+.param-strip {
+  flex-shrink: 0;
+  background: #ffffff;
+  border-bottom: 1px solid var(--card-border);
+  box-shadow: 0 6px 14px rgba(35, 70, 120, 0.08);
+  padding: 6px 8px 7px;
+  z-index: 9;
+}
+.param-strip[hidden] { display: none !important; }
+.param-strip-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  text-align: center;
+}
+.param-strip-labels {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+.param-strip-values {
+  margin-top: 2px;
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+.param-strip-label,
+.param-strip-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.param-strip-grade {
+  display: block;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+.param-strip-num {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.param-strip-delta {
+  display: inline-flex;
+  margin-top: 2px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: rgba(76, 175, 122, 0.15);
+  color: #2f7d52;
+  font-size: 10px;
+  font-weight: 900;
+  vertical-align: middle;
+}
+
 .hud-row {
   display: flex;
   justify-content: space-between;
@@ -369,10 +432,12 @@ body {
 .actions {
   display: flex;
   gap: 8px;
+  min-height: calc(74px + env(safe-area-inset-bottom));
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
   background: var(--bg);
   border-top: 1px solid var(--card-border);
   flex-shrink: 0;
+  align-items: center;
 }
 /* @spec SPEC-003 §5.8 文脈別フッターの排他表示：hidden 属性で必ず display:none が勝つようにする */
 .actions[hidden] { display: none !important; }
@@ -461,6 +526,7 @@ body {
   border-radius: 999px;
   font-size: 13px;
   z-index: 100;
+  pointer-events: none;
   animation: toast-in 200ms ease-out;
 }
 
@@ -510,77 +576,6 @@ body {
   justify-content: center;
   box-shadow: var(--shadow);
 }
-/*
-  @spec docs/specs/SPEC-002-play-selection.md §5.1.2 遊びツリーアイコンの視覚差別化
-  「遊びアイコン」ではなく「画面遷移ナビ」であることを一目で伝えるため、
-  他の遊びアイコンと **別のデザイン言語（ピル型・濃緑・ラベル併記）** を採用する。
-*/
-.dock-icon.dock-tree {
-  width: auto;
-  min-width: 72px;
-  padding: 6px 12px;
-  border-radius: 26px;           /* ピル型 */
-  background: #3d6b4a;           /* 濃い緑 */
-  color: #ffffff;
-  border: 2px solid #2f5437;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 0;
-  line-height: 1;
-  margin-left: 8px;              /* 他アイコンとの間に区切り感を出す */
-  box-shadow: 0 2px 6px rgba(61, 107, 74, 0.35);
-  position: relative;
-}
-.dock-icon.dock-tree::before {
-  /* 他の遊びアイコンとの境界を示す左側の縦棒 */
-  content: "";
-  position: absolute;
-  left: -8px;
-  top: 8px;
-  bottom: 8px;
-  width: 1px;
-  background: var(--card-border);
-}
-.dock-icon.dock-tree .dock-tree-icon {
-  font-size: 22px;
-  line-height: 1;
-}
-.dock-icon.dock-tree .dock-tree-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: #ffffff;
-  margin-top: 2px;
-}
-.dock-icon.dock-tree:active {
-  transform: scale(0.95);
-}
-
-.dock-icon.dock-record {
-  width: auto;
-  min-width: 72px;
-  padding: 6px 12px;
-  border-radius: 26px;
-  background: #fff7df;
-  color: #6b4b18;
-  border: 2px solid #e6c36c;
-  flex-direction: column;
-  gap: 0;
-  line-height: 1;
-  box-shadow: var(--shadow);
-}
-.dock-icon.dock-record .dock-record-icon {
-  font-size: 22px;
-  line-height: 1;
-}
-.dock-icon.dock-record .dock-record-label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  margin-top: 2px;
-}
-
 /*
   @spec docs/specs/SPEC-027-renrakucho.md 連絡帳サマリ（保育園・幼稚園）
   手書きノート風の罫線カード。先生・家庭コメントを 2 段で表示。
@@ -1218,27 +1213,54 @@ body {
 .play-dock::-webkit-scrollbar { display: none; }
 
 .dock-icon {
-  width: 52px;
-  height: 52px;
-  min-width: 52px;
-  border-radius: 14px;
+  width: 78px;
+  height: 72px;
+  min-width: 78px;
+  border-radius: 18px;
   background: var(--card-bg);
   border: 2px solid transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 32px;
   cursor: pointer;
   font-family: inherit;
-  padding: 0;
+  padding: 6px 5px 5px;
   position: relative;
   transition: transform 100ms ease, border-color 150ms ease;
   box-shadow: var(--shadow);
+  line-height: 1;
 }
 .dock-icon:active { transform: scale(0.93); }
 .dock-icon.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(232, 109, 60, 0.25), var(--shadow);
+}
+.dock-main-icon {
+  display: block;
+  font-size: 32px;
+  line-height: 1;
+}
+.dock-label {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  color: var(--fg);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-empty {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 18px 8px;
+  color: var(--muted);
+  font-size: 12px;
 }
 .dock-icon.locked {
   opacity: 0.55;
@@ -1260,16 +1282,67 @@ body {
   box-shadow: var(--shadow);
 }
 
-/* 遊び選択画面のフッター：3ボタン対応 */
-#screen-choose .actions .btn-sm-inline {
-  flex: 0 0 auto;
-  padding: 12px 10px;
-  min-height: 52px;
+/*
+  @spec docs/specs/SPEC-002-play-selection.md §5.1.3
+  遊び以外の操作は右下固定ハンバーガーに退避する。
+*/
+.s2-menu-fab {
+  position: absolute;
+  right: 14px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 30;
+}
+.s2-menu-button {
+  width: 54px;
+  height: 54px;
+  border: 0;
+  border-radius: 50%;
+  background: #172333;
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  font-size: 26px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.s2-menu {
+  position: absolute;
+  right: 0;
+  bottom: 64px;
+  width: 178px;
+  padding: 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 34px rgba(35, 70, 120, 0.22);
+}
+.s2-menu[hidden] { display: none !important; }
+.s2-menu-list {
+  display: grid;
+  gap: 6px;
+}
+.s2-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 12px;
+  background: #edf3f7;
+  color: var(--fg);
+  font-family: inherit;
   font-size: 13px;
+  font-weight: 900;
+  text-align: left;
+  cursor: pointer;
 }
-#screen-choose .actions .btn-primary {
-  flex: 1 1 auto;
+.s2-menu-item-icon {
+  width: 24px;
+  text-align: center;
+  font-size: 19px;
 }
+
+#screen-choose .actions { display: none; }
 
 /* =========================================================================
  * @spec docs/specs/SPEC-003-play-execution.md S3 結果フェーズ：2段フッター
@@ -1841,6 +1914,29 @@ body {
   background: rgba(255, 200, 60, 0.28);
   color: #8a5d00;
 }
+.life-digest-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 12px;
+  border: 1px solid rgba(47, 92, 255, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(47, 92, 255, 0.10), rgba(24, 182, 167, 0.10));
+  box-shadow: var(--shadow);
+}
+.life-digest-entry strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 14px;
+}
+.life-digest-entry p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
 .dock-badge {
   position: absolute;
   left: 50%;
@@ -1938,6 +2034,116 @@ body {
 .record-empty {
   color: var(--muted);
   font-size: 13px;
+}
+
+/* @spec SPEC-059 人生ダイジェスト（章選択 + 人生アルバム） */
+.life-digest-scene,
+.life-ending-scene {
+  padding: 16px 14px 18px;
+}
+.life-digest-kicker {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-bottom: 8px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(47, 92, 255, 0.12);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+}
+.life-resource-card,
+.life-ending-score {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+.life-resource-stat,
+.life-ending-stat {
+  padding: 10px 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.life-resource-stat span,
+.life-ending-stat span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.life-resource-stat b,
+.life-ending-stat b {
+  display: block;
+  margin-top: 3px;
+  font-size: 18px;
+}
+.life-choice-list {
+  display: grid;
+  gap: 10px;
+}
+.life-choice-card {
+  width: 100%;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 12px;
+  background: var(--card-bg);
+  color: var(--fg);
+  font-family: inherit;
+  text-align: left;
+  box-shadow: var(--shadow);
+}
+.life-choice-card:active {
+  transform: translateY(1px);
+}
+.life-choice-card strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+.life-choice-card p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.life-choice-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.life-choice-effects span {
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: rgba(24, 182, 167, 0.13);
+  color: #0f7169;
+  font-size: 11px;
+  font-weight: 900;
+}
+.life-album-list {
+  margin: 12px 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+.life-album-list li {
+  margin-bottom: 10px;
+  padding: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+}
+.life-album-list b {
+  display: block;
+  margin-bottom: 4px;
+}
+.life-album-list small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .soyou-list {

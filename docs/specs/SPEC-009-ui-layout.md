@@ -4,10 +4,10 @@
 |---|---|
 | 仕様ID | SPEC-009 |
 | 機能名 | UIレイアウト規約 |
-| 対応ファイル | `prototype/styles.css`, `prototype/index.html` |
+| 対応ファイル | `prototype/styles.css`, `prototype/index.html` (`#param-strip`, `.actions`) |
 | 関連仕様 | 全画面共通 |
 | ステータス | Active |
-| 最終更新 | 2026-04-18 |
+| 最終更新 | 2026-04-26 |
 
 ## 1. 目的
 画面解像度に依存せず、**下部のアクションボタンが常に画面内に表示** される状態を保証する。  
@@ -31,6 +31,7 @@
 ```
 ┌───────────── .phone-frame (100vh, flex column) ─────────────┐
 │ .hud       ← 固定（flex-shrink: 0）                          │
+│ #param-strip ← 対象画面のみ固定（flex-shrink: 0）             │
 ├──────────────────────────────────────────────────────────────┤
 │ .screen.active                                               │
 │   ┌─ .scene (flex: 1, overflow-y: auto) ─┐                   │
@@ -48,13 +49,14 @@
 - `.hud`：`flex-shrink: 0;`（縮まない）。
 - `.screen.active`：`flex: 1; display: flex; flex-direction: column; min-height: 0;`（flex child の overflow 子を機能させるため `min-height: 0` が必須）。
 - `.scene`：`flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;`（ここだけがスクロール）。
-- `.actions`：`flex-shrink: 0;` 常に画面下に固定。
+- `#param-strip`：対象画面では `flex-shrink: 0;` で HUD 直下に固定し、Scene のスクロール外に置く。
+- `.actions`：`flex-shrink: 0; min-height: 73px;` で画面下に固定し、画面間で高さがぶれない。
 
 ### 5.3 モバイルSafari対策
 - `100vh` は iOS Safari のアドレスバーで変動するため、`height: 100dvh;` を併用する（対応ブラウザのみ）。
 
 ### 5.4 ボタンのタップ領域
-- 高さ最低 48px（WCAG）／本プロトは 52px 確保。
+- 高さ最低 48px（WCAG）／本プロトはボタン 52px、Actions 全体は 73px 以上を確保。
 - `.actions` の bottom padding に `env(safe-area-inset-bottom)` を加算する。
 
 ## 6. UIへの反映

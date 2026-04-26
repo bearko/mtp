@@ -334,6 +334,17 @@ const LIFE_STAGES = [
   { id: "retirement",   label: "老後",     icon: "🪑", ageMin: 66, ageMax: 100, coreTime: null, implemented: false },
 ];
 
+function initialLifeDigestState() {
+  return {
+    active: false,
+    currentIndex: 0,
+    resources: { time: 0, money: 0, passion: 0 },
+    memories: [],
+    startedDay: 0,
+    completed: false,
+  };
+}
+
 /**
  * @spec docs/specs/SPEC-019-stamina-cap.md §5.1
  * 年齢別の体力ベース上限テーブル。51歳以上は計算式で求める（§5.1.1）。
@@ -714,6 +725,8 @@ const DEFAULT_PLAYER = {
   _infectionJustHealed: false,// SPEC-057 §2 治癒した直後フラグ。朝モーダルで使う
   _pendingOuting: null,       // 今日発動した遠出イベントオブジェクト
   _infectionRemainingDays: 0, // 感染症の残日数
+  /** @spec SPEC-059 人生ダイジェスト：完走モードの現在章とアルバム */
+  lifeDigest: null,
 };
 
 /**
@@ -730,6 +743,139 @@ const LABELS = {
 };
 
 const SEASON_LABEL = { spring: "春", summer: "夏", autumn: "秋", winter: "冬" };
+
+/**
+ * @spec docs/specs/SPEC-059-whole-life-digest.md
+ * 全人生を薄く通す完走モード。各章は「その時期の資源制約」と「何を遊びに選ぶか」を1画面に圧縮する。
+ */
+const LIFE_DIGEST_CHAPTERS = [
+  {
+    id: "nursery",
+    age: 3,
+    stageId: "nursery",
+    icon: "🧸",
+    title: "3歳：時間はある、カネはない",
+    body: "世界はまだ狭い。でも、石ころも絵本も大事件になる。",
+    resources: { time: 9, money: 0, stamina: 6 },
+    choices: [
+      { id: "picturebook", label: "絵本を何度も読む", desc: "同じページをめくるたび、言葉と気持ちが増える。", cost: { time: 2, money: 0, stamina: 1 }, soyou: { intellect: 16, sensitivity: 10, passion: 8 }, memory: "お気に入りの絵本を、暗唱できるほど読んだ。" },
+      { id: "park", label: "公園でへとへとになる", desc: "滑り台、砂場、追いかけっこ。身体で世界を覚える。", cost: { time: 3, money: 0, stamina: 3 }, soyou: { body: 18, social: 8, passion: 7 }, memory: "靴の中まで砂だらけになるまで遊んだ。" },
+      { id: "clay", label: "粘土で知らない生き物を作る", desc: "形にならないものを、手で少しずつ形にする。", cost: { time: 2, money: 0, stamina: 1 }, soyou: { sensitivity: 12, intellect: 6, passion: 12 }, memory: "名前のない生き物を作って、家族に見せた。" },
+    ],
+  },
+  {
+    id: "elementary",
+    age: 10,
+    stageId: "elementary",
+    icon: "🎒",
+    title: "10歳：友だちと門限のあいだ",
+    body: "時間はまだある。けれど、お小遣いと門限が選択肢を決め始める。",
+    resources: { time: 7, money: 2, stamina: 8 },
+    choices: [
+      { id: "secret_base", label: "放課後に秘密基地を作る", desc: "お金はないけれど、仲間と場所があれば冒険になる。", cost: { time: 3, money: 0, stamina: 3 }, soyou: { social: 16, body: 10, passion: 12 }, moneyDelta: 0, memory: "空き地のすみを、みんなだけの秘密基地にした。" },
+      { id: "book_money", label: "お小遣いで図鑑を買う", desc: "遊ぶお金を一冊に使う。知りたい気持ちに投資する。", cost: { time: 2, money: 2, stamina: 1 }, soyou: { intellect: 22, passion: 8 }, moneyDelta: -500, memory: "初めて自分のお金で図鑑を買った。" },
+      { id: "sports_day", label: "地域の大会に出る", desc: "勝ち負けより、緊張しても走り切る経験が残る。", cost: { time: 4, money: 1, stamina: 5 }, soyou: { body: 24, social: 8, passion: 10 }, moneyDelta: -200, memory: "胸がどきどきする大会で、最後まで走った。" },
+    ],
+  },
+  {
+    id: "teen",
+    age: 16,
+    stageId: "highschool",
+    icon: "🎧",
+    title: "16歳：自由が増え、時間が減る",
+    body: "部活、勉強、友だち。やりたいことは増えるのに、夕方は短い。",
+    resources: { time: 5, money: 3, stamina: 9 },
+    choices: [
+      { id: "band", label: "文化祭バンドに打ち込む", desc: "練習は遠回り。でも誰かと合わせる瞬間は強い。", cost: { time: 4, money: 1, stamina: 3 }, soyou: { social: 14, sensitivity: 18, passion: 16 }, moneyDelta: -3000, memory: "文化祭のステージで、音がひとつになった。" },
+      { id: "exam_and_game", label: "勉強後の1時間だけゲーム", desc: "我慢だけにしない。短い遊びを守る。", cost: { time: 1, money: 0, stamina: 1 }, soyou: { intellect: 12, passion: 14 }, memory: "受験勉強のあと、1時間だけゲームをして息をついた。" },
+      { id: "first_trip", label: "友だちと日帰り旅", desc: "少し背伸びして、行動範囲を広げる。", cost: { time: 5, money: 3, stamina: 4 }, soyou: { social: 18, sensitivity: 14, passion: 12 }, moneyDelta: -8000, memory: "友だちと初めて、知らない街まで行った。" },
+    ],
+  },
+  {
+    id: "university",
+    age: 20,
+    stageId: "university",
+    icon: "🧭",
+    title: "20歳：時間は強い、カネは弱い",
+    body: "長い休みと眠い朝。今しかできない遠回りがある。",
+    resources: { time: 8, money: 4, stamina: 9 },
+    choices: [
+      { id: "backpack", label: "貧乏旅行に出る", desc: "安宿と夜行バス。カネは少ないが、時間が味方する。", cost: { time: 7, money: 4, stamina: 5 }, soyou: { sensitivity: 22, social: 10, passion: 18 }, moneyDelta: -60000, memory: "夜行バスで海の見える町まで行った。" },
+      { id: "circle", label: "サークルを作る", desc: "場を作る側に回る。遊びが人を連れてくる。", cost: { time: 5, money: 2, stamina: 3 }, soyou: { social: 24, passion: 14, intellect: 6 }, moneyDelta: -10000, memory: "小さなサークルを作り、毎週人が集まる場所にした。" },
+      { id: "portfolio", label: "作品づくりに没頭する", desc: "孤独な時間を、未来の自分への投資にする。", cost: { time: 6, money: 2, stamina: 3 }, soyou: { intellect: 14, sensitivity: 18, passion: 22 }, moneyDelta: -15000, memory: "眠るのを忘れて、ひとつの作品を完成させた。" },
+    ],
+  },
+  {
+    id: "worker",
+    age: 28,
+    stageId: "worker",
+    icon: "💼",
+    title: "28歳：カネは増え、時間は細る",
+    body: "買えるものは増える。でも平日の夜は思ったより短い。",
+    resources: { time: 3, money: 7, stamina: 6 },
+    choices: [
+      { id: "premium_hobby", label: "高い道具を買って趣味を深める", desc: "カネで入口を広げ、続ける理由を作る。", cost: { time: 2, money: 5, stamina: 2 }, soyou: { passion: 24, sensitivity: 12 }, moneyDelta: -120000, memory: "初任給を貯めて、ずっと欲しかった道具を買った。" },
+      { id: "short_play", label: "30分の遊びを死守する", desc: "忙しい日ほど、小さな余白が生活を支える。", cost: { time: 1, money: 0, stamina: 1 }, soyou: { passion: 16, intellect: 8 }, moneyDelta: 30000, memory: "残業の日も、寝る前の30分だけ好きなことをした。" },
+      { id: "friend_dinner", label: "友だちに会いに行く", desc: "予定を合わせる手間ごと、関係を守る。", cost: { time: 3, money: 3, stamina: 2 }, soyou: { social: 24, passion: 10 }, moneyDelta: -15000, memory: "忙しい友だちと予定を合わせ、久しぶりに笑った。" },
+    ],
+  },
+  {
+    id: "parenting",
+    age: 38,
+    stageId: "worker",
+    icon: "🍼",
+    title: "38歳：自分の時間が家族の時間に変わる",
+    body: "カネは少しある。けれど、遊びは自分だけのものではなくなる。",
+    resources: { time: 2, money: 6, stamina: 4 },
+    choices: [
+      { id: "child_play", label: "子どもと公園で遊ぶ", desc: "自分の趣味ではない。でも昔の自分に会える。", cost: { time: 2, money: 0, stamina: 3 }, soyou: { social: 18, sensitivity: 16, passion: 12 }, memory: "子どもと泥だらけになって、公園で遊んだ。" },
+      { id: "couple_time", label: "夫婦で短い夜更かし", desc: "疲れていても、話す時間を取り戻す。", cost: { time: 1, money: 2, stamina: 2 }, soyou: { social: 16, sensitivity: 12, passion: 10 }, moneyDelta: -8000, memory: "寝かしつけのあと、夫婦で小さく乾杯した。" },
+      { id: "solo_hobby", label: "早朝に自分の趣味を続ける", desc: "誰かを大事にしながら、自分の火も消さない。", cost: { time: 1, money: 1, stamina: 2 }, soyou: { passion: 22, intellect: 8 }, moneyDelta: -5000, memory: "家族が起きる前、静かな時間に趣味を続けた。" },
+    ],
+  },
+  {
+    id: "middle",
+    age: 55,
+    stageId: "worker",
+    icon: "⛰",
+    title: "55歳：カネはある、体力は相談",
+    body: "若いころより買える。でも無理は効かない。深く味わう時期。",
+    resources: { time: 4, money: 8, stamina: 4 },
+    choices: [
+      { id: "mountain", label: "ゆっくり登山を始める", desc: "速さより、続けられる強度を選ぶ。", cost: { time: 4, money: 3, stamina: 4 }, soyou: { body: 16, sensitivity: 18, passion: 12 }, moneyDelta: -30000, memory: "ペースを落として、山の空気を味わった。" },
+      { id: "learn_again", label: "学び直しに通う", desc: "仕事ではない知性に、時間とお金を使う。", cost: { time: 3, money: 4, stamina: 2 }, soyou: { intellect: 24, passion: 14 }, moneyDelta: -80000, memory: "若い人に混じって、もう一度学び始めた。" },
+      { id: "care_friend", label: "古い友人を訪ねる", desc: "関係は放っておくと細る。会いに行くことを選ぶ。", cost: { time: 3, money: 2, stamina: 2 }, soyou: { social: 22, sensitivity: 12 }, moneyDelta: -20000, memory: "古い友人に会い、昔の続きを話した。" },
+    ],
+  },
+  {
+    id: "retirement",
+    age: 72,
+    stageId: "retirement",
+    icon: "🌅",
+    title: "72歳：時間が戻り、身体はゆっくりになる",
+    body: "予定の空白が増える。何を残すか、誰と分けるかを選ぶ。",
+    resources: { time: 8, money: 5, stamina: 3 },
+    choices: [
+      { id: "garden", label: "家庭菜園を育てる", desc: "毎日の小さな世話が、季節の記憶になる。", cost: { time: 3, money: 2, stamina: 2 }, soyou: { sensitivity: 18, body: 8, passion: 14 }, moneyDelta: -15000, memory: "毎朝、育っていく野菜に水をやった。" },
+      { id: "teach", label: "好きだった遊びを人に教える", desc: "積み重ねた情熱を、誰かの入口にする。", cost: { time: 4, money: 1, stamina: 2 }, soyou: { social: 20, passion: 20 }, memory: "自分が好きだった遊びを、若い人に教えた。" },
+      { id: "album", label: "写真と記録を整理する", desc: "人生を点数ではなく、思い出として見返す。", cost: { time: 5, money: 1, stamina: 1 }, soyou: { intellect: 10, sensitivity: 22, passion: 12 }, memory: "古い写真を整理し、遊んできた日々を思い出した。" },
+    ],
+  },
+  {
+    id: "oldage",
+    age: 95,
+    stageId: "retirement",
+    icon: "🪑",
+    title: "95歳：遠くへは行けないが、時間はある",
+    body: "体力は少ない。けれど、遊びは移動距離だけでは決まらない。",
+    resources: { time: 9, money: 3, stamina: 2 },
+    choices: [
+      { id: "walk", label: "近所をゆっくり散歩する", desc: "同じ道でも、季節は毎日少し違う。", cost: { time: 2, money: 0, stamina: 1 }, soyou: { body: 8, sensitivity: 18, passion: 8 }, memory: "近所の道を歩き、今年の花の匂いを覚えた。" },
+      { id: "story", label: "昔の遊びを語る", desc: "思い出を誰かに渡すと、もう一度遊びになる。", cost: { time: 3, money: 0, stamina: 1 }, soyou: { social: 18, sensitivity: 14, passion: 12 }, memory: "昔の遊びの話を、家族が笑って聞いてくれた。" },
+      { id: "read_again", label: "最初の絵本を読み返す", desc: "始まりの遊びに戻る。小さな円が閉じる。", cost: { time: 2, money: 0, stamina: 1 }, soyou: { intellect: 8, sensitivity: 18, passion: 16 }, memory: "幼い日に読んだ絵本を、ゆっくり読み返した。" },
+    ],
+  },
+];
 
 // =========================================================================
 // 状態
@@ -1691,9 +1837,13 @@ function renderRecordScreen() {
 
   if (achievements) {
     const titles = (player.titles || []).slice(-5).reverse();
+    const lifeDone = (player.memorableDays || []).some((x) => x.type === "life_digest");
+    const fallback = lifeDone
+      ? `<li>📚 人生アルバムを完走した <small>Day ${player.day}</small></li>`
+      : `<li>🌱 まだこれから。はじめての「できた」を待っているよ。</li>`;
     achievements.innerHTML = titles.length > 0
       ? titles.map((t) => `<li>🎀 ${escapeHtml(t.id)} <small>Day ${t.acquiredDay || t.awardedDay || player.day}</small></li>`).join("")
-      : `<li>🌱 まだこれから。はじめての「できた」を待っているよ。</li>`;
+      : fallback;
   }
 
   if (favorites) {
@@ -1709,13 +1859,222 @@ function renderRecordScreen() {
 
   if (memories) {
     const entries = [
-      ...(player.renrakuchoHighlights || []).map((x) => ({ icon: "💬", text: x.text || x.body || "", day: x.day })),
+      ...((player.lifeDigest && player.lifeDigest.memories) || [])
+        .map((x) => ({ icon: "📚", text: `${x.age}歳：${x.memory}`, day: player.day })),
       ...(player.memorableDays || []).map((x) => ({ icon: "📖", text: x.emotionText || x.type || "", day: x.day })),
+      ...(player.renrakuchoHighlights || []).map((x) => ({ icon: "💬", text: x.text || x.body || "", day: x.day })),
     ].filter((x) => x.text).slice(0, 6);
     memories.innerHTML = entries.length > 0
       ? entries.map((x) => `<li>${x.icon} ${escapeHtml(x.text)} <small>Day ${x.day || player.day}</small></li>`).join("")
       : `<li>📖 今日の思い出が、ここにたまっていくよ。</li>`;
   }
+}
+
+function lifeDigestInitialState() {
+  return {
+    index: 0,
+    money: 0,
+    memories: [],
+    startedAtDay: player.day,
+  };
+}
+
+function ensureLifeDigest() {
+  if (!player.lifeDigest) player.lifeDigest = lifeDigestInitialState();
+  if (!Array.isArray(player.lifeDigest.memories)) player.lifeDigest.memories = [];
+  if (typeof player.lifeDigest.index !== "number") player.lifeDigest.index = 0;
+  if (typeof player.lifeDigest.money !== "number") player.lifeDigest.money = 0;
+  return player.lifeDigest;
+}
+
+function lifeResourceLabel(value) {
+  if (value >= 8) return "◎";
+  if (value >= 5) return "○";
+  if (value >= 3) return "△";
+  return "×";
+}
+
+function formatLifeDigestEffects(choice) {
+  const effects = [];
+  const soyou = normalizeGainToSoyou(choice.soyou || {});
+  for (const [key, value] of Object.entries(soyou)) {
+    if (SOYOU_KEYS.includes(key)) effects.push(`${LABELS[key]} +${value}`);
+  }
+  if (choice.moneyDelta) {
+    effects.push(`カネ ${choice.moneyDelta > 0 ? "+" : ""}${choice.moneyDelta.toLocaleString()}円`);
+  }
+  return effects;
+}
+
+/**
+ * @screen S18 人生ダイジェスト
+ * @spec docs/specs/SPEC-059-whole-life-digest.md §5
+ */
+function renderLifeDigestScreen() {
+  const digest = ensureLifeDigest();
+  const chapter = LIFE_DIGEST_CHAPTERS[digest.index];
+  if (!chapter) {
+    renderLifeEndingScreen();
+    showScreen("screen-life-ending");
+    return;
+  }
+
+  byId("life-digest-progress").textContent = `人生 ${digest.index + 1}/${LIFE_DIGEST_CHAPTERS.length}`;
+  byId("life-digest-icon").textContent = chapter.icon;
+  byId("life-digest-title").textContent = chapter.title;
+  byId("life-digest-body").textContent = chapter.body;
+  byId("life-digest-resources").innerHTML = `
+    <div class="life-resource-stat"><span>ジカン</span><b>${lifeResourceLabel(chapter.resources.time)}</b></div>
+    <div class="life-resource-stat"><span>カネ</span><b>${lifeResourceLabel(chapter.resources.money)}</b></div>
+    <div class="life-resource-stat"><span>体力</span><b>${lifeResourceLabel(chapter.resources.stamina)}</b></div>
+  `;
+
+  byId("life-digest-choices").innerHTML = chapter.choices.map((choice) => {
+    const effects = formatLifeDigestEffects(choice)
+      .map((label) => `<span>${escapeHtml(label)}</span>`)
+      .join("");
+    return `
+      <button class="life-choice-card" type="button" data-action="choose-life-digest" data-choice-id="${escapeHtml(choice.id)}">
+        <strong>${escapeHtml(choice.label)}</strong>
+        <p>${escapeHtml(choice.desc)}</p>
+        <div class="life-choice-effects">${effects}</div>
+      </button>
+    `;
+  }).join("");
+}
+
+/**
+ * @spec docs/specs/SPEC-059-whole-life-digest.md §5.2
+ * S2 から完走モードを開始し、通常ループとは別に薄い全人生の選択を進める。
+ */
+function startLifeDigest() {
+  player.lifeDigest = lifeDigestInitialState();
+  renderLifeDigestScreen();
+  showScreen("screen-life-digest");
+}
+
+function cancelLifeDigest() {
+  player.lifeDigest = null;
+  goChooseFromToday();
+}
+
+/**
+ * @spec docs/specs/SPEC-059-whole-life-digest.md §5.3
+ * 章の選択を、素養・カネ・思い出へ即時反映する。
+ */
+function chooseLifeDigest(choiceId) {
+  const digest = ensureLifeDigest();
+  const chapter = LIFE_DIGEST_CHAPTERS[digest.index];
+  if (!chapter) return;
+  const choice = chapter.choices.find((c) => c.id === choiceId);
+  if (!choice) return;
+
+  const soyou = normalizeGainToSoyou(choice.soyou || {});
+  for (const [key, value] of Object.entries(soyou)) {
+    if (SOYOU_KEYS.includes(key)) {
+      player.soyou[key] = Math.max(0, (player.soyou[key] || 0) + value);
+    }
+  }
+
+  digest.money += choice.moneyDelta || 0;
+  digest.memories.push({
+    age: chapter.age,
+    stageId: chapter.stageId,
+    chapterTitle: chapter.title,
+    label: choice.label,
+    memory: choice.memory,
+    soyou,
+    moneyDelta: choice.moneyDelta || 0,
+  });
+
+  player.age = chapter.age;
+  player.staminaBaseCap = staminaBaseCapForAge(player.age);
+  player.staminaCap = player.staminaBaseCap + (player.staminaBonusCap || 0);
+  player.stamina = Math.min(player.staminaCap, Math.max(1, chapter.resources.stamina * 10));
+  player.spareHours = Math.max(1, chapter.resources.time);
+  player.spareHoursMax = Math.max(player.spareHours, chapter.resources.time);
+  player.money = Math.max(0, 100000 + digest.money);
+  digest.index += 1;
+
+  if (digest.index >= LIFE_DIGEST_CHAPTERS.length) {
+    renderLifeEndingScreen();
+    showScreen("screen-life-ending");
+  } else {
+    renderLifeDigestScreen();
+  }
+  renderHUD();
+}
+
+function strongestLifeDigestSoyou() {
+  return SOYOU_KEYS
+    .map((key) => ({ key, value: player.soyou[key] || 0 }))
+    .sort((a, b) => b.value - a.value)[0] || { key: "passion", value: 0 };
+}
+
+/**
+ * @screen S19 人生アルバム
+ * @spec docs/specs/SPEC-059-whole-life-digest.md §6
+ */
+function renderLifeEndingScreen() {
+  const digest = ensureLifeDigest();
+  const strongest = strongestLifeDigestSoyou();
+  byId("life-ending-summary").textContent =
+    `100歳。いちばん育った素養は「${LABELS[strongest.key]}」でした。`;
+  byId("life-ending-score").innerHTML = `
+    <div class="life-ending-stat"><span>ジョウネツ</span><b>${Math.floor(player.soyou.passion || 0)}</b></div>
+    <div class="life-ending-stat"><span>思い出</span><b>${digest.memories.length}</b></div>
+    <div class="life-ending-stat"><span>残ったカネ</span><b>${Math.max(0, player.money).toLocaleString()}円</b></div>
+  `;
+  byId("life-album-list").innerHTML = digest.memories.map((entry) => `
+    <li>
+      <b>${entry.age}歳：${escapeHtml(entry.label)}</b>
+      <span>${escapeHtml(entry.memory)}</span>
+      <small>${escapeHtml(entry.chapterTitle)}</small>
+    </li>
+  `).join("");
+}
+
+function restartLifeDigest() {
+  startLifeDigest();
+}
+
+function finishLifeDigest() {
+  const digest = ensureLifeDigest();
+  player.memorableDays = player.memorableDays || [];
+  for (const entry of digest.memories.slice(-5)) {
+    player.memorableDays.push({
+      day: player.day,
+      type: "life_digest",
+      emotionText: `${entry.age}歳：${entry.memory}`,
+    });
+  }
+  player.titles = player.titles || [];
+  if (!player.titles.some((t) => t.id === "title_life_album")) {
+    player.titles.push({
+      id: "title_life_album",
+      acquiredDay: player.day,
+      flavor: "100歳まで遊びの記憶をたどった",
+    });
+  }
+  player.age = 1;
+  player.staminaBaseCap = staminaBaseCapForAge(player.age);
+  player.staminaCap = player.staminaBaseCap + (player.staminaBonusCap || 0);
+  player.stamina = Math.min(player.staminaCap, 15);
+  player.spareHours = 8;
+  player.spareHoursMax = 8;
+  player.lifeDigest = null;
+  renderRecordScreen();
+  showScreen("screen-record");
+  renderHUD();
+}
+
+if (typeof window !== "undefined") {
+  window.__lifeDigestTestApi = {
+    startLifeDigest,
+    chooseLifeDigest,
+    renderLifeEndingScreen,
+    getChapters: () => LIFE_DIGEST_CHAPTERS,
+  };
 }
 
 /**
@@ -1971,6 +2330,7 @@ function showScreen(id) {
   if (hud) {
     hud.hidden = (id === "screen-title" || id === "screen-isekai");
   }
+  renderParamStrip(id);
 }
 
 /**
@@ -2223,42 +2583,65 @@ function renderHUD() {
     const loc = currentLocation();
     locEl.innerHTML = `${loc.icon || "📍"} <span>${loc.shortName || loc.name}</span>`;
   }
+  renderParamStrip();
 }
 
 /**
  * @spec SPEC-034 §5.2 素養カード 5 枚を描画
  * preview（プレビュー中の加算量）が渡されたら (+N) とグレードアップを重ねて表示する。
  */
-function renderSoyouList(preview) {
+function renderSoyouList(preview = null) {
   const host = byId("soyou-list");
+  renderParamStrip(undefined, preview);
   if (!host) return;
-  const cur = player.soyou || {};
   host.innerHTML = "";
-  for (const key of SOYOU_KEYS) {
+}
+
+const PARAM_STRIP_SCREEN_IDS = new Set([
+  "screen-choose",
+  "screen-playing",
+  "screen-event",
+  "screen-day-summary",
+  "screen-highlight",
+]);
+
+/**
+ * @spec docs/specs/SPEC-034-s2-hud-redesign.md §5.2
+ * @spec docs/specs/SPEC-035-result-summary-ui.md §4.4
+ * 5素養を HUD 直下に 2行×5列で固定表示する。
+ */
+function renderParamStrip(screenId, preview = null) {
+  const strip = byId("param-strip");
+  if (!strip) return;
+  const activeId = screenId || document.querySelector(".screen.active")?.id;
+  const visible = PARAM_STRIP_SCREEN_IDS.has(activeId);
+  strip.hidden = !visible;
+  if (!visible) return;
+
+  const labels = byId("param-strip-labels");
+  const values = byId("param-strip-values");
+  if (!labels || !values) return;
+  const cur = player.soyou || {};
+  labels.innerHTML = SOYOU_KEYS.map((key) => {
     const meta = SOYOU_META[key];
+    return `<div class="param-strip-label">${meta.icon} ${escapeHtml(meta.label)}</div>`;
+  }).join("");
+  values.innerHTML = SOYOU_KEYS.map((key) => {
     const value = Math.floor(cur[key] || 0);
     const grade = soyouGrade(value);
     const deltaRaw = preview && preview[key] ? Math.max(0, Math.round(preview[key])) : 0;
     const afterValue = value + deltaRaw;
     const afterGrade = soyouGrade(afterValue);
-    const gradeUp = deltaRaw > 0 && afterGrade !== grade;
-    const row = document.createElement("div");
-    row.className = "soyou-row"
-      + (deltaRaw > 0 ? " has-delta" : "")
-      + (gradeUp ? " grade-up" : "");
-    const valueHtml = deltaRaw > 0
-      ? `${value}<span class="soyou-value-arrow">→</span><span class="soyou-value-after">${afterValue}</span>`
-      : `${value}`;
-    const deltaHtml = deltaRaw > 0 ? `<span class="soyou-delta">+${deltaRaw}</span>` : `<span class="soyou-delta"></span>`;
-    row.innerHTML = `
-      <div class="soyou-icon">${meta.icon}</div>
-      <div class="soyou-label">${meta.label}</div>
-      <div class="soyou-grade grade-${gradeUp ? afterGrade : grade}">${gradeUp ? (grade + "→" + afterGrade) : grade}</div>
-      ${deltaHtml}
-      <div class="soyou-value">${valueHtml}</div>
+    const gradeText = deltaRaw > 0 && afterGrade !== grade ? `${grade}→${afterGrade}` : grade;
+    const delta = deltaRaw > 0 ? `<span class="param-strip-delta">+${deltaRaw}</span>` : "";
+    return `
+      <div class="param-strip-value">
+        <span class="param-strip-grade grade-${escapeHtml(afterGrade)}">${escapeHtml(gradeText)}</span>
+        <span class="param-strip-num">${afterValue}</span>
+        ${delta}
+      </div>
     `;
-    host.appendChild(row);
-  }
+  }).join("");
 }
 
 /**
@@ -3039,13 +3422,19 @@ function renderChooseScreen() {
     .sort((a, b) => (b.avail.ok ? 1 : 0) - (a.avail.ok ? 1 : 0));
 
   if (candidates.length === 0) {
-    dock.innerHTML = `<p style="color:var(--muted);padding:14px;">今できる遊びがありません</p>`;
+    const empty = document.createElement("p");
+    empty.className = "dock-empty";
+    empty.textContent = "今できる遊びがありません";
+    dock.appendChild(empty);
   }
 
   candidates.forEach(({ play, avail }) => {
     const btn = document.createElement("button");
     btn.className = "dock-icon" + (avail.isLowStamina ? " low-stamina" : "");
-    btn.textContent = play.icon;
+    btn.innerHTML = `
+      <span class="dock-main-icon">${play.icon}</span>
+      <span class="dock-label">${escapeHtml(play.name)}</span>
+    `;
     btn.setAttribute("aria-label", `${play.name}, ${play.timeCost}時間, ${
       Object.entries(play.gain).map(([k, v]) => `${LABELS[k]}+${v}`).join(", ")
     }`);
@@ -3054,50 +3443,85 @@ function renderChooseScreen() {
     dock.appendChild(btn);
   });
 
-  // @spec SPEC-002 §5.1.1 §5.1.2 / SPEC-023 §5.1 ドック最右端に 🌳 遊びツリーアイコン
-  // 遊びアイコンではなく「画面遷移ナビ」として、ピル型＋濃緑＋ラベルで差別化する。
-  const treeBtn = document.createElement("button");
-  treeBtn.className = "dock-icon dock-tree";
-  treeBtn.innerHTML = `
-    <span class="dock-tree-icon">🌳</span>
-    <span class="dock-tree-label">ツリー</span>
-  `;
-  treeBtn.setAttribute("aria-label", "遊びツリー画面へ遷移");
-  treeBtn.addEventListener("click", () => {
-    renderPlayTreeScreen();
-    showScreen("screen-tree");
-  });
-  dock.appendChild(treeBtn);
-
-  // @spec SPEC-058 §6 プロフィール導線名は「きろく」。SPEC-051 本実装前の簡易記録画面へ遷移。
-  const recordBtn = document.createElement("button");
-  recordBtn.className = "dock-icon dock-record";
-  recordBtn.innerHTML = `
-    <span class="dock-record-icon">🌱</span>
-    <span class="dock-record-label">きろく</span>
-  `;
-  recordBtn.setAttribute("aria-label", "きろく画面へ遷移");
-  recordBtn.addEventListener("click", () => {
-    renderRecordScreen();
-    showScreen("screen-record");
-  });
-  dock.appendChild(recordBtn);
+  renderS2Menu();
 
   // @spec SPEC-034 §5.1 §5.3 初期状態：プレビューは非表示、ヘッダーゴーストもクリア
   const wh = byId("wakeup-header"); if (wh) wh.hidden = true;
   const cp = byId("choose-prompt"); if (cp) cp.hidden = true;
   byId("preview").hidden = true;
   byId("preview-placeholder").hidden = true;
-  byId("btn-confirm-play").disabled = true;
+  const confirmBtn = byId("btn-confirm-play");
+  if (confirmBtn) confirmBtn.disabled = true;
   setStaminaGhostPreview(0);
   setHoursGhostPreview(0);
   // @spec SPEC-025 自動進行バナーは手動モード初期ではリセット
   const autoProg = byId("auto-progress");
   if (autoProg) autoProg.hidden = true;
-  byId("btn-confirm-play").textContent = "遊ぶ";
+  if (confirmBtn) confirmBtn.textContent = "遊ぶ";
 
   renderDailyFocusCard();
   renderHUD();
+}
+
+/**
+ * @spec docs/specs/SPEC-002-play-selection.md §5.1.3
+ * 遊び以外の操作を右下固定ハンバーガーメニューへ退避する。
+ */
+function renderS2Menu() {
+  const list = byId("s2-menu-list");
+  if (!list) return;
+  closeS2Menu();
+  const items = [
+    { icon: "☕", label: "1h休む", action: "do-nothing" },
+    { icon: "🌳", label: "ツリー", onClick: () => { renderPlayTreeScreen(); showScreen("screen-tree"); } },
+    { icon: "🌙", label: "今日おわる", action: "go-sleep" },
+    { icon: "🌱", label: "きろく", onClick: () => { renderRecordScreen(); showScreen("screen-record"); } },
+    { icon: "📚", label: "完走", action: "start-life-digest" },
+  ];
+  list.innerHTML = "";
+  for (const item of items) {
+    const btn = document.createElement("button");
+    btn.className = "s2-menu-item";
+    btn.type = "button";
+    btn.innerHTML = `<span class="s2-menu-item-icon">${item.icon}</span><span>${escapeHtml(item.label)}</span>`;
+    if (item.action) btn.dataset.menuAction = item.action;
+    if (item.onClick) btn.addEventListener("click", item.onClick);
+    list.appendChild(btn);
+  }
+  closeS2Menu();
+}
+
+function toggleS2Menu() {
+  const menu = byId("s2-menu");
+  const btn = byId("btn-s2-menu");
+  if (!menu || !btn) return;
+  const nextOpen = menu.hidden;
+  menu.hidden = !nextOpen;
+  btn.setAttribute("aria-expanded", nextOpen ? "true" : "false");
+}
+
+function closeS2Menu() {
+  const menu = byId("s2-menu");
+  const btn = byId("btn-s2-menu");
+  if (menu) menu.hidden = true;
+  if (btn) btn.setAttribute("aria-expanded", "false");
+}
+
+function handleS2MenuAction(action) {
+  closeS2Menu();
+  switch (action) {
+    case "do-nothing":
+      doNothing();
+      break;
+    case "go-sleep":
+      goSleep();
+      break;
+    case "start-life-digest":
+      startLifeDigest();
+      break;
+    default:
+      break;
+  }
 }
 
 /**
@@ -3157,16 +3581,20 @@ function selectPlay(id) {
     toast(`⚠ ${avail.reasons[0]}`);
   }
 
-  // 「遊ぶ」ボタンの enable/disable
+  // 旧「遊ぶ」ボタンは DOM 互換用。S2 の主操作は同じ遊びアイコンの再タップ。
   const confirmBtn = byId("btn-confirm-play");
   if (avail.ok) {
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = avail.isLowStamina
-      ? `⚠ 無理して ${play.icon} ${play.name}`
-      : `🎮 ${play.icon} ${play.name}`;
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = avail.isLowStamina
+        ? `⚠ 無理して ${play.icon} ${play.name}`
+        : `🎮 ${play.icon} ${play.name}`;
+    }
   } else {
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = "できない";
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = "できない";
+    }
   }
 }
 
@@ -3676,8 +4104,10 @@ function handleStaminaDepleted() {
 function renderResultPanel(before) {
   byId("result-panel").hidden = false;
 
-  // @spec SPEC-035 §7.1 素養カード形式で描画（差分ありのみ表示、グレードアップ演出）
+  // @spec SPEC-035 §4.4 素養は共通パラメーターバーへ集約する
   renderSoyouResultList(byId("result-soyou-list"), before.exp || {}, player.soyou || {});
+  const resultSoyouCard = byId("result-soyou-card");
+  if (resultSoyouCard) resultSoyouCard.hidden = true;
 
   // @spec SPEC-035 §6 スキル行（1 行 × N）
   const cats = (before.skillBefore && Object.keys(before.skillBefore)) || [];
@@ -5266,7 +5696,7 @@ function showHighlight() {
   // @spec SPEC-035 §7.3 遊んだ回数をピル形式で
   renderPlayPills(byId("highlight-play-pills"), h.playsById || {});
 
-  // @spec SPEC-035 §7.3 素養カード
+  // @spec SPEC-035 §4.4 素養は共通パラメーターバーに固定表示する。
   renderSoyouResultList(byId("highlight-soyou-list"), h.expBefore || {}, player.soyou || {});
   const hlSoyouCard = byId("highlight-soyou-card");
   if (hlSoyouCard) {
@@ -5605,6 +6035,12 @@ function consumeWeeklyHighlightIfPending() {
 // =========================================================================
 
 document.addEventListener("click", (e) => {
+  const menuItem = e.target.closest("[data-menu-action]");
+  if (menuItem && !menuItem.disabled) {
+    handleS2MenuAction(menuItem.dataset.menuAction);
+    return;
+  }
+
   const t = e.target.closest("[data-action]");
   if (!t || t.disabled) return;
   const a = t.dataset.action;
@@ -5619,6 +6055,40 @@ document.addEventListener("click", (e) => {
     case "close-record":
       // @spec docs/specs/SPEC-058-ui-design-prototypes.md §6 S17 → S2
       goChooseFromToday();
+      break;
+    case "toggle-s2-menu":
+      // @spec docs/specs/SPEC-002-play-selection.md §5.1.3 S2 ハンバーガーメニュー開閉
+      toggleS2Menu();
+      break;
+    case "open-tree":
+      closeS2Menu();
+      renderPlayTreeScreen();
+      showScreen("screen-tree");
+      break;
+    case "open-record":
+      closeS2Menu();
+      renderRecordScreen();
+      showScreen("screen-record");
+      break;
+    case "start-life-digest":
+      // @spec docs/specs/SPEC-059-whole-life-digest.md §5.2 S2 → S18
+      startLifeDigest();
+      break;
+    case "choose-life-digest":
+      // @spec docs/specs/SPEC-059-whole-life-digest.md §5.3 章選択
+      chooseLifeDigest(t.dataset.choiceId);
+      break;
+    case "cancel-life-digest":
+      // @spec docs/specs/SPEC-059-whole-life-digest.md §5.4 S18 → S2
+      cancelLifeDigest();
+      break;
+    case "restart-life-digest":
+      // @spec docs/specs/SPEC-059-whole-life-digest.md §6.2 S19 → S18
+      restartLifeDigest();
+      break;
+    case "finish-life-digest":
+      // @spec docs/specs/SPEC-059-whole-life-digest.md §6.3 S19 → S17
+      finishLifeDigest();
       break;
     case "confirm-passion":
       // @spec SPEC-025 §5.3
