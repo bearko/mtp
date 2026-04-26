@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カネとジカンとジョウネツと — デザインシステム &amp; UIモック</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* ── ゲームコアカラー ── */
+  --c-bg:        #0f0c1a;
+  --c-hud:       #1a1535;
+  --c-card:      rgba(30,25,60,0.92);
+  --c-dock:      rgba(10,8,25,0.97);
+  --c-border:    rgba(160,140,255,0.22);
+  --c-border-hi: rgba(167,139,250,0.55);
+
+  /* ── アクセントカラー ── */
+  --c-purple:  #a78bfa;
+  --c-gold:    #f5c842;
+  --c-green:   #4ade80;
+  --c-red:     #f87171;
+  --c-sky:     #38bdf8;
+  --c-orange:  #fb923c;
+  --c-pink:    #f472b6;
+
+  /* ── テキスト ── */
+  --c-text:    #f0eeff;
+  --c-text2:   rgba(210,200,255,0.72);
+  --c-text3:   rgba(160,150,220,0.5);
+
+  /* ── サーフェス ── */
+  --c-surface1: rgba(30,25,60,0.7);
+  --c-surface2: rgba(50,40,100,0.4);
+
+  --font: 'M PLUS Rounded 1c', sans-serif;
+  --serif: 'Noto Serif JP', serif;
+  --phone-w: 220px;
+  --phone-h: 470px;
+}
+
+/* ════════ PAGE ════════ */
+body {
+  font-family: var(--font);
+  background: #09071a;
+  color: var(--c-text);
+  min-height: 100vh;
+  padding: 0;
+}
+
+/* ════════ HEADER ════════ */
+.page-header {
+  background: linear-gradient(135deg, #0d0b20 0%, #1a1035 50%, #0d0b20 100%);
+  border-bottom: 1px solid rgba(167,139,250,0.18);
+  padding: 32px 48px 28px;
+  position: relative;
+  overflow: hidden;
+}
+.page-header::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 240px; height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(120,80,255,0.12), transparent 70%);
+}
+.page-header-title {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--c-text);
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+}
+.page-header-title span { color: var(--c-purple); }
+.page-header-sub {
+  font-size: 12px;
+  color: var(--c-text3);
+  letter-spacing: 0.06em;
+}
+.page-header-tags {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.htag {
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.htag-purple { background: rgba(167,139,250,0.15); color: var(--c-purple); border: 1px solid rgba(167,139,250,0.3); }
+.htag-gold   { background: rgba(245,200,66,0.12);  color: var(--c-gold);   border: 1px solid rgba(245,200,66,0.3); }
+.htag-green  { background: rgba(74,222,128,0.1);   color: var(--c-green);  border: 1px solid rgba(74,222,128,0.25); }
+
+/* ════════ SECTION LAYOUT ════════ */
+.section {
+  padding: 40px 48px;
+  border-bottom: 1px solid rgba(100,80,200,0.12);
+}
+.section-title {
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--c-purple);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(167,139,250,0.3), transparent);
+}
+
+/* ════════ DESIGN CHARTER ════════ */
+.charter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+.charter-card {
+  background: var(--c-card);
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+.charter-card-icon { font-size: 22px; margin-bottom: 10px; }
+.charter-card-title {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--c-text);
+  margin-bottom: 8px;
+  letter-spacing: 0.03em;
+}
+.charter-card-desc {
+  font-size: 11px;
+  color: var(--c-text2);
+  line-height: 1.7;
+}
+.charter-card-desc strong { color: var(--c-gold); font-weight: 700; }
+
+/* ════════ DESIGN SYSTEM ════════ */
+.ds-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+/* Color palette */
+.color-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.color-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.color-swatch {
+  width: 20px; height: 20px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.color-info { flex: 1; }
+.color-name { font-size: 10px; color: var(--c-text2); font-weight: 700; }
+.color-hex  { font-size: 9px;  color: var(--c-text3); }
+.color-use  { font-size: 8px;  color: var(--c-text3); margin-top: 1px; }
+
+/* Grade system */
+.grade-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.grade-pill {
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+}
+.g-A { background: rgba(245,200,66,0.15);  color: #f5c842; }
+.g-B { background: rgba(56,189,248,0.15);  color: #38bdf8; }
+.g-C { background: rgba(74,222,128,0.15);  color: #4ade80; }
+.g-D { background: rgba(251,146,60,0.15);  color: #fb923c; }
+.g-E { background: rgba(148,163,184,0.15); color: #94a3b8; }
+.g-F { background: rgba(100,80,180,0.1);   color: #6d6a9e; }
+.g-G { background: rgba(60,50,100,0.1);    color: #4d4a70; }
+
+/* Typography */
+.type-items { display: flex; flex-direction: column; gap: 10px; }
+.type-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid rgba(100,80,200,0.1);
+  padding-bottom: 6px;
+}
+.type-label { font-size: 9px; color: var(--c-text3); }
+
+/* Component tokens */
+.token-list { display: flex; flex-direction: column; gap: 6px; }
+.token-item { display: flex; justify-content: space-between; }
+.token-key   { font-size: 10px; color: var(--c-text3); }
+.token-val   { font-size: 10px; color: var(--c-purple); font-weight: 700; }
+
+/* ════════ ISSUES / IMPROVEMENTS ════════ */
+.issue-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.issue-card {
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 10px;
+}
+.issue-card.bad  { background: rgba(248,113,113,0.07); border: 1px solid rgba(248,113,113,0.2); }
+.issue-card.good { background: rgba(74,222,128,0.05);  border: 1px solid rgba(74,222,128,0.18); }
+.issue-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.issue-body { flex: 1; }
+.issue-tag {
+  display: inline-block;
+  font-size: 9px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+.tag-bad  { background: rgba(248,113,113,0.15); color: var(--c-red); }
+.tag-good { background: rgba(74,222,128,0.15);  color: var(--c-green); }
+.issue-text { font-size: 11px; color: var(--c-text2); line-height: 1.6; }
+
+/* ════════ SCREEN MOCKS ════════ */
+.mocks-area {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.screen-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; flex-shrink: 0; }
+.screen-label {
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--c-purple);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* ── Phone frame ── */
+.phone {
+  width: var(--phone-w);
+  height: var(--phone-h);
+  background: var(--c-bg);
+  border-radius: 30px;
+  border: 2px solid rgba(130,100,255,0.35);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.03),
+    0 20px 60px rgba(0,0,0,0.6),
+    0 0 40px rgba(100,60,255,0.1);
+}
+
+/* ── HUD ── */
+.hud {
+  background: var(--c-hud);
+  border-bottom: 1px solid var(--c-border);
+  padding: 9px 11px 8px;
+  display: grid;
+  grid-template-columns: 2fr 3fr 2fr;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.hud-col { display: flex; flex-direction: column; gap: 2px; }
+.hud-col.c { align-items: center; }
+.hud-col.r { align-items: flex-end; }
+
+.hud-stage { font-size: 8px; font-weight: 700; color: var(--c-purple); letter-spacing: 0.03em; white-space: nowrap; }
+.hud-age   { font-size: 12px; font-weight: 900; color: var(--c-text); }
+.hud-time  { font-size: 9px; color: var(--c-gold); font-weight: 700; }
+.hud-date  { font-size: 7.5px; color: var(--c-text2); }
+.hud-rhythm{ font-size: 9.5px; font-weight: 700; color: var(--c-green); }
+
+.hud-sta-wrap { display: flex; align-items: center; gap: 3px; width: 100%; }
+.hud-sta-bar  {
+  flex: 1; height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px; overflow: hidden; position: relative;
+}
+.hud-sta-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.sta-high { background: var(--c-green); }
+.sta-mid  { background: var(--c-gold); }
+.sta-low  { background: var(--c-red); }
+.hud-sta-ghost {
+  position: absolute; top: 0; right: 0; height: 100%;
+  background: rgba(248,113,113,0.4); border-radius: 0 3px 3px 0; width: 18%;
+}
+.hud-sta-num { font-size: 7px; color: var(--c-text3); white-space: nowrap; }
+
+.hud-stat { font-size: 8px; color: var(--c-text2); display: flex; gap: 3px; align-items: center; }
+.hud-stat b { color: var(--c-text); font-weight: 700; }
+
+/* ── Mission banner ── */
+.mission-bar {
+  background: rgba(80,40,160,0.5);
+  border-bottom: 1px solid rgba(160,100,255,0.25);
+  padding: 4px 11px;
+  display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0;
+}
+.m-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--c-gold); flex-shrink: 0; }
+.m-text { font-size: 8px; color: var(--c-gold); font-weight: 700; }
+
+/* ── Main area ── */
+.main {
+  flex: 1; overflow: hidden;
+  display: flex; flex-direction: column;
+  padding: 8px 9px 0; gap: 5px;
+}
+
+/* ── Soyou cards ── */
+.soyou-list { display: flex; flex-direction: column; gap: 3px; }
+.soyou-card {
+  background: var(--c-card);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 4px 8px;
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  align-items: center; gap: 4px;
+  transition: border-color 0.2s;
+}
+.soyou-card.hi { border-color: var(--c-gold); background: rgba(245,200,66,0.06); }
+.sc-icon { font-size: 10px; }
+.sc-name { font-size: 9px; color: var(--c-text2); font-weight: 700; }
+.sc-grade { font-size: 15px; font-weight: 900; text-align: right; line-height: 1; }
+.gA { color: var(--c-gold); } .gB { color: var(--c-sky); } .gC { color: var(--c-green); }
+.gD { color: var(--c-orange); } .gE { color: #94a3b8; } .gF { color: #6d6a9e; }
+.sc-val   { font-size: 8px; color: var(--c-text3); text-align: right; }
+.sc-delta { font-size: 8px; color: var(--c-green); font-weight: 700; }
+
+/* ── Skill tags ── */
+.skill-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+.skill-tag {
+  font-size: 7px; border-radius: 4px;
+  padding: 2px 5px; font-weight: 700;
+}
+.st-g { background: rgba(74,222,128,0.12); color: var(--c-green); }
+.st-y { background: rgba(245,200,66,0.18); color: var(--c-gold); }
+
+/* ── Dock ── */
+.dock {
+  background: var(--c-dock);
+  border-top: 1px solid var(--c-border);
+  padding: 7px 9px 10px;
+  flex-shrink: 0;
+}
+.dock-plays {
+  display: flex; gap: 5px; margin-bottom: 6px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.dock-plays::-webkit-scrollbar { display: none; }
+.play-btn {
+  flex-shrink: 0; width: 50px;
+  border-radius: 10px;
+  background: rgba(120,100,255,0.12);
+  border: 1px solid rgba(140,120,255,0.25);
+  padding: 5px 3px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.play-btn.sel { background: rgba(167,139,250,0.22); border-color: var(--c-purple); }
+.pb-icon { font-size: 18px; line-height: 1; }
+.pb-name { font-size: 7px; color: var(--c-text2); font-weight: 700; text-align: center; }
+.pb-cost { font-size: 7px; color: var(--c-gold); font-weight: 700; }
+.pb-tree { color: var(--c-text3); }
+
+.dock-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+.dac {
+  border-radius: 8px; padding: 6px 2px;
+  font-size: 8px; font-weight: 700;
+  font-family: var(--font);
+  border: 1px solid; text-align: center;
+}
+.dac-play  { background: rgba(167,139,250,0.2); border-color: var(--c-purple); color: var(--c-purple); }
+.dac-rest  { background: rgba(56,189,248,0.08); border-color: var(--c-sky);    color: var(--c-sky); }
+.dac-sleep { background: rgba(100,80,200,0.1);  border-color: rgba(120,100,200,0.3); color: var(--c-text3); }
+
+/* ── S3 Result ── */
+.play-scene {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; padding: 10px 0; gap: 7px;
+}
+.scene-art {
+  width: 88px; height: 70px;
+  border-radius: 14px;
+  background: rgba(60,40,120,0.55);
+  border: 1px solid rgba(140,100,255,0.28);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px; position: relative; overflow: hidden;
+}
+.scene-art::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 20%, rgba(167,139,250,0.12), transparent 70%);
+}
+.scene-title { font-size: 13px; font-weight: 900; color: var(--c-text); }
+
+.result-gains { width: 100%; display: flex; flex-direction: column; gap: 4px; }
+.gain-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--c-card); border: 1px solid var(--c-border);
+  border-radius: 7px; padding: 4px 8px;
+}
+.gain-lbl { font-size: 9px; color: var(--c-text2); font-weight: 700; }
+.gain-side { display: flex; align-items: center; gap: 6px; }
+.gain-val { font-size: 11px; font-weight: 900; color: var(--c-green); }
+.gain-val.neg { color: var(--c-red); }
+.gain-badge {
+  font-size: 8px;
+  background: rgba(74,222,128,0.12); color: var(--c-green);
+  border: 1px solid rgba(74,222,128,0.28);
+  border-radius: 4px; padding: 1px 5px; font-weight: 700;
+}
+.result-comment {
+  width: 100%;
+  background: rgba(60,40,120,0.35);
+  border: 1px solid rgba(140,100,255,0.18);
+  border-radius: 7px; padding: 5px 8px;
+  font-size: 8.5px; color: var(--c-text2);
+  line-height: 1.55; font-style: italic;
+}
+.result-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.res-btn {
+  border-radius: 9px; padding: 7px 3px;
+  font-size: 8.5px; font-weight: 700;
+  font-family: var(--font); border: 1px solid; text-align: center;
+}
+.res-primary { background: rgba(167,139,250,0.2); border-color: var(--c-purple); color: var(--c-purple); }
+.res-sec     { background: rgba(56,189,248,0.08); border-color: var(--c-sky);    color: var(--c-sky); }
+
+/* ── S10 Summary ── */
+.renraku-hdr {
+  background: rgba(245,200,66,0.07);
+  border: 1px solid rgba(245,200,66,0.2);
+  border-radius: 8px; padding: 6px 9px; flex-shrink: 0;
+}
+.renraku-title-t { font-size: 9px; font-weight: 900; color: var(--c-gold); letter-spacing: 0.04em; }
+.renraku-date-t  { font-size: 7.5px; color: var(--c-text3); margin-top: 1px; }
+
+.renraku-list { display: flex; flex-direction: column; gap: 4px; flex: 1; overflow-y: auto; }
+.renraku-list::-webkit-scrollbar { display: none; }
+.renraku-entry {
+  background: var(--c-card);
+  border: 1px solid var(--c-border);
+  border-radius: 8px; padding: 5px 9px;
+}
+.re-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+.re-name { font-size: 9.5px; font-weight: 900; color: var(--c-text); }
+.re-time { font-size: 7.5px; color: var(--c-text3); }
+.re-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.chip {
+  font-size: 7px; border-radius: 4px; padding: 1px 5px; font-weight: 700;
+}
+.ch-body   { background: rgba(74,222,128,0.12); color: var(--c-green); }
+.ch-intel  { background: rgba(56,189,248,0.12); color: var(--c-sky); }
+.ch-sense  { background: rgba(244,114,182,0.12); color: var(--c-pink); }
+.ch-social { background: rgba(245,200,66,0.12); color: var(--c-gold); }
+
+.day-total {
+  background: rgba(120,80,255,0.1);
+  border: 1px solid rgba(150,100,255,0.22);
+  border-radius: 8px; padding: 6px 9px;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-shrink: 0;
+}
+.dt-lbl { font-size: 8px; color: var(--c-text2); font-weight: 700; }
+.dt-val { font-size: 15px; font-weight: 900; color: var(--c-purple); }
+
+.s10-next {
+  background: rgba(167,139,250,0.15);
+  border: 1px solid var(--c-purple);
+  border-radius: 9px; padding: 8px;
+  font-size: 9px; font-weight: 900;
+  color: var(--c-purple); font-family: var(--font);
+  text-align: center; flex-shrink: 0; margin-top: 4px;
+}
+
+/* ════════ FOOTER CHARTER ════════ */
+.charter-full {
+  background: var(--c-hud);
+  border-top: 1px solid var(--c-border);
+  padding: 40px 48px;
+}
+.charter-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 20px;
+}
+.ch-col-title {
+  font-size: 10px; font-weight: 900; color: var(--c-purple);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(167,139,250,0.2);
+  padding-bottom: 6px;
+}
+.ch-rule {
+  font-size: 10.5px; color: var(--c-text2);
+  line-height: 1.65; margin-bottom: 8px;
+  display: flex; gap: 7px;
+}
+.ch-rule-num {
+  color: var(--c-purple); font-weight: 900;
+  font-size: 9px; flex-shrink: 0; margin-top: 2px;
+}
+</style>
+</head>
+<body>
+
+<!-- ════════ HEADER ════════ -->
+<div class="page-header">
+  <div class="page-header-title">カネとジカンとジョウネツと — <span>デザインシステム &amp; UIモック</span></div>
+  <div class="page-header-sub">DESIGN SYSTEM · UI MOCKUP · DESIGN CHARTER · 2026-04-26</div>
+  <div class="page-header-tags">
+    <span class="htag htag-purple">ウマ娘風 ゲームHUD</span>
+    <span class="htag htag-gold">スキマ時間ファースト</span>
+    <span class="htag htag-green">スマホ縦画面 220px</span>
+    <span class="htag htag-purple">絵本タッチ × ゲーム感</span>
+  </div>
+</div>
+
+<!-- ════════ §1 デザイン憲章 ════════ -->
+<div class="section">
+  <div class="section-title">§1 &nbsp;デザイン憲章 — Design Charter</div>
+  <div class="charter-grid">
+
+    <div class="charter-card">
+      <div class="charter-card-icon">⏱</div>
+      <div class="charter-card-title">30秒ループ原則</div>
+      <div class="charter-card-desc">
+        1ターンは<strong>30秒以内</strong>で完結する。
+        情報は「読む」ではなく「見る」で把握できること。
+        スキマ時間に自然に手が伸びる軽快さを最優先する。
+        タップ数は常に最小化し、1アクション=1インテント。
+      </div>
+    </div>
+
+    <div class="charter-card">
+      <div class="charter-card-icon">👁</div>
+      <div class="charter-card-title">情報は「見せる」</div>
+      <div class="charter-card-desc">
+        HUDは<strong>3列グリッド</strong>で情報を分離。
+        体力ゲージを太く主役に置き、数値に頼らず
+        ひと目で状態が分かる。グレード表示（A〜G）は
+        色だけで良否が判断できるよう設計する。
+      </div>
+    </div>
+
+    <div class="charter-card">
+      <div class="charter-card-icon">✨</div>
+      <div class="charter-card-title">ゴーストプレビュー</div>
+      <div class="charter-card-desc">
+        選択前に<strong>コストと効果を可視化</strong>する。
+        体力ゲージには半透明の赤で消費量を重ね、
+        素養カードには「+N」デルタを並列表示。
+        「選んで驚く」ではなく「選ぶ前から分かる」設計。
+      </div>
+    </div>
+
+    <div class="charter-card">
+      <div class="charter-card-icon">🌙</div>
+      <div class="charter-card-title">ダーク基調 × 季節演出</div>
+      <div class="charter-card-desc">
+        深夜ダークパープルを<strong>ベース</strong>に置き、
+        ゴールド（カネ）・グリーン（獲得）・レッド（コスト）で
+        ゲームの文脈を色で語る。
+        季節ごとに背景グラデーションのアクセントが変化する。
+      </div>
+    </div>
+
+    <div class="charter-card">
+      <div class="charter-card-icon">📓</div>
+      <div class="charter-card-title">絵本 × ゲームのハイブリッド</div>
+      <div class="charter-card-desc">
+        HUD・ドックは<strong>機能的ゲームUI</strong>。
+        S3結果画面・S10連絡帳は<strong>絵本的温かみ</strong>。
+        ゲームっぽさと物語っぽさを画面の役割で使い分ける。
+        描写コメントは斜体で「子どもの一人称」に統一。
+      </div>
+    </div>
+
+    <div class="charter-card">
+      <div class="charter-card-icon">🔇</div>
+      <div class="charter-card-title">音なしでも伝わる</div>
+      <div class="charter-card-desc">
+        通勤・電車プレイを想定。
+        結果の種別（獲得/コスト）は<strong>色と記号</strong>で表現。
+        SEなしでも「うまくいった」「消費した」が
+        直感的に分かる視覚言語を徹底する。
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════ §2 デザインシステム ════════ -->
+<div class="section">
+  <div class="section-title">§2 &nbsp;デザインシステム — Design System</div>
+  <div class="ds-row">
+
+    <!-- Color palette -->
+    <div>
+      <div style="font-size:10px;font-weight:900;color:var(--c-text2);margin-bottom:10px;letter-spacing:0.06em">COLORS</div>
+      <div class="color-grid">
+        <div class="color-item">
+          <div class="color-swatch" style="background:#0f0c1a"></div>
+          <div class="color-info">
+            <div class="color-name">Game BG</div>
+            <div class="color-hex">#0f0c1a</div>
+          </div>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background:#1a1535"></div>
+          <div class="color-info">
+            <div class="color-name">HUD BG</div>
+            <div class="color-hex">#1a1535</div>
+          </div>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background:#a78bfa"></div>
+          <div class="color-info">
+            <div class="color-name">Purple — 主軸アクセント</div>
+            <div class="color-hex">#a78bfa</div>
+            <div class="color-use">HUDラベル / グレード表示 / CTAボタン</div>
+          </div>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background:#f5c842"></div>
+          <div class="color-info">
+            <div class="color-name">Gold — カネ / 時間コスト</div>
+            <div class="color-hex">#f5c842</div>
+            <div class="color-use">残り時間 / 所持金 / ミッションバナー</div>
+          </div>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background:#4ade80"></div>
+          <div class="color-info">
+            <div class="color-name">Green — 獲得 / 上昇</div>
+            <div class="color-hex">#4ade80</div>
+            <div class="color-use">素養デルタ / 体力高 / 結果ポジティブ</div>
+          </div>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background:#f87171"></div>
+          <div class="color-info">
+            <div class="color-name">Red — コスト / 消費</div>
+            <div class="color-hex">#f87171</div>
+            <div class="color-use">体力消費 / 時間消費 / ゴーストプレビュー</div>
+          </div>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background:#38bdf8"></div>
+          <div class="color-info">
+            <div class="color-name">Sky — セカンダリCTA</div>
+            <div class="color-hex">#38bdf8</div>
+            <div class="color-use">「次を選ぶ」「1h休む」ボタン</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grade system + Typography -->
+    <div>
+      <div style="font-size:10px;font-weight:900;color:var(--c-text2);margin-bottom:10px;letter-spacing:0.06em">GRADE SYSTEM</div>
+      <div class="grade-row">
+        <div class="grade-pill g-A">A</div>
+        <div class="grade-pill g-B">B</div>
+        <div class="grade-pill g-C">C</div>
+        <div class="grade-pill g-D">D</div>
+        <div class="grade-pill g-E">E</div>
+        <div class="grade-pill g-F">F</div>
+        <div class="grade-pill g-G">G</div>
+      </div>
+      <div style="font-size:10px;color:var(--c-text3);margin-bottom:16px;margin-top:6px;line-height:1.6">
+        A=金(140+) / B=水(110+) / C=緑(80+) / D=橙(66+)<br>
+        E=灰(40+) / F=紫灰(20+) / G=最低(0+)
+      </div>
+
+      <div style="font-size:10px;font-weight:900;color:var(--c-text2);margin-bottom:10px;letter-spacing:0.06em">TYPOGRAPHY</div>
+      <div class="type-items">
+        <div class="type-row">
+          <div class="type-label">ゲーム見出し / 900</div>
+          <div style="font-size:16px;font-weight:900;color:var(--c-text)">砂場遊び</div>
+        </div>
+        <div class="type-row">
+          <div class="type-label">HUD数値 / 900</div>
+          <div style="font-size:13px;font-weight:900;color:var(--c-purple)">5歳 · 絶好調</div>
+        </div>
+        <div class="type-row">
+          <div class="type-label">カードラベル / 700</div>
+          <div style="font-size:11px;font-weight:700;color:var(--c-text2)">身体 · 知性 · 感性</div>
+        </div>
+        <div class="type-row">
+          <div class="type-label">補助テキスト / 400</div>
+          <div style="font-size:10px;color:var(--c-text3)">保育園1年目 · 春</div>
+        </div>
+        <div class="type-row">
+          <div class="type-label">コメント（斜体）</div>
+          <div style="font-size:10px;color:var(--c-text2);font-style:italic">「風を切って走った！」</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Component tokens -->
+    <div>
+      <div style="font-size:10px;font-weight:900;color:var(--c-text2);margin-bottom:10px;letter-spacing:0.06em">COMPONENT TOKENS</div>
+      <div class="token-list">
+        <div class="token-item"><span class="token-key">Card border-radius</span><span class="token-val">8–14px</span></div>
+        <div class="token-item"><span class="token-key">Phone border-radius</span><span class="token-val">30px</span></div>
+        <div class="token-item"><span class="token-key">Card border</span><span class="token-val">1px rgba(160,140,255,0.22)</span></div>
+        <div class="token-item"><span class="token-key">Soyou card height</span><span class="token-val">26px (grid)</span></div>
+        <div class="token-item"><span class="token-key">Stamina bar height</span><span class="token-val">6px</span></div>
+        <div class="token-item"><span class="token-key">Dock btn min height</span><span class="token-val">52px</span></div>
+        <div class="token-item"><span class="token-key">Play btn width</span><span class="token-val">50px</span></div>
+        <div class="token-item"><span class="token-key">HUD grid</span><span class="token-val">2fr 3fr 2fr</span></div>
+        <div class="token-item"><span class="token-key">Animation duration</span><span class="token-val">220ms</span></div>
+        <div class="token-item"><span class="token-key">Font family</span><span class="token-val">M PLUS Rounded 1c</span></div>
+        <div class="token-item"><span class="token-key">Min text size</span><span class="token-val">7px (補助)</span></div>
+        <div class="token-item"><span class="token-key">HUD min height</span><span class="token-val">56px</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════ §3 課題 & 改善案 ════════ -->
+<div class="section">
+  <div class="section-title">§3 &nbsp;現状の課題 → 改善案</div>
+  <div class="issue-grid">
+
+    <div class="issue-card bad">
+      <div class="issue-icon">✕</div>
+      <div class="issue-body">
+        <div class="issue-tag tag-bad">旧 HUD — 情報圧縮</div>
+        <div class="issue-text">体力・リズム・時計・ライフステージが横一行に詰め込まれ、瞬時の状態把握が困難。特に体力ゲージが細く、緊急度を感じにくい。</div>
+      </div>
+    </div>
+
+    <div class="issue-card good">
+      <div class="issue-icon">✓</div>
+      <div class="issue-body">
+        <div class="issue-tag tag-good">新 HUD — 3列グリッド化</div>
+        <div class="issue-text">左：ステージ/年齢/残時間、中央：日付/リズム/太い体力ゲージ、右：金/友人/場所。役割別に分離し、体力ゲージを中央エリアの主役に据える。</div>
+      </div>
+    </div>
+
+    <div class="issue-card bad">
+      <div class="issue-icon">✕</div>
+      <div class="issue-body">
+        <div class="issue-tag tag-bad">旧 S2 — 選択前に情報なし</div>
+        <div class="issue-text">遊びをタップして初めてコスト・効果が分かる設計。不確実なまま選ばなければならず、やり直しができないゲーム性と相性が悪い。</div>
+      </div>
+    </div>
+
+    <div class="issue-card good">
+      <div class="issue-icon">✓</div>
+      <div class="issue-body">
+        <div class="issue-tag tag-good">新 S2 — ゴーストプレビュー</div>
+        <div class="issue-text">dock でアイコンをタップするとプレビューモードに。体力ゲージに赤ゴーストが重なり、素養カードに「+N」デルタが現れる。もう一度タップで確定。</div>
+      </div>
+    </div>
+
+    <div class="issue-card bad">
+      <div class="issue-icon">✕</div>
+      <div class="issue-body">
+        <div class="issue-tag tag-bad">旧 S2 — delta バッジの可読性</div>
+        <div class="issue-text">素養カードの「+N」が実数値の上に position:absolute で重なり、「10」の上に「+10」が被って読めない状態（SPEC-034 §6.3で指摘済）。</div>
+      </div>
+    </div>
+
+    <div class="issue-card good">
+      <div class="issue-icon">✓</div>
+      <div class="issue-body">
+        <div class="issue-tag tag-good">新 — grid 5列で並列表示</div>
+        <div class="issue-text">icon | label | grade | delta | value の5列gridに変更。deltaセルを独立させ「+12」と「82」を同時に確認できる。空の場合は空セルで位置を固定。</div>
+      </div>
+    </div>
+
+    <div class="issue-card bad">
+      <div class="issue-icon">✕</div>
+      <div class="issue-body">
+        <div class="issue-tag tag-bad">旧 S3 — 3ボタンの誤タップリスク</div>
+        <div class="issue-text">「もう一度遊ぶ / 次の遊びを選ぶ / 今日おわる」の3ボタン配置で、スキマ時間プレイ中に誤タップしやすく、巻き戻しができないゲームで致命的。</div>
+      </div>
+    </div>
+
+    <div class="issue-card good">
+      <div class="issue-icon">✓</div>
+      <div class="issue-body">
+        <div class="issue-tag tag-good">新 S3 — 2ボタン + 自動就寝</div>
+        <div class="issue-text">「もう一度 / 次を選ぶ」の2ボタンに整理。余剰時間ゼロで自動的に「おやすみ」が出るため、能動的な「今日おわる」は不要と判断（SPEC-034 §6.1）。</div>
+      </div>
+    </div>
+
+    <div class="issue-card bad">
+      <div class="issue-icon">✕</div>
+      <div class="issue-body">
+        <div class="issue-tag tag-bad">旧 S10 — 連絡帳の世界観が薄い</div>
+        <div class="issue-text">日サマリが汎用的なリスト表示で終わり、「保育園の連絡帳」という世界観演出がコードの文字列だけに留まっている。没入感に欠ける。</div>
+      </div>
+    </div>
+
+    <div class="issue-card good">
+      <div class="issue-icon">✓</div>
+      <div class="issue-body">
+        <div class="issue-tag tag-good">新 S10 — 連絡帳フレーム + チップ</div>
+        <div class="issue-text">ゴールドボーダーの連絡帳ヘッダーで世界観を演出。各遊びの結果を色分けチップ（身体/知性/感性/社交）で可視化。今日の情熱スコアを大きく表示して達成感を演出。</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════ §4 UIモック ════════ -->
+<div class="section">
+  <div class="section-title">§4 &nbsp;UIモック — Screen Mockups</div>
+  <div class="mocks-area">
+
+    <!-- ─── S2 ─── -->
+    <div class="screen-wrap">
+      <div class="screen-label">S2 · 遊びを選ぶ</div>
+      <div class="phone">
+
+        <div class="hud">
+          <div class="hud-col">
+            <div class="hud-stage">保育園1年目</div>
+            <div class="hud-age">5歳</div>
+            <div class="hud-time">あと 5h</div>
+          </div>
+          <div class="hud-col c">
+            <div class="hud-date">2026年4月1日（水）</div>
+            <div class="hud-rhythm">🤩 絶好調</div>
+            <div class="hud-sta-wrap">
+              <div class="hud-sta-bar">
+                <div class="hud-sta-fill sta-high" style="width:80%"></div>
+                <div class="hud-sta-ghost"></div>
+              </div>
+              <div class="hud-sta-num">12/15</div>
+            </div>
+          </div>
+          <div class="hud-col r">
+            <div class="hud-stat">👥 <b>2</b></div>
+            <div class="hud-stat">🏠 <b>自宅</b></div>
+          </div>
+        </div>
+
+        <div class="mission-bar">
+          <div class="m-dot"></div>
+          <div class="m-text">💭 もうすぐ何か…</div>
+        </div>
+
+        <div class="main">
+          <div class="soyou-list">
+            <div class="soyou-card hi">
+              <div class="sc-icon">💪</div>
+              <div class="sc-name">身体</div>
+              <div class="sc-grade gC">C</div>
+              <div style="text-align:right">
+                <div class="sc-delta">+12</div>
+                <div class="sc-val">82</div>
+              </div>
+            </div>
+            <div class="soyou-card">
+              <div class="sc-icon">🧠</div>
+              <div class="sc-name">知性</div>
+              <div class="sc-grade gB">B</div>
+              <div style="text-align:right">
+                <div class="sc-delta" style="visibility:hidden">·</div>
+                <div class="sc-val">110</div>
+              </div>
+            </div>
+            <div class="soyou-card">
+              <div class="sc-icon">🎨</div>
+              <div class="sc-name">感性</div>
+              <div class="sc-grade gD">D</div>
+              <div style="text-align:right">
+                <div class="sc-delta">+5</div>
+                <div class="sc-val">68</div>
+              </div>
+            </div>
+            <div class="soyou-card">
+              <div class="sc-icon">👥</div>
+              <div class="sc-name">社交</div>
+              <div class="sc-grade gE">E</div>
+              <div style="text-align:right">
+                <div class="sc-delta" style="visibility:hidden">·</div>
+                <div class="sc-val">45</div>
+              </div>
+            </div>
+            <div class="soyou-card">
+              <div class="sc-icon">🔥</div>
+              <div class="sc-name">情熱</div>
+              <div class="sc-grade gF">F</div>
+              <div style="text-align:right">
+                <div class="sc-delta" style="visibility:hidden">·</div>
+                <div class="sc-val">25</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="skill-tags">
+            <div class="skill-tag st-g">#running</div>
+            <div class="skill-tag st-g">#physical</div>
+            <div class="skill-tag st-y">#new!</div>
+          </div>
+        </div>
+
+        <div class="dock">
+          <div class="dock-plays">
+            <div class="play-btn sel">
+              <div class="pb-icon">🏃</div>
+              <div class="pb-name">かけっこ</div>
+              <div class="pb-cost">−3h</div>
+            </div>
+            <div class="play-btn">
+              <div class="pb-icon">📚</div>
+              <div class="pb-name">絵本</div>
+              <div class="pb-cost">−1h</div>
+            </div>
+            <div class="play-btn">
+              <div class="pb-icon">🧱</div>
+              <div class="pb-name">ブロック</div>
+              <div class="pb-cost">−2h</div>
+            </div>
+            <div class="play-btn">
+              <div class="pb-icon">🎨</div>
+              <div class="pb-name">お絵かき</div>
+              <div class="pb-cost">−1h</div>
+            </div>
+            <div class="play-btn">
+              <div class="pb-icon">🌳</div>
+              <div class="pb-name">ツリー</div>
+              <div class="pb-cost pb-tree">一覧</div>
+            </div>
+          </div>
+          <div class="dock-actions">
+            <div class="dac dac-play">▶ 遊ぶ</div>
+            <div class="dac dac-rest">💤 1h休む</div>
+            <div class="dac dac-sleep">🌙 おわる</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─── S3 ─── -->
+    <div class="screen-wrap">
+      <div class="screen-label">S3 · 遊びの描写</div>
+      <div class="phone">
+
+        <div class="hud">
+          <div class="hud-col">
+            <div class="hud-stage">保育園1年目</div>
+            <div class="hud-age">5歳</div>
+            <div class="hud-time">あと 2h</div>
+          </div>
+          <div class="hud-col c">
+            <div class="hud-date">2026年4月1日（水）</div>
+            <div class="hud-rhythm">🤩 絶好調</div>
+            <div class="hud-sta-wrap">
+              <div class="hud-sta-bar">
+                <div class="hud-sta-fill sta-mid" style="width:60%"></div>
+              </div>
+              <div class="hud-sta-num">9/15</div>
+            </div>
+          </div>
+          <div class="hud-col r">
+            <div class="hud-stat">👥 <b>2</b></div>
+            <div class="hud-stat">🏠 <b>自宅</b></div>
+          </div>
+        </div>
+
+        <div class="main" style="padding-top:10px;gap:8px">
+          <div class="play-scene" style="flex:unset;padding:0">
+            <div class="scene-art">🏃</div>
+            <div class="scene-title">かけっこをした！</div>
+
+            <div class="result-gains">
+              <div class="gain-row">
+                <div class="gain-lbl">💪 身体</div>
+                <div class="gain-side">
+                  <div class="gain-badge">C → C+</div>
+                  <div class="gain-val">+12</div>
+                </div>
+              </div>
+              <div class="gain-row">
+                <div class="gain-lbl">🎨 感性</div>
+                <div class="gain-side">
+                  <div class="gain-val">+5</div>
+                </div>
+              </div>
+              <div class="gain-row">
+                <div class="gain-lbl">⏱ 時間</div>
+                <div class="gain-val neg">−3h</div>
+              </div>
+              <div class="gain-row">
+                <div class="gain-lbl">❤️ 体力</div>
+                <div class="gain-val neg">−3</div>
+              </div>
+            </div>
+
+            <div class="result-comment">
+              「風を切って走った！ 足がじんじんしてるけど、気持ちいい！」
+            </div>
+
+            <div class="result-actions">
+              <div class="res-btn res-primary">🔁 もう一度</div>
+              <div class="res-btn res-sec">▶ 次を選ぶ</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─── S10 ─── -->
+    <div class="screen-wrap">
+      <div class="screen-label">S10 · 連絡帳サマリ</div>
+      <div class="phone">
+
+        <div class="hud">
+          <div class="hud-col">
+            <div class="hud-stage">保育園1年目</div>
+            <div class="hud-age">5歳</div>
+            <div class="hud-time" style="color:var(--c-text3)">今日おわり</div>
+          </div>
+          <div class="hud-col c">
+            <div class="hud-date">2026年4月1日（水）</div>
+            <div class="hud-rhythm">🤩 絶好調</div>
+            <div class="hud-sta-wrap">
+              <div class="hud-sta-bar">
+                <div class="hud-sta-fill sta-low" style="width:27%"></div>
+              </div>
+              <div class="hud-sta-num">4/15</div>
+            </div>
+          </div>
+          <div class="hud-col r">
+            <div class="hud-stat">👥 <b>2</b></div>
+            <div class="hud-stat">🏠 <b>自宅</b></div>
+          </div>
+        </div>
+
+        <div class="main" style="gap:6px">
+          <div class="renraku-hdr">
+            <div class="renraku-title-t">📓 連絡帳 — 今日のきろく</div>
+            <div class="renraku-date-t">2026年4月1日（水）· 春 · 5歳</div>
+          </div>
+
+          <div class="renraku-list">
+            <div class="renraku-entry">
+              <div class="re-head">
+                <div class="re-name">🏃 かけっこ</div>
+                <div class="re-time">−3h · 体力−3</div>
+              </div>
+              <div class="re-chips">
+                <div class="chip ch-body">身体 +12</div>
+                <div class="chip ch-sense">感性 +5</div>
+              </div>
+            </div>
+            <div class="renraku-entry">
+              <div class="re-head">
+                <div class="re-name">📚 絵本</div>
+                <div class="re-time">−1h · 体力−1</div>
+              </div>
+              <div class="re-chips">
+                <div class="chip ch-intel">知性 +10</div>
+                <div class="chip ch-sense">感性 +3</div>
+              </div>
+            </div>
+            <div class="renraku-entry">
+              <div class="re-head">
+                <div class="re-name">🧱 ブロック</div>
+                <div class="re-time">−2h · 体力−2</div>
+              </div>
+              <div class="re-chips">
+                <div class="chip ch-intel">知性 +8</div>
+                <div class="chip ch-sense">感性 +8</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="day-total">
+            <div>
+              <div class="dt-lbl">今日の情熱スコア</div>
+            </div>
+            <div class="dt-val">+29</div>
+          </div>
+
+          <div class="s10-next">🌙 おやすみ → 翌日へ</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════ §5 デザイン憲章（詳細） ════════ -->
+<div class="charter-full">
+  <div class="section-title" style="margin-bottom:24px">§5 &nbsp;デザイン憲章（詳細版）— Full Design Charter</div>
+  <div class="charter-cols">
+
+    <div>
+      <div class="ch-col-title">① 体験原則</div>
+      <div class="ch-rule"><span class="ch-rule-num">1</span>1ターンは30秒以内。タップ数は最小化し、スキマ時間でも自然に続けられる軽快さを最優先する。</div>
+      <div class="ch-rule"><span class="ch-rule-num">2</span>情報は「読む」ではなく「見る」で把握できること。色・グレード・ゲージで状態を瞬時に伝える。</div>
+      <div class="ch-rule"><span class="ch-rule-num">3</span>選択前に必ずコストと効果を可視化する（ゴーストプレビュー原則）。「選んで後悔」の体験を排除する。</div>
+      <div class="ch-rule"><span class="ch-rule-num">4</span>音がなくても遊べること。SEに依存せず、色・動き・テキストのみで情報を完結させる。</div>
+    </div>
+
+    <div>
+      <div class="ch-col-title">② ビジュアル言語</div>
+      <div class="ch-rule"><span class="ch-rule-num">5</span>深夜ダークパープルをベースに置き、明度の高いアクセントで重要情報を際立たせる。白背景は使わない。</div>
+      <div class="ch-rule"><span class="ch-rule-num">6</span>獲得は緑（#4ade80）、コストは赤（#f87171）、カネ/時間は金（#f5c842）に統一。ゲーム文脈を色で語る。</div>
+      <div class="ch-rule"><span class="ch-rule-num">7</span>グレード（A〜G）は文字と色の組み合わせで即時判断できること。数値は補助情報として小さく添える。</div>
+      <div class="ch-rule"><span class="ch-rule-num">8</span>季節ごとに背景グラデーションのアクセント色を変化させ、ライフステージの空気感を演出する。</div>
+    </div>
+
+    <div>
+      <div class="ch-col-title">③ 画面別ルール</div>
+      <div class="ch-rule"><span class="ch-rule-num">9</span>HUDは純粋な機能UI。ゲームHUD的な情報密度で設計し、世界観演出は行わない。</div>
+      <div class="ch-rule"><span class="ch-rule-num">10</span>S3結果・S10連絡帳は絵本的温かみを持たせる。コメントは子どもの一人称・斜体で統一。</div>
+      <div class="ch-rule"><span class="ch-rule-num">11</span>ドックの遊びボタンは常に全候補を横スクロールで見渡せること。隠れた選択肢は作らない。</div>
+      <div class="ch-rule"><span class="ch-rule-num">12</span>モーダル・オーバーレイはz-indexで厳密に管理し、ゲームフローを遮断しない設計にする。</div>
+    </div>
+
+    <div>
+      <div class="ch-col-title">④ コンポーネント規約</div>
+      <div class="ch-rule"><span class="ch-rule-num">13</span>素養カードは5列grid（icon/label/grade/delta/value）。deltaと実数値を重ねない。空deltaはempty spanで固定。</div>
+      <div class="ch-rule"><span class="ch-rule-num">14</span>体力ゲージは中央エリアの主役として最低6px高さを確保。3段階カラー（緑/黄/赤）で危険度を表現。</div>
+      <div class="ch-rule"><span class="ch-rule-num">15</span>全てのDOM参照にnullガードを実装すること（SPEC-034 §6.4教訓）。UIリデザイン後は参照箇所の全検索必須。</div>
+      <div class="ch-rule"><span class="ch-rule-num">16</span>フォントはM PLUS Rounded 1cのみ使用。見出し900/ラベル700/本文400の3ウェイトで構成する。</div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
