@@ -95,7 +95,7 @@ async function jumpToChoose(page) {
   // 遊ぶ
   await page.click('.dock-icon[data-play-id="picturebook"]');
   await new Promise(r => setTimeout(r, 250));
-  await page.click("#btn-skip-play");
+  await page.evaluate(() => document.getElementById("btn-skip-play")?.click());
   await new Promise(r => setTimeout(r, 500));
   // 介入モーダル / S4 ランダムイベント画面があれば閉じる
   for (let i = 0; i < 5; i++) {

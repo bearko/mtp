@@ -50,6 +50,50 @@ const DEFAULT_CATEGORIES = {
 const CATEGORY_GROUP_ORDER = ["身体", "創作", "探求", "交流", "生活", "文化"];
 
 /**
+ * @spec docs/specs/SPEC-060-css-svg-juice.md
+ * 素材がない遊びでも没入感を上げるための CSS/SVG 演出設定。
+ * 既存の SPEC-029 動画が存在する場合は動画を優先し、こちらはフォールバックとして使う。
+ */
+const PLAY_SCENE_CONFIG = {
+  body: {
+    className: "scene-body",
+    label: "全力であそび中",
+    particles: ["💦", "💧", "🌊"],
+  },
+  intellect: {
+    className: "scene-intellect",
+    label: "発見している",
+    particles: ["🦋", "🍃", "🌿"],
+  },
+  sensitivity: {
+    className: "scene-sensitivity",
+    label: "想像がふくらむ",
+    particles: ["⭐", "✏️", "🎨"],
+  },
+  social: {
+    className: "scene-social",
+    label: "みんなとあそび中",
+    particles: ["💬", "😂", "🎉"],
+  },
+  passion: {
+    className: "scene-passion",
+    label: "ジョウネツ上昇中",
+    particles: ["⚡", "✨", "🔥"],
+  },
+};
+
+function primarySoyouFromPlay(play) {
+  const gain = normalizeGainToSoyou(play && play.gain);
+  return SOYOU_KEYS
+    .slice()
+    .sort((a, b) => (gain[b] || 0) - (gain[a] || 0))[0] || "passion";
+}
+
+function playSceneConfigFor(play) {
+  return PLAY_SCENE_CONFIG[primarySoyouFromPlay(play)] || PLAY_SCENE_CONFIG.passion;
+}
+
+/**
  * @spec docs/specs/SPEC-025-game-tempo.md §5.2 情熱プロファイル
  * プレイヤーが「何が好きな子か」を 4 種から選ぶ。自動選択のスコア式で使う。
  */
@@ -1756,6 +1800,13 @@ function strongestSoyouKey() {
   return SOYOU_KEYS.slice().sort((a, b) => (soyou[b] || 0) - (soyou[a] || 0))[0] || "passion";
 }
 
+function primarySoyouFromGain(gain) {
+  const norm = normalizeGainToSoyou(gain || {});
+  return SOYOU_KEYS
+    .map((key) => ({ key, value: norm[key] || 0 }))
+    .sort((a, b) => b.value - a.value)[0]?.key || "body";
+}
+
 function suggestedPlaysForSoyou(key, limit = 2) {
   return PLAYS
     .map((play) => ({ play, avail: isPlayAvailable(play), gain: normalizeGainToSoyou(play.gain || {}) }))
@@ -2311,6 +2362,12 @@ let playRAF = null;         // requestAnimationFrame id
 // @spec docs/specs/SPEC-003-play-execution.md §5.8a スキップ連打防止フラグ
 // true のときのみ skipDescription() は有効に動作する。1回スキップされたら false にして以降の連打を無視。
 let skipArmed = false;
+const PLAY_RING_RADIUS = 56;
+const PLAY_RING_CIRC = 2 * Math.PI * PLAY_RING_RADIUS;
+
+function playRingOffset(pct) {
+  return PLAY_RING_CIRC * (1 - Math.max(0, Math.min(100, pct)) / 100);
+}
 
 // =========================================================================
 // ユーティリティ
@@ -2341,9 +2398,11 @@ async function tryPlayIntroVideo(playId) {
   const wrap = byId("play-video");
   const vid  = byId("play-video-el");
   const anim = byId("playing-icon");
+  const cssStage = byId("play-css-scene");
   if (!wrap || !vid) return false;
   // 念のためリセット
   wrap.hidden = true;
+  if (cssStage) cssStage.hidden = false;
   if (anim) anim.hidden = false;
   const path = `data/videos/${playId}.mp4`;
   try {
@@ -2355,6 +2414,7 @@ async function tryPlayIntroVideo(playId) {
   try {
     vid.src = path;
     wrap.hidden = false;
+    if (cssStage) cssStage.hidden = true;
     if (anim) anim.hidden = true;
     // autoplay。iOS 対策で muted + playsinline は属性済み
     const p = vid.play();
@@ -2362,6 +2422,7 @@ async function tryPlayIntroVideo(playId) {
     return true;
   } catch (e) {
     wrap.hidden = true;
+    if (cssStage) cssStage.hidden = false;
     if (anim) anim.hidden = false;
     return false;
   }
@@ -2374,8 +2435,10 @@ function hidePlayVideo() {
   const wrap = byId("play-video");
   const vid  = byId("play-video-el");
   const anim = byId("playing-icon");
+  const cssStage = byId("play-css-scene");
   if (!wrap) return;
   wrap.hidden = true;
+  if (cssStage) cssStage.hidden = false;
   if (anim) anim.hidden = false;
   if (vid) {
     try { vid.pause(); } catch (e) {}
@@ -3614,6 +3677,44 @@ function confirmPlay() {
 // S3. 遊びの描写（結果統合版）
 // =========================================================================
 
+function primarySoyouKeyForPlay(play) {
+  const gain = normalizeGainToSoyou(play && play.gain ? play.gain : {});
+  const scored = SOYOU_KEYS
+    .map((key) => ({ key, value: gain[key] || 0 }))
+    .sort((a, b) => b.value - a.value);
+  return (scored[0] && scored[0].value > 0) ? scored[0].key : "passion";
+}
+
+/**
+ * @spec docs/specs/SPEC-060-css-svg-juice.md §5
+ * 動画素材がない遊びでも、カテゴリ別CSS/SVG演出で遊び中の没入感を補う。
+ */
+function renderPlaySceneStage(play) {
+  const stage = byId("playing-visual-stage");
+  const icon = byId("playing-icon");
+  const particles = byId("playing-particles");
+  const ring = byId("playing-ring-fill");
+  if (!stage) return;
+
+  const key = primarySoyouKeyForPlay(play);
+  const config = PLAY_SCENE_CONFIG[key] || PLAY_SCENE_CONFIG.passion;
+  stage.className = `playing-visual-stage ${config.className}`;
+  stage.dataset.sceneKey = key;
+
+  if (icon) icon.textContent = (play && play.icon) || "🎮";
+  if (particles) {
+    particles.innerHTML = (config.particles || []).map((p, idx) =>
+      `<span class="playing-particle particle-${idx}">${p}</span>`
+    ).join("");
+  }
+  if (ring) {
+    ring.style.strokeDashoffset = "352";
+    ring.style.stroke = "rgba(255,255,255,0.92)";
+  }
+  const label = byId("playing-scene-label");
+  if (label) label.textContent = config.label || "遊び中";
+}
+
 /**
  * @screen S3 遊びの描写（結果統合）
  * @spec docs/specs/SPEC-003-play-execution.md §5.1
@@ -3624,7 +3725,7 @@ function startPlay(play) {
   pendingGain = null;
   pendingEvent = null;
 
-  byId("playing-icon").textContent = play.icon;
+  renderPlaySceneStage(play);
   byId("playing-name").textContent = play.name;
   byId("playing-desc").textContent =
     play.descriptions[Math.floor(Math.random() * play.descriptions.length)];
@@ -3652,6 +3753,8 @@ function startPlay(play) {
   const tick = (t) => {
     const pct = Math.min(100, Math.round(((t - start) / duration) * 100));
     byId("playing-bar").style.width = pct + "%";
+    const ring = byId("playing-ring-fill");
+    if (ring) ring.style.strokeDashoffset = String(playRingOffset(pct));
     byId("playing-timer").textContent = `遊び進行中… ${pct}%`;
     if (pct < 100) {
       playRAF = requestAnimationFrame(tick);
@@ -3684,6 +3787,8 @@ function skipDescription() {
   if (playRAF) cancelAnimationFrame(playRAF);
   playRAF = null;
   byId("playing-bar").style.width = "100%";
+  const ring = byId("playing-ring-fill");
+  if (ring) ring.style.strokeDashoffset = String(playRingOffset(100));
   finishDescription();
 }
 
