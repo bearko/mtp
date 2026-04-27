@@ -4207,6 +4207,10 @@ function handleStaminaDepleted() {
  * スナップショットと現在値を比較して、差分だけを見やすく描画する。
  */
 function renderResultPanel(before) {
+  const visualStage = byId("playing-visual-stage");
+  if (visualStage) visualStage.hidden = true;
+  const progressWrap = byId("playing-progress-wrap");
+  if (progressWrap) progressWrap.hidden = true;
   byId("result-panel").hidden = false;
 
   // @spec SPEC-035 §4.4 素養は共通パラメーターバーへ集約する

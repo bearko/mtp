@@ -1496,6 +1496,9 @@ body {
   stroke-dashoffset: 352;
   transition: stroke-dashoffset 80ms linear;
 }
+.playing-visual-stage.is-result {
+  display: none;
+}
 .playing-icon-bounce {
   position: absolute;
   z-index: 4;
