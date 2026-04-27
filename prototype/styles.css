@@ -218,6 +218,44 @@ body {
   to   { opacity: 1; }
 }
 
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.76) translateY(14px); }
+  65% { opacity: 1; transform: scale(1.04) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes playBounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  45% { transform: translateY(-8px) scale(1.06); }
+  70% { transform: translateY(-3px) scale(1.02); }
+}
+
+@keyframes particleDrift {
+  0%, 100% { opacity: 0.42; transform: translateY(0) rotate(0deg); }
+  50% { opacity: 0.72; transform: translateY(-16px) rotate(12deg); }
+}
+
+@keyframes waveSway {
+  0%, 100% { transform: translateX(0) scaleY(1); }
+  50% { transform: translateX(4%) scaleY(1.08); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+@keyframes completeFlash {
+  0% { opacity: 0; transform: scale(0.94); }
+  45% { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+
 /*
   @spec SPEC-009 §5.2
   Scene：唯一のスクロール領域。
@@ -1389,6 +1427,100 @@ body {
   object-fit: cover;
   display: block;
 }
+
+/* @spec SPEC-060 CSS/SVG fallback play scene */
+.playing-visual-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(78vw, 300px);
+  min-height: 220px;
+  margin: 4px auto 12px;
+  border-radius: 28px;
+  overflow: hidden;
+  background: linear-gradient(175deg, #fff8e1 0%, #ffe082 48%, #f7b955 100%);
+  box-shadow: 0 16px 40px rgba(35, 70, 120, 0.18);
+  isolation: isolate;
+}
+.playing-visual-stage::before {
+  content: "";
+  position: absolute;
+  inset: auto -20% 0;
+  height: 44%;
+  border-radius: 48% 48% 0 0 / 28% 28% 0 0;
+  background: rgba(255, 255, 255, 0.28);
+  animation: waveSway 2.4s ease-in-out infinite;
+  z-index: 0;
+}
+.playing-visual-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 38%, rgba(255,255,255,0.38), transparent 32%);
+  pointer-events: none;
+  z-index: 1;
+}
+.playing-visual-stage.scene-body {
+  background: linear-gradient(175deg, #cfefff 0%, #68c8f0 50%, #1688c2 100%);
+}
+.playing-visual-stage.scene-intellect {
+  background: linear-gradient(175deg, #dff7df 0%, #89d28c 48%, #2e8b4e 100%);
+}
+.playing-visual-stage.scene-sensitivity {
+  background: linear-gradient(175deg, #fff8e1 0%, #ffe082 48%, #f57f17 100%);
+}
+.playing-visual-stage.scene-social {
+  background: linear-gradient(175deg, #ffe7f1 0%, #f5a1bf 48%, #bf3d76 100%);
+}
+.playing-visual-stage.scene-passion {
+  background: linear-gradient(175deg, #1a1a3e 0%, #6742c5 50%, #2d1a84 100%);
+}
+.playing-progress-ring {
+  position: relative;
+  z-index: 5;
+  transform: rotate(-90deg);
+  filter: drop-shadow(0 0 10px rgba(47, 92, 255, 0.42));
+}
+.playing-progress-ring-bg,
+.playing-progress-ring-fill {
+  fill: none;
+  stroke-width: 9;
+}
+.playing-progress-ring-bg {
+  stroke: rgba(255, 255, 255, 0.72);
+}
+.playing-progress-ring-fill {
+  stroke: #2f5cff;
+  stroke-linecap: round;
+  stroke-dasharray: 352;
+  stroke-dashoffset: 352;
+  transition: stroke-dashoffset 80ms linear;
+}
+.playing-visual-stage.is-result {
+  display: none;
+}
+.playing-icon-bounce {
+  position: absolute;
+  z-index: 4;
+  margin: 0;
+  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.22);
+  animation: playBounce 0.7s ease-in-out infinite;
+}
+.playing-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.playing-particle {
+  position: absolute;
+  font-size: 22px;
+  opacity: 0.6;
+  animation: particleDrift 3s ease-in-out infinite;
+}
+.playing-particle.particle-0 { top: 18%; left: 16%; }
+.playing-particle.particle-1 { top: 24%; right: 14%; animation-delay: 0.45s; }
+.playing-particle.particle-2 { bottom: 20%; left: 58%; animation-delay: 0.9s; }
 
 /* ==========================================================================
    @spec SPEC-030 タイトル画面

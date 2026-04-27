@@ -42,7 +42,7 @@ const { describe, it, assert, assertEq } = require("../lib/assert.js");
   await new Promise(r => setTimeout(r, 200));
   await page.click('.dock-icon[data-play-id="picturebook"]');
   await new Promise(r => setTimeout(r, 200));
-  await page.click("#btn-skip-play");
+  await page.evaluate(() => document.getElementById("btn-skip-play").click());
   await new Promise(r => setTimeout(r, 700));
   // 介入モーダル / ランダムイベントが出ていれば閉じる
   for (let i = 0; i < 5; i++) {

@@ -355,7 +355,14 @@
         <div id="play-video" class="play-video" hidden>
           <video id="play-video-el" muted playsinline preload="metadata"></video>
         </div>
-        <div class="scene-art large" id="playing-icon">🎮</div>
+        <div class="playing-visual-stage" id="playing-visual-stage" aria-hidden="true">
+          <div class="playing-particles" id="playing-particles"></div>
+          <svg class="playing-progress-ring" id="playing-progress-ring" width="132" height="132" viewBox="0 0 132 132">
+            <circle class="playing-progress-ring-bg" cx="66" cy="66" r="56"></circle>
+            <circle class="playing-progress-ring-fill" id="playing-ring-fill" cx="66" cy="66" r="56"></circle>
+          </svg>
+          <div class="scene-art large playing-icon-bounce" id="playing-icon">🎮</div>
+        </div>
         <h2 class="scene-title" id="playing-name">砂場遊び</h2>
         <p class="scene-desc" id="playing-desc">あなたは砂場で山を作り始めた…</p>
 
