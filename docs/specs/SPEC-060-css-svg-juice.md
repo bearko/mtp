@@ -36,8 +36,9 @@
 1. `startPlay(play)` で `renderPlaySceneStage(play)` を呼ぶ。
 2. `play.gain` の最大素養を主カテゴリとして選ぶ。
 3. 主カテゴリに応じて `PLAY_SCENE_CONFIG` の class / label / particles を適用する。
-4. `requestAnimationFrame` の進捗率で `.play-css-ring-progress` の `strokeDashoffset` を更新する。
-5. 進捗100% またはスキップ時に `setPlaySceneComplete(true)` を呼び、完了オーバーレイを表示する。
+4. `requestAnimationFrame` の進捗率で `.playing-progress-ring-fill` の `strokeDashoffset` を更新する。リングはビビッドな SVG グラデーションを使い、白単色にはしない。
+5. 描写フェーズに入るたびに `renderPlaySceneStage(play)` で演出ステージを再描画する。リピートや2回目以降の同じ遊びでも必ず初回と同じ演出を出す。
+6. 結果フェーズに入ると `#playing-visual-stage` と `#playing-progress-wrap` を隠し、結果画面へ円ゲージを残さない。
 6. 動画がある場合は `tryPlayIntroVideo()` が `#play-video` を表示する。CSS/SVG 演出は背景として残るが、動画表示を優先する。
 
 ## 6. UIへの反映

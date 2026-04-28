@@ -2695,11 +2695,12 @@ function renderParamStrip(screenId, preview = null) {
     const deltaRaw = preview && preview[key] ? Math.max(0, Math.round(preview[key])) : 0;
     const afterValue = value + deltaRaw;
     const afterGrade = soyouGrade(afterValue);
-    const gradeText = deltaRaw > 0 && afterGrade !== grade ? `${grade}→${afterGrade}` : grade;
+    const gradeText = deltaRaw > 0 && afterGrade !== grade ? `↑${afterGrade}` : grade;
     const delta = deltaRaw > 0 ? `<span class="param-strip-delta">+${deltaRaw}</span>` : "";
+    const rankUpClass = deltaRaw > 0 && afterGrade !== grade ? " is-rank-up" : "";
     return `
       <div class="param-strip-value">
-        <span class="param-strip-grade grade-${escapeHtml(afterGrade)}">${escapeHtml(gradeText)}</span>
+        <span class="param-strip-grade grade-${escapeHtml(afterGrade)}${rankUpClass}">${escapeHtml(gradeText)}</span>
         <span class="param-strip-num">${afterValue}</span>
         ${delta}
       </div>
@@ -3709,7 +3710,7 @@ function renderPlaySceneStage(play) {
   }
   if (ring) {
     ring.style.strokeDashoffset = "352";
-    ring.style.stroke = "rgba(255,255,255,0.92)";
+    ring.style.stroke = "";
   }
   const label = byId("playing-scene-label");
   if (label) label.textContent = config.label || "遊び中";
@@ -3978,9 +3979,6 @@ function finalizePlay() {
 
   // @spec SPEC-026 §5.2.1 チュートリアル発見（絵本→滑り台→砂場の段階解禁）
   const tutDiscoveredFinalize = checkTutorialDiscoveries(play.id);
-  if (tutDiscoveredFinalize && tutDiscoveredFinalize.length > 0) {
-    player._pendingTutorialInterrupts = (player._pendingTutorialInterrupts || []).concat(tutDiscoveredFinalize);
-  }
 
   pendingGain = {
     gain,
@@ -3989,6 +3987,7 @@ function finalizePlay() {
     skillBoost,
     lowStamMul,
     cats,
+    discoveries: tutDiscoveredFinalize || [],
   };
 
   // ---- ⑧ UIへ結果を描画 ----
@@ -4017,12 +4016,7 @@ function finalizePlay() {
   // S4から戻ってきた場合は、S3画面を再表示
   showScreen("screen-playing");
 
-  // @spec SPEC-026 §5.2.1 チュートリアル発見があればモーダル通知（結果画面の上に出る）
-  if (player._pendingTutorialInterrupts && player._pendingTutorialInterrupts.length > 0) {
-    const q = player._pendingTutorialInterrupts.slice();
-    player._pendingTutorialInterrupts = [];
-    showInterruptQueue(q, () => {});
-  }
+  // @spec SPEC-026 §5.2.1 チュートリアル発見は結果画面内カードへ集約し、追加タップを増やさない。
 }
 
 /**
@@ -4213,6 +4207,8 @@ function renderResultPanel(before) {
   if (progressWrap) progressWrap.hidden = true;
   byId("result-panel").hidden = false;
 
+  renderResultDiscoveryCard((pendingGain && pendingGain.discoveries) || []);
+
   // @spec SPEC-035 §4.4 素養は共通パラメーターバーへ集約する
   renderSoyouResultList(byId("result-soyou-list"), before.exp || {}, player.soyou || {});
   const resultSoyouCard = byId("result-soyou-card");
@@ -4249,6 +4245,28 @@ function renderResultPanel(before) {
 
   // 描写フェーズの UI を縮小
   byId("playing-progress-wrap").hidden = true;
+}
+
+/**
+ * @spec docs/specs/SPEC-026-tutorial.md §5.2.1
+ * @spec docs/specs/SPEC-003-play-execution.md §5.1
+ * 新しい遊びの発見は追加タップを要求するモーダルではなく、結果画面の先頭カードで見せる。
+ */
+function renderResultDiscoveryCard(discoveries) {
+  const card = byId("result-discovery-card");
+  const list = byId("result-discovery-list");
+  if (!card || !list) return;
+  const items = (discoveries || []).filter(Boolean);
+  card.hidden = items.length === 0;
+  list.innerHTML = items.map((item) => `
+    <li>
+      <span class="result-discovery-icon">${escapeHtml(item.icon || "✨")}</span>
+      <div>
+        <b>${escapeHtml(item.title || "新しい遊びを見つけた！")}</b>
+        <small>${escapeHtml(item.body || "")}</small>
+      </div>
+    </li>
+  `).join("");
 }
 
 // =========================================================================
@@ -5886,15 +5904,10 @@ function skipToNextDaySummary(days) {
  *
  * 前日の起床時点のスナップショット（_daySnapshot）と現在値を比較して、
  * 1 日の成長を差分ハイライト付きゲージで表示する。
- * フッターは「週末までスキップ」「明日の夜までスキップ」「手動に切り替え」の 3 択。
+ * フッターは「次の日へ」「週末までスキップ」の 2 択（8:2）に整理する。
  */
 function renderDaySummary() {
   const snap = player._daySnapshot || {};
-  // @spec SPEC-034 §6 自動モード解禁前（phase0）は「手動に切り替え」を隠す
-  const switchBtn = byId("btn-day-summary-switch-manual");
-  if (switchBtn) {
-    switchBtn.hidden = !(player.autoMode && tutorialPhase(player.day) !== "phase0");
-  }
   // @spec SPEC-001 §5.7 日付表記
   byId("day-summary-range").textContent =
     `${formatDayWithWeek(player.day)} / ${player.age}歳`;
@@ -5937,17 +5950,19 @@ function renderDaySummary() {
   // @spec SPEC-027 連絡帳セクション
   renderRenrakuchoForToday(snap);
 
-  // @spec SPEC-026 §5.5 スキップボタンの出し分け
+  // @spec SPEC-025 §7.1.3 S10 フッターは次の日へ / 週末までスキップの2択。
   const skipUnlocked = isSkipUnlocked();
-  byId("day-summary-skip-row").hidden = !skipUnlocked;
-  byId("day-summary-skip-row2").hidden = !skipUnlocked;
-  byId("day-summary-continue-row").hidden = skipUnlocked;
-  byId("day-summary-tutorial-hint").hidden = skipUnlocked;
+  const footerRow = byId("day-summary-main-actions");
+  const skipBtn = byId("btn-skip-to-weekend");
+  const hint = byId("day-summary-tutorial-hint");
+  if (footerRow) footerRow.classList.toggle("skip-locked", !skipUnlocked);
+  if (skipBtn) skipBtn.hidden = !skipUnlocked;
+  if (hint) hint.hidden = skipUnlocked;
   if (!skipUnlocked) {
     // phase0/1：スキップ機能はまだ解禁されていない旨ヒント
     const phase = tutorialPhase(player.day);
     const remainDays = phase === "phase0" ? (15 - player.day) : (15 - player.day);
-    byId("day-summary-tutorial-hint").textContent =
+    if (hint) hint.textContent =
       `⏩ スキップ機能は3週目（あと ${Math.max(0, remainDays)} 日）から使えるようになります`;
   }
 }
