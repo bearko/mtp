@@ -1405,6 +1405,15 @@ body {
   width: 100%;
 }
 .actions-row > .btn { flex: 1; }
+.actions-row.day-summary-actions-row .btn-next-day {
+  flex: 8 1 0;
+}
+.actions-row.day-summary-actions-row .btn-skip-weekend {
+  flex: 2 1 0;
+  padding-left: 8px;
+  padding-right: 8px;
+  font-size: 13px;
+}
 .btn-wide { width: 100%; }
 
 /* =========================================================================

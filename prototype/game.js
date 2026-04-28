@@ -5904,15 +5904,10 @@ function skipToNextDaySummary(days) {
  *
  * 前日の起床時点のスナップショット（_daySnapshot）と現在値を比較して、
  * 1 日の成長を差分ハイライト付きゲージで表示する。
- * フッターは「週末までスキップ」「明日の夜までスキップ」「手動に切り替え」の 3 択。
+ * フッターは「次の日へ」「週末までスキップ」の 2 択（8:2）に整理する。
  */
 function renderDaySummary() {
   const snap = player._daySnapshot || {};
-  // @spec SPEC-034 §6 自動モード解禁前（phase0）は「手動に切り替え」を隠す
-  const switchBtn = byId("btn-day-summary-switch-manual");
-  if (switchBtn) {
-    switchBtn.hidden = !(player.autoMode && tutorialPhase(player.day) !== "phase0");
-  }
   // @spec SPEC-001 §5.7 日付表記
   byId("day-summary-range").textContent =
     `${formatDayWithWeek(player.day)} / ${player.age}歳`;
@@ -5955,17 +5950,19 @@ function renderDaySummary() {
   // @spec SPEC-027 連絡帳セクション
   renderRenrakuchoForToday(snap);
 
-  // @spec SPEC-026 §5.5 スキップボタンの出し分け
+  // @spec SPEC-025 §7.1.3 S10 フッターは次の日へ / 週末までスキップの2択。
   const skipUnlocked = isSkipUnlocked();
-  byId("day-summary-skip-row").hidden = !skipUnlocked;
-  byId("day-summary-skip-row2").hidden = !skipUnlocked;
-  byId("day-summary-continue-row").hidden = skipUnlocked;
-  byId("day-summary-tutorial-hint").hidden = skipUnlocked;
+  const footerRow = byId("day-summary-main-actions");
+  const skipBtn = byId("btn-skip-to-weekend");
+  const hint = byId("day-summary-tutorial-hint");
+  if (footerRow) footerRow.classList.toggle("skip-locked", !skipUnlocked);
+  if (skipBtn) skipBtn.hidden = !skipUnlocked;
+  if (hint) hint.hidden = skipUnlocked;
   if (!skipUnlocked) {
     // phase0/1：スキップ機能はまだ解禁されていない旨ヒント
     const phase = tutorialPhase(player.day);
     const remainDays = phase === "phase0" ? (15 - player.day) : (15 - player.day);
-    byId("day-summary-tutorial-hint").textContent =
+    if (hint) hint.textContent =
       `⏩ スキップ機能は3週目（あと ${Math.max(0, remainDays)} 日）から使えるようになります`;
   }
 }

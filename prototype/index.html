@@ -745,24 +745,17 @@
         <div id="day-summary-skills-card" hidden><div class="gauge-group" id="day-summary-skill-gauges"></div></div>
         <ul class="kv-list" id="day-summary-status" hidden></ul>
       </div>
-      <footer class="actions actions-stack">
-        <!-- @spec SPEC-026 §5.5 スキップ機能は phase2 以降のみ表示 -->
-        <div class="actions-row" id="day-summary-skip-row" hidden>
-          <button class="btn btn-primary btn-wide" data-action="skip-to-weekend" id="btn-skip-to-weekend">⏩ 週末までスキップ</button>
-        </div>
-        <div class="actions-row" id="day-summary-skip-row2" hidden>
-          <button class="btn btn-secondary btn-wide" data-action="skip-to-tomorrow-night" id="btn-skip-to-tomorrow">⏩ 明日の夜までスキップ</button>
-        </div>
-        <!-- @spec SPEC-026 §5.5 phase0/1 は「続ける」1つだけ -->
-        <div class="actions-row" id="day-summary-continue-row" hidden>
-          <button class="btn btn-primary btn-wide" data-action="day-summary-continue">続ける</button>
+      <footer class="actions actions-stack day-summary-actions">
+        <!--
+          @spec SPEC-025 §7.1.3
+          スキップ解禁後は「次の日へ」:「週末までスキップ」を 8:2 の横幅で表示する。
+          自動/手動切替と「明日の夜まで」は S10 から外す。
+        -->
+        <div class="actions-row day-summary-main-row" id="day-summary-main-row">
+          <button class="btn btn-primary btn-day-next" data-action="day-summary-continue" id="btn-day-summary-next">次の日へ</button>
+          <button class="btn btn-secondary btn-weekend-skip" data-action="skip-to-weekend" id="btn-skip-to-weekend" hidden>週末まで</button>
         </div>
         <p class="tutorial-hint" id="day-summary-tutorial-hint" hidden>⏩ スキップ機能は3週目から使えます</p>
-        <!--
-          @spec docs/specs/SPEC-034 §6 自動モード解禁前（phase0/phase1）は「手動に切り替え」を非表示
-          renderDaySummary() で JS 側から hidden を動的設定する。
-        -->
-        <button class="btn btn-ghost btn-wide" data-action="switch-to-manual" id="btn-day-summary-switch-manual" hidden>🎮 手動に切り替え</button>
       </footer>
     </section>
 
