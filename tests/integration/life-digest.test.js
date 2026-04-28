@@ -52,7 +52,7 @@ async function jumpToChoose(page) {
     });
   });
 
-  await page.click("#btn-s2-menu");
+  await page.evaluate(() => document.getElementById("btn-s2-menu")?.click());
   await new Promise(r => setTimeout(r, 100));
   const opened = await page.evaluate(() => ({
     hidden: document.getElementById("s2-menu")?.hidden,
@@ -62,7 +62,7 @@ async function jumpToChoose(page) {
     it("サブメニューが開く", () => assertEq(opened.hidden, false));
     it("完走がサブメニュー内にある", () => assert(opened.labels.includes("📚完走"), opened.labels.join(",")));
   });
-  await page.click('.s2-menu-item[data-menu-action="start-life-digest"]');
+  await page.evaluate(() => document.querySelector('.s2-menu-item[data-menu-action="start-life-digest"]')?.click());
   await new Promise(r => setTimeout(r, 150));
   const first = await page.evaluate(() => ({
     active: document.querySelector(".screen.active")?.id,

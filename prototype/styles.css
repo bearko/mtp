@@ -114,15 +114,19 @@ body {
 
 /*
   @spec SPEC-034 §5.2 / SPEC-035 §4.4
-  共通パラメーターバー：HUD直下に固定し、対象画面で常に同じ位置に表示する。
+  共通パラメーターバー：対象画面で下部コマンド近くに固定し、影響確認時の視線移動を減らす。
 */
 .param-strip {
-  flex-shrink: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(80px + env(safe-area-inset-bottom));
   background: #ffffff;
-  border-bottom: 1px solid var(--card-border);
-  box-shadow: 0 6px 14px rgba(35, 70, 120, 0.08);
-  padding: 6px 8px 7px;
-  z-index: 9;
+  border-top: 1px solid var(--card-border);
+  border-bottom: 1px solid rgba(35, 70, 120, 0.05);
+  box-shadow: 0 -10px 26px rgba(35, 70, 120, 0.10);
+  padding: 7px 8px 8px;
+  z-index: 24;
 }
 .param-strip[hidden] { display: none !important; }
 .param-strip-row {
@@ -153,14 +157,15 @@ body {
 }
 .param-strip-grade {
   display: block;
-  font-size: 16px;
+  font-size: 24px;
   letter-spacing: 0.02em;
+  line-height: 1;
 }
 .param-strip-num {
   display: block;
-  margin-top: 1px;
+  margin-top: 3px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 .param-strip-delta {
@@ -173,6 +178,10 @@ body {
   font-size: 10px;
   font-weight: 900;
   vertical-align: middle;
+}
+.param-strip-grade.is-rank-up {
+  color: var(--good);
+  text-shadow: 0 0 10px rgba(76, 175, 122, 0.28);
 }
 
 .hud-row {
@@ -1490,7 +1499,7 @@ body {
   stroke: rgba(255, 255, 255, 0.72);
 }
 .playing-progress-ring-fill {
-  stroke: #2f5cff;
+  stroke: url(#playing-ring-gradient);
   stroke-linecap: round;
   stroke-dasharray: 352;
   stroke-dashoffset: 352;

@@ -66,7 +66,7 @@
       @spec docs/specs/SPEC-035-result-summary-ui.md §4.4
       S2/S3/S4/S10/S9 で同じ位置に固定表示し、常に素養を意識できるようにする。
     -->
-    <section class="param-strip" id="param-strip" aria-label="現在の素養" hidden>
+    <section class="param-strip param-strip-dock" id="param-strip" aria-label="現在の素養" hidden>
       <div class="param-strip-row param-strip-labels" id="param-strip-labels"></div>
       <div class="param-strip-row param-strip-values" id="param-strip-values"></div>
     </section>
@@ -358,6 +358,13 @@
         <div class="playing-visual-stage" id="playing-visual-stage" aria-hidden="true">
           <div class="playing-particles" id="playing-particles"></div>
           <svg class="playing-progress-ring" id="playing-progress-ring" width="132" height="132" viewBox="0 0 132 132">
+            <defs>
+              <linearGradient id="playing-ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#2f5cff"></stop>
+                <stop offset="45%" stop-color="#18b6a7"></stop>
+                <stop offset="100%" stop-color="#ff8e53"></stop>
+              </linearGradient>
+            </defs>
             <circle class="playing-progress-ring-bg" cx="66" cy="66" r="56"></circle>
             <circle class="playing-progress-ring-fill" id="playing-ring-fill" cx="66" cy="66" r="56"></circle>
           </svg>
@@ -378,6 +385,14 @@
           スキル行に統一。ステータス・時間・ジョウネツ・ゲージカードは削除。
         -->
         <div id="result-panel" class="result-panel result-panel-v2" hidden>
+          <!--
+            @spec docs/specs/SPEC-003-play-execution.md §5.11
+            新しい遊びの発見はポップアップではなく、結果画面の最上部に表示する。
+          -->
+          <div class="result-discovery-card" id="result-discovery-card" hidden>
+            <div class="result-discovery-kicker">あたらしい遊び</div>
+            <div class="result-discovery-list" id="result-discovery-list"></div>
+          </div>
           <!-- 獲得した素養（グレードベース / +N / 旧→新 / Lv発光） -->
           <div class="card card-tight" id="result-soyou-card" hidden>
             <div class="card-title">🌱 獲得した素養</div>

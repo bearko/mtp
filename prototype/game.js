@@ -2695,11 +2695,12 @@ function renderParamStrip(screenId, preview = null) {
     const deltaRaw = preview && preview[key] ? Math.max(0, Math.round(preview[key])) : 0;
     const afterValue = value + deltaRaw;
     const afterGrade = soyouGrade(afterValue);
-    const gradeText = deltaRaw > 0 && afterGrade !== grade ? `${grade}→${afterGrade}` : grade;
+    const gradeText = deltaRaw > 0 && afterGrade !== grade ? `↑${afterGrade}` : grade;
     const delta = deltaRaw > 0 ? `<span class="param-strip-delta">+${deltaRaw}</span>` : "";
+    const rankUpClass = deltaRaw > 0 && afterGrade !== grade ? " is-rank-up" : "";
     return `
       <div class="param-strip-value">
-        <span class="param-strip-grade grade-${escapeHtml(afterGrade)}">${escapeHtml(gradeText)}</span>
+        <span class="param-strip-grade grade-${escapeHtml(afterGrade)}${rankUpClass}">${escapeHtml(gradeText)}</span>
         <span class="param-strip-num">${afterValue}</span>
         ${delta}
       </div>
@@ -3709,7 +3710,7 @@ function renderPlaySceneStage(play) {
   }
   if (ring) {
     ring.style.strokeDashoffset = "352";
-    ring.style.stroke = "rgba(255,255,255,0.92)";
+    ring.style.stroke = "";
   }
   const label = byId("playing-scene-label");
   if (label) label.textContent = config.label || "遊び中";
@@ -3978,9 +3979,6 @@ function finalizePlay() {
 
   // @spec SPEC-026 §5.2.1 チュートリアル発見（絵本→滑り台→砂場の段階解禁）
   const tutDiscoveredFinalize = checkTutorialDiscoveries(play.id);
-  if (tutDiscoveredFinalize && tutDiscoveredFinalize.length > 0) {
-    player._pendingTutorialInterrupts = (player._pendingTutorialInterrupts || []).concat(tutDiscoveredFinalize);
-  }
 
   pendingGain = {
     gain,
@@ -3989,6 +3987,7 @@ function finalizePlay() {
     skillBoost,
     lowStamMul,
     cats,
+    discoveries: tutDiscoveredFinalize || [],
   };
 
   // ---- ⑧ UIへ結果を描画 ----
@@ -4017,12 +4016,7 @@ function finalizePlay() {
   // S4から戻ってきた場合は、S3画面を再表示
   showScreen("screen-playing");
 
-  // @spec SPEC-026 §5.2.1 チュートリアル発見があればモーダル通知（結果画面の上に出る）
-  if (player._pendingTutorialInterrupts && player._pendingTutorialInterrupts.length > 0) {
-    const q = player._pendingTutorialInterrupts.slice();
-    player._pendingTutorialInterrupts = [];
-    showInterruptQueue(q, () => {});
-  }
+  // @spec SPEC-026 §5.2.1 チュートリアル発見は結果画面内カードへ集約し、追加タップを増やさない。
 }
 
 /**
@@ -4213,6 +4207,8 @@ function renderResultPanel(before) {
   if (progressWrap) progressWrap.hidden = true;
   byId("result-panel").hidden = false;
 
+  renderResultDiscoveryCard((pendingGain && pendingGain.discoveries) || []);
+
   // @spec SPEC-035 §4.4 素養は共通パラメーターバーへ集約する
   renderSoyouResultList(byId("result-soyou-list"), before.exp || {}, player.soyou || {});
   const resultSoyouCard = byId("result-soyou-card");
@@ -4249,6 +4245,28 @@ function renderResultPanel(before) {
 
   // 描写フェーズの UI を縮小
   byId("playing-progress-wrap").hidden = true;
+}
+
+/**
+ * @spec docs/specs/SPEC-026-tutorial.md §5.2.1
+ * @spec docs/specs/SPEC-003-play-execution.md §5.1
+ * 新しい遊びの発見は追加タップを要求するモーダルではなく、結果画面の先頭カードで見せる。
+ */
+function renderResultDiscoveryCard(discoveries) {
+  const card = byId("result-discovery-card");
+  const list = byId("result-discovery-list");
+  if (!card || !list) return;
+  const items = (discoveries || []).filter(Boolean);
+  card.hidden = items.length === 0;
+  list.innerHTML = items.map((item) => `
+    <li>
+      <span class="result-discovery-icon">${escapeHtml(item.icon || "✨")}</span>
+      <div>
+        <b>${escapeHtml(item.title || "新しい遊びを見つけた！")}</b>
+        <small>${escapeHtml(item.body || "")}</small>
+      </div>
+    </li>
+  `).join("");
 }
 
 // =========================================================================

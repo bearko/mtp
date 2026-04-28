@@ -53,6 +53,7 @@ async function jumpToChoose(page) {
     intellectParam: [...document.querySelectorAll("#param-strip-values .param-strip-value")][1]?.textContent.replace(/\s+/g, " "),
     intellectGradeDisplay: getComputedStyle([...document.querySelectorAll("#param-strip-values .param-strip-grade")][1]).display,
     intellectNumDisplay: getComputedStyle([...document.querySelectorAll("#param-strip-values .param-strip-num")][1]).display,
+    stripDockClass: document.getElementById("param-strip")?.classList.contains("param-strip-dock"),
     paramVisible: !document.getElementById("param-strip")?.hidden,
     skillTags: document.getElementById("soyou-skill-tags")?.innerHTML,
     selected: document.querySelector('.dock-icon[data-play-id="picturebook"]')?.classList.contains("selected"),
@@ -90,6 +91,8 @@ async function jumpToChoose(page) {
       assertEq(preview.intellectGradeDisplay, "block");
       assertEq(preview.intellectNumDisplay, "block");
     });
+    it("共通パラメーターバーは下部固定スタイルを持つ", () =>
+      assertEq(preview.stripDockClass, true));
   });
 
   // 遊ぶ
@@ -118,6 +121,8 @@ async function jumpToChoose(page) {
     active: document.querySelector(".screen.active")?.id,
     soyouRows: [...document.querySelectorAll("#result-soyou-list .soyou-row")].map(r => r.textContent.replace(/\s+/g, " ").trim()),
     skillLines: [...document.querySelectorAll("#result-skill-lines .skill-line")].map(r => r.textContent.replace(/\s+/g, " ").trim()),
+    visualStageHidden: document.getElementById("playing-visual-stage")?.hidden,
+    discoveryHidden: document.getElementById("result-discovery-card")?.hidden,
     statusCardHidden: document.getElementById("result-status-card")?.hidden,
     intellectValue: player.soyou.intellect,
   }));
@@ -126,6 +131,8 @@ async function jumpToChoose(page) {
     it("素養カードが少なくとも 1 行", () => assert(result.soyouRows.length >= 1, JSON.stringify(result.soyouRows)));
     it("知性の素養が増えている", () => assert(result.intellectValue > 0, `intellect=${result.intellectValue}`));
     it("スキル行が少なくとも 1 行", () => assert(result.skillLines.length >= 1));
+    it("結果フェーズでは遊び中の円ゲージを隠す", () => assertEq(result.visualStageHidden, true));
+    it("新しい遊び発見は結果内カードに集約される", () => assertEq(result.discoveryHidden, false));
     it("旧ステータスカードは hidden", () => assertEq(result.statusCardHidden, true));
   });
 
